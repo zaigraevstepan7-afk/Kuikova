@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 3.22)
 project(zygisk_module)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -25,7 +25,6 @@ set(TO_COMPILE
     src/features/world.cpp
     src/features/chams.cpp
     src/features/exploits.cpp
-    src/features/configs.cpp
     src/menu/gui.cpp
     src/menu/c_user_interface.cpp
     sdk/game/unity/photon/c_photon_player.cpp

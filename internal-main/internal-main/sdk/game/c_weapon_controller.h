@@ -95,17 +95,32 @@ enum class gun_aiming_mode_t : uint8_t
 class c_bullet_hit_data;
 class c_gun_parameters;
 
+// GunController — 0.39.2 dump (fields used by Melodium features)
 #pragma pack(1)
 class c_gun_controller : public c_weapon_controller
 {
-    char __pad_gun0[0x20]; // 0x100 -> 0x120
+    char __pad_gun0[0x8]; // 0x100
 
 public:
-    safe_t<int> m_iCapacitySafe; // 0x120
-    safe_t<int> m_iAmmoSafe;     // 0x128
-    char __pad_gun1[0x168 - 0x130];
-    c_gun_parameters *m_pParameters; // 0x168 GunParameters
-    char __pad_gun2[0x188 - 0x170];
+    safe_t<float> m_fTimeFiredSafe;      // 0x108
+    safe_t<float> m_fFireIntervalSafe;   // 0x110
+    int32_t m_iShotID;                   // 0x118
+    int32_t m_iAudioSourceIndex;         // 0x11C
+    safe_t<int> m_iCapacitySafe;         // 0x120
+    safe_t<int> m_iAmmoSafe;             // 0x128
+    safe_t<bool> m_bInfinityAmmoSafe;    // 0x130
+    safe_t<bool> m_bInfinityMagazinesSafe; // 0x138
+    void *m_pSound;                      // 0x140
+    shoot_state m_shootState;            // 0x148
+    char __pad_gun1[0x7];
+    void *m_qword8;                      // 0x150
+    void *m_pRecoilControl;              // 0x158 Action
+    void *m_qword9;                      // 0x160
+    c_gun_parameters *m_pParameters;      // 0x168
+    void *m_pSightView;                  // 0x170
+    float m_fLastHandledShotTime;        // 0x178
+    float m_fLastShotPlayedTime;         // 0x17C
+    void *m_pSnapshot;                   // 0x180
     state_simple_t<uint8_t> *m_pState;   // 0x188
     state_simple_t<uint8_t> *m_pAimMode; // 0x190
     char __pad_gun3[0x230 - 0x198];
@@ -113,6 +128,8 @@ public:
 };
 
 static_assert(sizeof(c_weapon_controller) == 0x100, "WeaponController size");
+static_assert(offsetof(c_gun_controller, m_fFireIntervalSafe) == 0x110, "FireInterval");
+static_assert(offsetof(c_gun_controller, m_bInfinityAmmoSafe) == 0x130, "InfinityAmmo");
 static_assert(offsetof(c_gun_controller, m_pParameters) == 0x168, "GunParameters");
 static_assert(offsetof(c_gun_controller, m_pAimMode) == 0x190, "AimMode");
 static_assert(offsetof(c_gun_controller, m_pdCharacterHits) == 0x230, "CharacterHits");
