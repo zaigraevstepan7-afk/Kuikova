@@ -1,0 +1,387 @@
+#pragma once
+#include <cstdint>
+#include "includes/structs.h"
+#include "includes/oxorany/Oxorany.hpp"
+#include <android/log.h>
+#include "includes/matrix.h"
+#include "includes/Obfuscate.hpp"
+#include <vector>
+using namespace structs;
+inline uintptr_t base;
+
+#define str_(text) \
+    []() noexcept { \
+        static char buff[sizeof(text)]; \
+        if (buff[0] == 0) { \
+            memcpy(buff, oxorany(text), sizeof(buff) - 1); \
+            buff[sizeof(buff) - 1] = '\0'; \
+        } \
+        return buff; }()
+
+#define LOGD(fmt, ...) \
+    __android_log_print(ANDROID_LOG_DEBUG, "tenmi", fmt, ##__VA_ARGS__)
+class c_player_controller;
+class c_playermanager;
+class c_player_controls;
+class c_game_controller;
+class c_photon_player;
+class c_component;
+class c_weapon_controller;
+class c_gun_controller;
+class c_weapon_parameters;
+class c_gun_parameters;
+class globals
+{
+public:
+    bool is_allocated(void *x);
+    void *get_lazysingleton_typeinfo(uintptr_t addr);
+    void *type_info_instance(uintptr_t addr, uintptr_t field);
+    Vector3 world2screen(const Matrix &viewMatrix, const Vector3 &pos);
+    bool is_bone_visible(Vector3 start, Vector3 end_pos);
+    bool is_alive(c_player_controller *player);
+    bool is_enemy(c_player_controller *local, c_player_controller *enemy);
+    bool holding_gun();
+    bool is_sniper();
+    void updateGun();
+    void update();
+    void updateTarget();
+    void init();
+    bool is_scoped();
+};
+
+inline struct target
+{
+public:
+    bool b_found{};
+    Vector3 pos{};
+    Vector3 camera_pos{};
+    bool fire;
+    bool lag;
+    c_player_controller *player{};
+    bool visible{};
+    bool head{};
+    int damage{};
+    c_player_controller *hitted{};
+} target_t;
+
+class methods
+{
+public:
+    int (*get_width)();
+    int (*get_heigth)();
+    int (*get_count)();
+    UnityEngine_Touch_o (*get_touch)(int id);
+    void *(*game_controller)();
+    bool (*linecast)(Vector3 start, Vector3 end, raycast_hit_t *hitInfo, int layerMask);
+    bool (*sphere_cast)(ray_t ray, float radius, raycast_hit_t *hit, float max, int layer);
+    monoString *(*create_string)(void *, const char *, int, int);
+    monoString *new_str(const char *text)
+    {
+        return create_string(NULL, text, 0, std::strlen(text));
+    }
+    void (*set_active)(void *, bool val);
+    void (*set_flags)(void *, uint8_t);
+    void (*set_bagcolor)(void *, color_t);
+    c_component *(*get_collider)(raycast_hit_t);
+    uint8_t (*from_tag)(c_component *);
+    void *(*object_instantiate)(void *game_object, Vector3 pos, Quaternion rot);
+    void (*object_destroy)(void *game_object, float time);
+    bool (*is_native_object_alive)(void *game_object);
+
+};
+
+class offsets
+{
+public:
+    // --- TypeInfo RVAs (script.json / dump 0.39.2) ---
+    const uint32_t c_anticheatmanager = oxorany(0xAC4DA30); // AntiCheatManager_TypeInfo
+    const uint32_t c_player_controls = oxorany(0xAC5E0E0);  // PlayerControls_TypeInfo
+    const uint32_t c_player_manager = oxorany(0xAC5E190);   // PlayerManager_TypeInfo
+    const uint32_t c_game_controller = oxorany(0xAC58BB0);  // GameController_TypeInfo
+    const uint32_t c_player_controller = oxorany(0xAC5E0D8);
+
+    // Il2CppClass.static_fields offset on 0.39.2
+    const uint32_t il2cpp_static_fields = oxorany(0x90);
+
+    // inputs (UnityEngine.Input)
+    const uint32_t get_touch = oxorany(0x684EDAC); // GetTouch
+    const uint32_t get_count = oxorany(0x684E370); // get_touchCount
+
+    // screen
+    const uint32_t get_width = oxorany(0x5FB3224);
+    const uint32_t get_heigth = oxorany(0x5FB5478);
+
+    // transform
+    const uint32_t get_position = oxorany(0x6005138);
+    const uint32_t set_position = oxorany(0x6009694);
+    const uint32_t get_forward = oxorany(0x60062E0);
+    const uint32_t get_up = oxorany(0x6002608);
+    const uint32_t get_euler_angles = oxorany(0x6006BF0);
+    const uint32_t set_euler_angles = oxorany(0x5FEC6CC);
+    const uint32_t get_rotation = oxorany(0x5FF2184);
+
+    // playercontroller — adjacent void() pair near class end (view switch); set_visible = refresh helper
+    const uint32_t set_tps = oxorany(0x8E7E63C);     // ECAFHEAAGDAAHHH
+    const uint32_t set_fps = oxorany(0x8E7EC48);     // FCBDBECBFEABFCD
+    const uint32_t set_visible = oxorany(0x8E880E4); // AFAEGDBAFECEHDD
+    const uint32_t set_view_mode = oxorany(0x8E91C64); // ADEAAACFHADDAFG(GGBGGDAGBGGGACD)
+
+    // shader
+    const uint32_t find = oxorany(0x6A95144); // Shader.Find
+
+    // material
+    const uint32_t get_texture = oxorany(0x6A92FA4);  // get_mainTexture
+    const uint32_t set_texture = oxorany(0x6A81174);  // set_mainTexture
+    const uint32_t get_shader = oxorany(0x6A82020);
+    const uint32_t set_shader = oxorany(0x6A88CA8);
+    const uint32_t new_material = oxorany(0x6A98518); // Material..ctor(Shader)
+    const uint32_t set_color = oxorany(0x6A96904);
+    const uint32_t set_int = oxorany(0x6A84BE4);   // SetInt(string,int)
+    const uint32_t set_float = oxorany(0x6A8BF28); // SetFloat(string,float)
+
+    // type
+    const uint32_t get_type = oxorany(0x5CF2D40);             // Type.GetType(string)
+    const uint32_t find_objects_of_type = oxorany(0x5FF2770); // Object.FindObjectsOfType(Type)
+
+    // object
+    const uint32_t object_instantiate = oxorany(0x5FEFA04); // Instantiate(Object, Vector3, Quaternion)
+    const uint32_t object_destroy = oxorany(0x5FF508C);     // Destroy(Object, float)
+    const uint32_t is_native_object_alive = oxorany(0x5FF2608);
+
+    // renderer
+    const uint32_t get_material = oxorany(0x6A962B4);
+    const uint32_t set_material = oxorany(0x6A91498);
+    const uint32_t get_materials = oxorany(0x6A9149C);
+    const uint32_t set_materials = oxorany(0x6A8EFD8); // SetMaterialArray
+
+    // gameobject
+    const uint32_t set_active = oxorany(0x6009294); // SetActive
+
+    // fog — UnityEngine.RenderSettings (prefer over old manager path)
+    const uint32_t rendersettings_set_fog = oxorany(0x6A8C9C8);
+    const uint32_t rendersettings_set_fog_color = oxorany(0x6A96AA8);
+    const uint32_t rendersettings_set_fog_start = oxorany(0x6A8DAAC);
+    const uint32_t rendersettings_set_fog_end = oxorany(0x6A93CD8);
+    const uint32_t rendersettings_set_fog_mode = oxorany(0x6A85504);
+    // legacy names kept for any leftover refs (point at set_fog / set_fog_color)
+    const uint32_t rendersettings_manager = oxorany(0x6A8C9C8);
+    const uint32_t call_rendersettings_update = oxorany(0x6A96AA8);
+
+    // physics
+    const uint32_t linecast = oxorany(0x7A020F4);    // Linecast(V3,V3,RaycastHit,int)
+    const uint32_t sphere_cast = oxorany(0x79FFF6C); // SphereCast(Ray,float,RaycastHit,float,int)
+
+    // charactercontroller
+    const uint32_t get_velocity = oxorany(0x7A05344);
+
+    // raycast icall slot — still needs live libil2cpp scan on device if hook fails
+    const uint32_t ray = oxorany(0x84DB9F0); // TODO: verify Present/icall table on 0.39.2 binary
+
+    // icall
+    const uint32_t icall = oxorany(0x5CAAE90); // il2cpp_resolve_icall
+
+    // camera
+    const uint32_t get_main = oxorany(0x5FACE04);
+    const uint32_t set_fov = oxorany(0x5FB7BC0);      // set_fieldOfView
+    const uint32_t set_flags = oxorany(0x5FCAD3C);    // set_clearFlags
+    const uint32_t set_bagcolor = oxorany(0x5FC5C24); // set_backgroundColor
+    const uint32_t fsdfds = oxorany(0x5FBA5F4);       // get_worldToCameraMatrix_Injected
+    const uint32_t get_projection_matrix_injected = oxorany(0x5FA9898);
+
+    // component
+    const uint32_t get_transform = oxorany(0x5FF113C);
+    const uint32_t get_game_object = oxorany(0x5FFAEFC);
+
+    // other — String.CreateString(sbyte*/object, int, int)
+    const uint32_t create_string = oxorany(0x5DE99CC);
+
+    // api (api_0.39.2.txt)
+    const uint32_t il2cpp_domain_get = oxorany(0x5C86D54);
+    const uint32_t il2cpp_domain_assembly_open = oxorany(0x5C86D58);
+    const uint32_t il2cpp_assembly_get_image = oxorany(0x5C86BFC);
+    const uint32_t il2cpp_class_from_name = oxorany(0x9D5B510);
+    const uint32_t il2cpp_array_new = oxorany(0x5C86BE0);
+    const uint32_t il2cpp_object_new = oxorany(0x5C86EF8);
+};
+
+struct Il2CppClass;
+class callback
+{
+public:
+    c_player_controller *local_player{};
+    c_player_controller *enemy_player{};
+    c_playermanager *player_manager{};
+    c_player_controls *player_controls{};
+    Il2CppClass *playermanager;
+    void *weaponry_controller{};
+    void *weapon_controller{};
+    void *weapon_parameters{};
+    c_photon_player *photon{};
+};
+
+class egl
+{
+public:
+    int heigth;
+    int width;
+};
+
+template < typename T >
+struct safe_type
+{
+    T value;
+    bool has_value;
+};
+
+
+class player
+{
+public:
+    c_player_controller *enemy{};
+    std::vector<c_player_controller *> list{};
+    std::vector<c_player_controller *> entity{};
+    c_player_controller *local{};
+
+    void reset();
+    void collect(c_player_controller *player);
+    void after_match();
+    void update();
+
+    c_weapon_controller *weapon_controller{};
+    c_gun_controller *gun_controller{};
+    c_weapon_parameters *weapon_parameters{};
+    c_gun_parameters *gun_parameters{};
+    c_game_controller *game{};
+    c_player_controls *controls{};
+};
+
+inline globals *c_globals = new globals();
+inline offsets *c_offsets = new offsets();
+inline callback *c_callback = new callback();
+inline egl *c_egl = new egl();
+inline methods *c_methods = new methods();
+inline player *c_player = new player();
+
+inline const char *sky_flags[] = {"none", "skybox", "color", "solid", "depth", "nothing"};
+inline const char *pitch_[] = {("local"), ("up"), ("down")};
+inline const char *yaw_[] = {("local"), ("backward"), ("spiral"), ("chaos")};
+inline const char *enemy_[] = {("solid"), ("flat"), ("glass"), ("glow"), ("transparent")};
+inline const char *weapon_[] = {("solid"), ("flat"), ("glass"), ("glow"), ("transparent")};
+inline const char *local_[] = {("solid"), ("flat"), ("glass"), ("glow"), ("transparent")};
+inline const char *hands_[] = {("solid"), ("flat"), ("glass"), ("glow"), ("transparent")};
+inline const char *arms_[] = {("solid"), ("flat"), ("glass"), ("glow"), ("transparent")};
+inline const char *hit_[] = {("solid"), ("flat"), ("glass"), ("glow"), ("transparent")};
+inline const char *knifes[] = {"m9", "karambit", "jkommando", "butterfly", "flip", "kunai", "scorpion", "tanto", "daggers", "kukri", "stilet", "mantis", "fang", "sting", "hands"};
+
+inline struct g_
+{
+    // esp
+    bool b_esp;
+    bool b_line;
+    bool b_rect;
+    bool b_health;
+    bool b_name;
+    bool b_ammo;
+    bool b_skeleton;
+    bool b_eweapon;
+    float m_ammo[4] = {0.077f, 0.251f, 0.605f, 1.0f};
+    float m_health[4] = {0.025f, 0.560f, 0.025f, 1.0f};
+    float m_rect[4] = {1.0f, 0.0f, 0.0f, 1.0f};
+    float m_skeleton[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    bool b_tracer;
+    float m_tracer[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    bool b_marker;
+    float m_marker[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    bool b_dmarker;
+    bool b_sk;
+    float m_sk[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+
+    // ragebot
+    bool b_silent;
+    bool b_fire;
+    bool b_endless;
+    bool b_duck;
+    bool b_stop;
+    int hitchance = 75;
+    bool hitbox[4];
+    bool b_dt;
+    bool predict;
+    float factor = 1;
+    int fak = 5;
+    float dist = 1.65;
+    float mom = 2.5;
+
+    // anti aim
+    bool b_antiaim;
+    int i_pitch = 0;
+    int i_yaw = 0;
+    bool b_jitter;
+    int i_range = 0;
+    float f_speed;
+    bool b_chaos;
+    float f_jitter_speed = 0.3f;
+    int frames = 1;
+
+    // misc
+    bool b_strafer;
+    bool b_walk;
+    bool b_third;
+    int knife = 0;
+    bool b_peek;
+    bool b_aspect;
+    float f_aspect = 1.5;
+    bool b_scope;
+    float m_fov = 59.9f;
+
+    // chams
+    bool b_players;
+    bool b_local;
+    bool b_gloves;
+    float m_players[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float m_local[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float m_gloves[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float m_hit[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float m_weapon[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    int i_local = 0;
+    int i_players = 0;
+    int i_gloves = 0;
+    int i_hit = 0;
+    int i_weapon = 0;
+    bool hit_chams;
+    bool weapon_chams;
+
+
+    // world
+    bool b_world;
+    bool b_solid;
+    bool b_fog;
+    float m_world[4] = {0.500f, 0.500f, 0.500f, 0.700f};
+    float m_fog[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float f_start = 5.0f;
+    float f_end = 20.0f;
+    bool b_sky;
+    float m_sky[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    int c_flags = 2;
+
+    // exploits
+    bool b_onehit;
+    bool b_frate;
+    bool b_god;
+    bool sethp;
+    float dur = 100;
+    bool b_weapon;
+    bool b_bomb;
+
+    int steps = 2500;
+    bool update_matrix{};
+
+} g;
+enum class team_t : uint8_t;
+
+inline bool fire{};
+inline struct abc
+{
+    void *player{};
+} abcd;
+inline bool open = true;
+#include "sdk/game/include.h"

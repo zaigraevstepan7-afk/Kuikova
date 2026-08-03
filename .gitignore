@@ -1,0 +1,7 @@
+okak/
+*.7z
+**/pidor
+**/.idea/
+**/.vscode/
+**/cmake-build-*/
+**/build/
