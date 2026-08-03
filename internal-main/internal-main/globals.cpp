@@ -28,17 +28,24 @@ void *globals::get_lazysingleton_typeinfo(uintptr_t addr)
 void *globals::type_info_instance(uintptr_t addr, uintptr_t field)
 {
     uintptr_t base_addr = (uintptr_t)base;
+    if (!base_addr || !addr)
+        return nullptr;
     void *type_info = *reinterpret_cast<void **>(base_addr + addr);
     if (!type_info)
         return nullptr;
-    void *static_field = *reinterpret_cast<void **>((uintptr_t)type_info + oxorany(0x90));
+    // Halalium / 0.39.2: Il2CppClass.static_fields @ 0x90
+    void *static_field = *reinterpret_cast<void **>((uintptr_t)type_info + c_offsets->il2cpp_static_fields);
     if (!static_field)
         return nullptr;
-    // field: static slot (PlayerManager commonly 0x10; many singletons 0x0)
-    void *instance = *reinterpret_cast<void **>((uintptr_t)static_field + field);
-    if (!instance)
-        return nullptr;
-    return instance;
+    // Try requested slot, then common alternates (0x10 / 0x0)
+    uintptr_t slots[3] = {field, (uintptr_t)0x10, (uintptr_t)0x0};
+    for (int i = 0; i < 3; i++)
+    {
+        void *instance = *reinterpret_cast<void **>((uintptr_t)static_field + slots[i]);
+        if (instance)
+            return instance;
+    }
+    return nullptr;
 }
 
 Vector3 globals::world2screen(const Matrix &viewMatrix, const Vector3 &pos)

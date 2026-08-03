@@ -455,54 +455,125 @@ void vmtHook(uintptr_t object, int method, void* news, void** old) {
     }
 }
 
+#include "includes/a64_inline_hook.h"
+#include "includes/module_base.h"
+
+// Halalium hooks PlayerController.Update by absolute RVA (Dobby), not by name.
+// Feng 0.39.2 dump: Update=0x8E7C40C LateUpdate=0x8E7CF50 — matches Halalium install immediates.
+static bool hook_rva(uintptr_t rva, void *hook, void **out_orig, const char *tag)
+{
+    if (!base || !rva || !hook)
+        return false;
+    void *target = (void *)(base + rva);
+    if (!maps_contains_exec((uintptr_t)target))
+    {
+        LOGD("hook_rva %s target %p not executable (wrong base?)", tag, target);
+        return false;
+    }
+    void *tramp = nullptr;
+    if (!a64hook::install(target, hook, &tramp))
+    {
+        LOGD("hook_rva %s a64 install failed @%p", tag, target);
+        return false;
+    }
+    if (out_orig)
+        *out_orig = tramp;
+    LOGD("hook_rva %s OK rva=0x%lx target=%p tramp=%p", tag, (unsigned long)rva, target, tramp);
+    return true;
+}
+
 void update::init()
 {
-    sleep(1);
-    do
-    {
-        sleep(oxorany(1));
-    } while (!loadedlib(oxorany("lib/arm64/libsigner.so")));
+    // Do NOT block forever on libsigner — that left features dead while menu still drew.
+    for (int i = 0; i < 8 && !loadedlib(oxorany("libsigner.so")) && !loadedlib(oxorany("lib/arm64/libsigner.so")); i++)
+        sleep(1);
 
-    Il2CppClass *game_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Game"), oxorany("GameController"));
-    if (game_controller)
+    // If preferred base makes Update RVA non-executable, flip to the other image (Halalium uses libunity string).
+    auto try_bases = [&]() {
+        uintptr_t candidates[2] = {
+            find_module_base_rx("libil2cpp.so"),
+            find_module_base_rx("libunity.so"),
+        };
+        for (uintptr_t cand : candidates)
+        {
+            if (!cand)
+                continue;
+            if (maps_contains_exec(cand + 0x8E7C40C))
+            {
+                base = cand;
+                LOGD("selected game base %p for Update RVA", (void *)base);
+                return true;
+            }
+        }
+        if (!base)
+            base = resolve_il2cpp_base();
+        return base != 0;
+    };
+    try_bases();
+
+    ::init(); // resolve il2cpp APIs against current base
+
+    // --- Halalium path: direct method hooks ---
+    bool hooked_pc = hook_rva(oxorany(0x8E7C40C), (void *)new_update, (void **)&old_update, "PlayerController.Update");
+    hook_rva(oxorany(0x8E7CF50), (void *)new_lateupdate, (void **)&old_lateupdate, "PlayerController.LateUpdate");
+
+    // --- Fallback: name VMT if il2cpp APIs work ---
+    Il2CppClass *game_controller = nullptr;
+    Il2CppClass *player_controller = nullptr;
+    if (il2cpp_class_from_name && dll::charp)
     {
-        vmt(game_controller, oxorany("Update"), (void *)new_game_update, (void **)&old_game_update);
+        game_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Game"), oxorany("GameController"));
+        player_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Player"), oxorany("PlayerController"));
+        LOGD("class_from_name GameController=%p PlayerController=%p", game_controller, player_controller);
+    }
+    else
+    {
+        LOGD("il2cpp_class_from_name unavailable (api resolve failed)");
     }
 
-    Il2CppClass *player_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Player"), oxorany("PlayerController"));
-    if (player_controller)
+    if (game_controller)
+        vmt(game_controller, oxorany("Update"), (void *)new_game_update, (void **)&old_game_update);
+
+    if (!hooked_pc && player_controller)
     {
         vmt(player_controller, oxorany("Update"), (void *)new_update, (void **)&old_update);
         vmt(player_controller, oxorany("LateUpdate"), (void *)new_lateupdate, (void **)&old_lateupdate);
     }
 
-    Il2CppClass *hit_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Player.Hit"), oxorany("PlayerHitController"));
+    Il2CppClass *hit_controller = nullptr;
+    Il2CppClass *gun_controller = nullptr;
+    if (il2cpp_class_from_name && dll::charp)
+    {
+        hit_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Player.Hit"), oxorany("PlayerHitController"));
+        gun_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Inventory.Gun"), oxorany("GunController"));
+    }
+
     if (hit_controller) {
         LOGD("hit_controller -> %p", hit_controller);
         vmt(hit_controller, oxorany("ACHHGEDAEGBBHFB"), (void *)strict_hit, (void **)&old_strict_hit);
-        LOGD("hit_controller->vtable -> %p", hit_controller->vtable);
         if (hit_controller->vtable)
-        {
-            LOGD("hit_controller->vtable[84].methodPtr -> %p", hit_controller->vtable[84].methodPtr);
-
             hit_controller->vtable[84].methodPtr = (Il2CppMethodPointer)strict_hit;
-        }
     }
 
-    Il2CppClass *gun_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Inventory.Gun"), oxorany("GunController"));
     if (gun_controller)
     {
         vmt(gun_controller, oxorany("FEEBGAGHGGCGACA"), (void *)hook_executecommands, (void **)&old_executecommands);
         if (gun_controller->vtable)
-        {
             gun_controller->vtable[20].methodPtr = (Il2CppMethodPointer)hook_executecommands;
-        }
     }
 
+    // Raycast icall — optional; don't hang forever
     void *ray_delegate = (void *)(base + c_offsets->ray);
-    while (!*(void **)ray_delegate)
-    {
+    for (int i = 0; i < 10 && ray_delegate && !*(void **)ray_delegate; i++)
         sleep(1);
+    if (ray_delegate && *(void **)ray_delegate)
+    {
+        icall_hook(ray_delegate, oxorany("UnityEngine.PhysicsScene::Internal_Raycast_Injected(UnityEngine.PhysicsScene&,UnityEngine.Ray&,System.Single,UnityEngine.RaycastHit&,System.Int32,UnityEngine.QueryTriggerInteraction)"), hook_raycast, &old_raycast);
     }
-    icall_hook(ray_delegate, oxorany("UnityEngine.PhysicsScene::Internal_Raycast_Injected(UnityEngine.PhysicsScene&,UnityEngine.Ray&,System.Single,UnityEngine.RaycastHit&,System.Int32,UnityEngine.QueryTriggerInteraction)"), hook_raycast, &old_raycast);
+    else
+    {
+        LOGD("ray icall slot empty — silent wallcheck may be limited");
+    }
+
+    LOGD("update::init done hooked_pc=%d base=%p", (int)hooked_pc, (void *)base);
 }

@@ -627,6 +627,8 @@ std::vector<dl_error *> Library::GetErrors()
     return this->errors;
 }
 
+#include "includes/module_base.h"
+
 class il2cpp_t
 {
     uintptr_t _address;
@@ -635,22 +637,13 @@ public:
     uintptr_t address()
     {
         if (!this->_address)
-        {
-            Library *libil2cpp = new Library(oxorany("libunity.so"));
-            this->_address = libil2cpp->GetAddress();
-            delete libil2cpp;
-        }
-
+            this->_address = resolve_il2cpp_base();
         return this->_address;
     }
 
     bool is_loaded()
     {
-        Library *libunity = new Library(oxorany("libunity.so"));
-        bool is_loaded = libunity->Loaded();
-
-        delete libunity;
-        return is_loaded;
+        return resolve_il2cpp_base() != 0;
     }
 };
 
