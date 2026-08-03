@@ -1,0 +1,46 @@
+{
+  "PlayerManager": {
+    "hex": "0xac5e190",
+    "dec": 180740496
+  },
+  "GameController": {
+    "hex": "0xac58bb0",
+    "dec": 180718512
+  },
+  "PhotonNetwork": {
+    "hex": "0xac5de18",
+    "dec": 180739608
+  },
+  "BombManager": {
+    "hex": "0xac4fac0",
+    "dec": 180681408
+  },
+  "InventoryManager": {
+    "hex": "0xac5c018",
+    "dec": 180731928
+  },
+  "PlayerControls": {
+    "hex": "0xac5e0e0",
+    "dec": 180740320
+  },
+  "PlayerController": {
+    "hex": "0xac5e0d8",
+    "dec": 180740312
+  },
+  "WeaponController": {
+    "hex": "0xac61a18",
+    "dec": 180754968
+  },
+  "WeaponManager": {
+    "hex": "0xac61a78",
+    "dec": 180755064
+  },
+  "GameManager": {
+    "hex": "0xac58c00",
+    "dec": 180718592
+  },
+  "TouchController": {
+    "hex": "0xac60b48",
+    "dec": 180751176
+  }
+}

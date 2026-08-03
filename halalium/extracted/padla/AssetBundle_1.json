@@ -1,0 +1,52 @@
+{
+  "m_Name": "padla",
+  "m_PreloadTable": [
+    {
+      "m_FileID": 0,
+      "m_PathID": 4822103166414625150
+    },
+    {
+      "m_FileID": 0,
+      "m_PathID": 3056512510807096294
+    }
+  ],
+  "m_Container": [
+    [
+      "assets/fresnel.shader",
+      {
+        "preloadIndex": 1,
+        "preloadSize": 1,
+        "asset": {
+          "m_FileID": 0,
+          "m_PathID": 3056512510807096294
+        }
+      }
+    ],
+    [
+      "assets/shador.shader",
+      {
+        "preloadIndex": 0,
+        "preloadSize": 1,
+        "asset": {
+          "m_FileID": 0,
+          "m_PathID": 4822103166414625150
+        }
+      }
+    ]
+  ],
+  "m_MainAsset": {
+    "preloadIndex": 0,
+    "preloadSize": 0,
+    "asset": {
+      "m_FileID": 0,
+      "m_PathID": 0
+    }
+  },
+  "m_RuntimeCompatibility": 1,
+  "m_AssetBundleName": "padla",
+  "m_Dependencies": [],
+  "m_IsStreamedSceneAssetBundle": false,
+  "m_ExplicitDataLayout": 0,
+  "m_PathFlags": 7,
+  "m_SceneHashes": []
+}
