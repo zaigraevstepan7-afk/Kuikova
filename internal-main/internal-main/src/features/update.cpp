@@ -24,8 +24,9 @@ void strict_hit(void* _this, void* hit_data, void* player_hit_controller)
     }
 
     if (g.hit_chams) {
-        auto a = *(safe_type<c_player_controller*>*)((uintptr_t)_this + oxorany(0x70));
-        target_t.hitted = a.value;
+        auto a = safe_type<c_player_controller *>::field(_this, oxorany(0x70));
+        if (a.has_value)
+            target_t.hitted = a.value;
         LOGD("target_t.hitted -> %p", target_t.hitted);
     }
 

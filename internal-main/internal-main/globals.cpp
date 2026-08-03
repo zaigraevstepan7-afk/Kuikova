@@ -1,47 +1,55 @@
-#include <setjmp.h>
 #include "globals.hpp"
-#include <csetjmp>
-#include <csignal>
+#include "includes/halalium_mem.h"
 #include <unistd.h>
 #include <thread>
 #include "src/features/exploits.h"
 
+bool globals::is_allocated(void *x)
+{
+    // Halalium-style: maps check instead of mincore / memfd / process_vm_*.
+    return hmem::readable(reinterpret_cast<uintptr_t>(x), sizeof(void *));
+}
+
 void *globals::get_lazysingleton_typeinfo(uintptr_t addr)
 {
-    uintptr_t base_addr = (uintptr_t)base;
-    void *offset = *reinterpret_cast<void **>(base_addr + addr);
+    const uintptr_t base_addr = reinterpret_cast<uintptr_t>(base);
+    if (!base_addr || !addr)
+        return nullptr;
+
+    // Halalium: ldr [base + TypeInfoRVA]; follow chain with null checks.
+    void *offset = reinterpret_cast<void *>(hmem::read_ptr(base_addr + addr));
     if (!offset)
         return nullptr;
-    void *offset2 = *reinterpret_cast<void **>((uintptr_t)offset + oxorany(0x58));
+    void *offset2 = hmem::field_ptr(offset, oxorany(0x58));
     if (!offset2)
         return nullptr;
     // 0.39.2: Il2CppClass.static_fields @ 0x90 (was 0xB8 on older layouts)
-    void *offset3 = *reinterpret_cast<void **>((uintptr_t)offset2 + oxorany(0x90));
+    void *offset3 = hmem::field_ptr(offset2, oxorany(0x90));
     if (!offset3)
         return nullptr;
-    void *instance = *reinterpret_cast<void **>((uintptr_t)offset3 + oxorany(0x0));
-    if (!instance)
-        return nullptr;
-    return instance;
+    return hmem::field_ptr(offset3, oxorany(0x0));
 }
 
 void *globals::type_info_instance(uintptr_t addr, uintptr_t field)
 {
-    uintptr_t base_addr = (uintptr_t)base;
+    const uintptr_t base_addr = reinterpret_cast<uintptr_t>(base);
     if (!base_addr || !addr)
         return nullptr;
-    void *type_info = *reinterpret_cast<void **>(base_addr + addr);
+
+    // Halalium: klass = *(base + TypeInfoRVA); instance from static_fields.
+    void *type_info = hmem::typeinfo(base_addr, addr);
     if (!type_info)
         return nullptr;
-    // Halalium / 0.39.2: Il2CppClass.static_fields @ 0x90
-    void *static_field = *reinterpret_cast<void **>((uintptr_t)type_info + c_offsets->il2cpp_static_fields);
+
+    void *static_field = hmem::field_ptr(type_info, c_offsets->il2cpp_static_fields);
     if (!static_field)
         return nullptr;
+
     // Try requested slot, then common alternates (0x10 / 0x0)
-    uintptr_t slots[3] = {field, (uintptr_t)0x10, (uintptr_t)0x0};
+    const uintptr_t slots[3] = {field, static_cast<uintptr_t>(0x10), static_cast<uintptr_t>(0x0)};
     for (int i = 0; i < 3; i++)
     {
-        void *instance = *reinterpret_cast<void **>((uintptr_t)static_field + slots[i]);
+        void *instance = hmem::field_ptr(static_field, slots[i]);
         if (instance)
             return instance;
     }

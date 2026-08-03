@@ -5,6 +5,7 @@
 #include <android/log.h>
 #include "includes/matrix.h"
 #include "includes/Obfuscate.hpp"
+#include "includes/halalium_mem.h"
 #include <vector>
 #include "sdk/OffsetsBridge.h"
 using namespace structs;
@@ -227,11 +228,26 @@ public:
     int width;
 };
 
-template < typename T >
+// Halalium-style safe load: maps-checked LDR (see includes/halalium_mem.h).
+template <typename T>
 struct safe_type
 {
-    T value;
-    bool has_value;
+    T value{};
+    bool has_value{false};
+
+    static safe_type load(uintptr_t addr)
+    {
+        safe_type out{};
+        out.has_value = hmem::read(addr, out.value);
+        return out;
+    }
+
+    static safe_type field(void *obj, uintptr_t offset)
+    {
+        if (!obj)
+            return {};
+        return load(reinterpret_cast<uintptr_t>(obj) + offset);
+    }
 };
 
 

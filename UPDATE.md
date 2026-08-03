@@ -9,6 +9,13 @@ Melodium is **not** a full decompile of Halalium. It is a Halalium-compatible sh
 | Watermark `Lemming` / `t.me/lemminghack, 0.39.2` | same branding |
 | Offsets buried in LDR / runtime | `Offsets_generated.h` from emulator |
 | Closed features | Melodium ESP / silent / AA / chams / world / misc |
+| In-process `LDR`/`STR` (+ maps null checks) | `includes/halalium_mem.h` + `egl/memory.cpp` (no `process_vm_*`) |
+
+## Memory (Halalium-style)
+
+Halalium does **not** use `process_vm_readv` / `process_vm_writev`. After inject it reads/writes the game address space directly (`ldr [base, TypeInfo]`, `ldr [player, #0x160]`, `strb …`) with null / maps checks.
+
+Melodium mirrors that via `hmem::read` / `hmem::write` / `hmem::typeinfo` / `hmem::field`. The old `memory::` API is a thin wrapper over the same path.
 
 ## Update (no more hand-pain)
 
