@@ -177,27 +177,23 @@ static void apply_imgui_style()
 // Halalium-style path: draw on eglSwapBuffers (dlsym + hook), query surface size like Halalium.
 EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
 {
-    init();
-    c_globals->init();
-
     EGLint w = 0, h = 0;
     eglQuerySurface(display, surface, EGL_WIDTH, &w);
     eglQuerySurface(display, surface, EGL_HEIGHT, &h);
-
-    if (w <= 0 || h <= 0)
-    {
-        if (c_methods)
-        {
-            w = c_methods->get_width();
-            h = c_methods->get_heigth();
-        }
-    }
 
     if (w <= 0 || h <= 0)
         return old_egl_swap_buffers ? old_egl_swap_buffers(display, surface) : EGL_FALSE;
 
     c_egl->width = w;
     c_egl->heigth = h;
+
+    // Game SDK init is best-effort — never block overlay draw.
+    if (base)
+    {
+        init();
+        if (c_globals)
+            c_globals->init();
+    }
 
     if (!egl_inited)
     {
@@ -209,6 +205,7 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
         setup();
         apply_imgui_style();
         egl_inited = true;
+        __android_log_print(ANDROID_LOG_INFO, "melodium", "ImGui egl inited %dx%d", w, h);
     }
 
     ImGuiIO &io = GetIO();
@@ -217,11 +214,17 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
     ImGui_ImplAndroid_NewFrame(w, h);
 
     NewFrame();
-    handle_touch();
+    if (c_methods)
+        handle_touch();
     gui::render();
-    c_visual->draw_hits();
-    c_visual->hitmarker();
-    c_esp->render();
+
+    if (c_visual)
+    {
+        c_visual->draw_hits();
+        c_visual->hitmarker();
+    }
+    if (c_esp)
+        c_esp->render();
 
     if (cmi)
     {
@@ -235,7 +238,7 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
     glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
     ImGui_ImplOpenGL3_RenderDrawData(GetDrawData());
 
-    return old_egl_swap_buffers(display, surface);
+    return old_egl_swap_buffers ? old_egl_swap_buffers(display, surface) : EGL_FALSE;
 }
 
 bool validate_elf(uintptr_t address)
@@ -428,8 +431,9 @@ bool is_executable_address(void *ptr)
 }
 
 // Halalium: dlsym(libEGL, eglSwapBuffers) + DobbyHook(symbol).
-// Melodium equivalent without embedding Dobby: find GOT slots that already
-// resolve to that symbol (Unity/libEGL callers) and pointer-swap them.
+// Melodium: A64 inline hook on the same symbol (GOT scan is unreliable with lazy PLT / anon maps).
+#include "includes/a64_inline_hook.h"
+
 static bool hook_egl_got_slots(void *symbol, void *replacement, void **out_orig)
 {
     if (!symbol || !replacement)
@@ -450,16 +454,7 @@ static bool hook_egl_got_slots(void *symbol, void *replacement, void **out_orig)
         if (perms[0] != 'r' || perms[1] != 'w')
             continue;
 
-        bool interesting =
-            strstr(path, "libunity") ||
-            strstr(path, "libmain") ||
-            strstr(path, "libil2cpp") ||
-            strstr(path, "libEGL") ||
-            strstr(path, "libGLESv") ||
-            strstr(path, "libandroid");
-        if (!interesting)
-            continue;
-
+        // Scan all writable maps — Unity GOT often lives in anon segments.
         for (uintptr_t p = start; p + sizeof(void *) <= end; p += sizeof(void *))
         {
             void *val = *(void **)p;
@@ -478,22 +473,52 @@ static bool hook_egl_got_slots(void *symbol, void *replacement, void **out_orig)
 
 void init_render_hook()
 {
+    static bool egl_hooked = false;
+    if (egl_hooked)
+        return;
+
     void *egl = dlopen(oxorany("libEGL.so"), RTLD_NOW);
     void *sym = egl ? dlsym(egl, oxorany("eglSwapBuffers")) : nullptr;
     if (!sym)
+    {
+        __android_log_print(ANDROID_LOG_ERROR, "melodium", "eglSwapBuffers dlsym failed");
         return;
+    }
 
+    // Primary: inline-hook the real symbol (same idea as Halalium DobbyHook).
+    void *tramp = nullptr;
+    if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &tramp))
+    {
+        old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))tramp;
+        egl_hooked = true;
+        __android_log_print(ANDROID_LOG_INFO, "melodium", "eglSwapBuffers inline hook OK sym=%p", sym);
+        return;
+    }
+
+    __android_log_print(ANDROID_LOG_WARN, "melodium", "inline hook failed, falling back to GOT scan");
     old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))sym;
 
     if (hook_egl_got_slots(sym, (void *)hook_egl_swap_buffers, (void **)&old_egl_swap_buffers))
+    {
+        egl_hooked = true;
         return;
+    }
 
-    // PLT may still be lazy; retry in background (Halalium inject also delays).
     std::thread([sym]() {
         for (int i = 0; i < 40; i++)
         {
-            if (hook_egl_got_slots(sym, (void *)hook_egl_swap_buffers, (void **)&old_egl_swap_buffers))
+            void *tramp2 = nullptr;
+            if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &tramp2))
+            {
+                old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))tramp2;
+                egl_hooked = true;
                 break;
+            }
+            if (hook_egl_got_slots(sym, (void *)hook_egl_swap_buffers, (void **)&old_egl_swap_buffers))
+            {
+                egl_hooked = true;
+                break;
+            }
             sleep(1);
         }
     }).detach();
@@ -662,6 +687,20 @@ static bool address_in_maps(uintptr_t addr)
 
 void *entry()
 {
+    __android_log_print(ANDROID_LOG_INFO, "melodium", "entry()");
+
+    // Hook render ASAP — overlay must not wait on il2cpp/base.
+    for (int i = 0; i < 60; i++)
+    {
+        void *egl = dlopen(oxorany("libEGL.so"), RTLD_NOW);
+        if (egl && dlsym(egl, oxorany("eglSwapBuffers")))
+        {
+            init_render_hook();
+            break;
+        }
+        sleep(1);
+    }
+
     if (!_il2cpp)
         _il2cpp = new il2cpp_t();
 
@@ -670,17 +709,14 @@ void *entry()
         if (_il2cpp->is_loaded())
         {
             base = _il2cpp->address();
-            if (base > 0x100000000)
+            if (base > 0x100000000ULL)
                 break;
         }
         sleep(1);
     }
 
     if (base > 0)
-    {
-        init_render_hook();
         c_update->init();
-    }
 
     sleep(4);
     pthread_exit(nullptr);
@@ -690,18 +726,30 @@ void *entry()
 // #include "zygisk/zygisk_init.hpp"
 // REGISTER_ZYGISK_MODULE(tenmi_zygisk)
 #include "jni.h"
+
+static void start_melodium_once()
+{
+    static bool started = false;
+    if (started)
+        return;
+    started = true;
+    __android_log_print(ANDROID_LOG_INFO, "melodium", "start_melodium_once");
+    std::thread(entry).detach();
+}
+
+// AndKitty / memfd inject often only dlopen()'s the .so — no reserved JNI key.
+__attribute__((constructor)) static void melodium_ctor()
+{
+    start_melodium_once();
+}
+
 extern "C" jint JNIEXPORT JNI_OnLoad(JavaVM *vm, void *key)
 {
-    // key 1337 is passed by injector
-    if (key != (void *)1337)
-        return JNI_VERSION_1_6;
-
+    (void)key; // Halalium-compat: do not require magic 1337
     JNIEnv *env = nullptr;
-    if (vm->GetEnv((void **)&env, JNI_VERSION_1_6) == JNI_OK)
-    {
-    }
+    if (vm)
+        vm->GetEnv((void **)&env, JNI_VERSION_1_6);
 
-    std::thread(entry).detach();
-
+    start_melodium_once();
     return JNI_VERSION_1_6;
 }

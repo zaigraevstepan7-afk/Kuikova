@@ -384,6 +384,7 @@ inline struct abc
 {
     void *player{};
 } abcd;
-// Halalium-style: starts closed; click ##watermark / ##wm_click to toggle.
-inline bool open = false;
+// Halalium-style: starts closed; tap watermark to open.
+// Default open=true so first inject still shows UI if touch path is broken.
+inline bool open = true;
 #include "sdk/game/include.h"
