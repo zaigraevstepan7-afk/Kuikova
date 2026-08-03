@@ -220,102 +220,127 @@ int hk_GfxDeviceGLES_PresentFrame(uintptr_t instance)
 }
 
 EGLBoolean (*old_egl_swap_buffers)(EGLDisplay display, EGLSurface surface);
+
+static void apply_imgui_style()
+{
+    auto style = &ImGui::GetStyle();
+    ImGui::StyleColorsDark();
+
+    style->WindowBorderSize = 1.f;
+    style->ChildBorderSize = 1.f;
+    style->FrameBorderSize = 1.f;
+    style->Colors[ImGuiCol_Text] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    style->Colors[ImGuiCol_TextDisabled] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+    style->Colors[ImGuiCol_WindowBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+    style->Colors[ImGuiCol_ChildBg] = ImVec4(0.06f, 0.06f, 0.06f, 1.00f);
+    style->Colors[ImGuiCol_PopupBg] = ImVec4(0.08f, 0.08f, 0.08f, 0.94f);
+    style->Colors[ImGuiCol_Border] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+    style->Colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    style->Colors[ImGuiCol_FrameBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+    style->Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+    style->Colors[ImGuiCol_FrameBgActive] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+    style->Colors[ImGuiCol_TitleBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+    style->Colors[ImGuiCol_TitleBgActive] = ImVec4(0.16f, 0.29f, 0.48f, 1.00f);
+    style->Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.00f, 0.00f, 0.00f, 0.51f);
+    style->Colors[ImGuiCol_MenuBarBg] = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
+    style->Colors[ImGuiCol_ScrollbarBg] = ImVec4(0.02f, 0.02f, 0.02f, 0.53f);
+    style->Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
+    style->Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
+    style->Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.51f, 0.51f, 0.51f, 1.00f);
+    style->Colors[ImGuiCol_CheckMark] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    style->Colors[ImGuiCol_SliderGrab] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    style->Colors[ImGuiCol_SliderGrabActive] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    style->Colors[ImGuiCol_Button] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+    style->Colors[ImGuiCol_ButtonHovered] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+    style->Colors[ImGuiCol_ButtonActive] = ImVec4(0.08f, 0.08f, 0.08f, 1.00f);
+    style->Colors[ImGuiCol_Header] = ImVec4(0.06f, 0.06f, 0.06f, 1.00f);
+    style->Colors[ImGuiCol_HeaderHovered] = ImVec4(0.06f, 0.06f, 0.06f, 1.00f);
+    style->Colors[ImGuiCol_HeaderActive] = ImVec4(0.06f, 0.06f, 0.06f, 1.00f);
+    style->Colors[ImGuiCol_Separator] = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
+    style->Colors[ImGuiCol_SeparatorHovered] = ImVec4(0.10f, 0.40f, 0.75f, 0.78f);
+    style->Colors[ImGuiCol_SeparatorActive] = ImVec4(0.10f, 0.40f, 0.75f, 1.00f);
+    style->Colors[ImGuiCol_ResizeGrip] = ImVec4(0.25f, 0.25f, 0.25f, 1.f);
+    style->Colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.25f, 0.25f, 0.25f, 1.f);
+    style->Colors[ImGuiCol_ResizeGripActive] = ImVec4(0.35f, 0.35f, 0.35f, 1.f);
+    style->Colors[ImGuiCol_TabHovered] = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
+    style->Colors[ImGuiCol_Tab] = ImVec4(0.18f, 0.35f, 0.58f, 0.86f);
+    style->Colors[ImGuiCol_TabSelected] = ImVec4(0.20f, 0.41f, 0.68f, 1.00f);
+    style->Colors[ImGuiCol_TabSelectedOverline] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    style->Colors[ImGuiCol_TabDimmed] = ImVec4(0.07f, 0.10f, 0.15f, 0.97f);
+    style->Colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.14f, 0.26f, 0.42f, 1.00f);
+    style->Colors[ImGuiCol_TabDimmedSelectedOverline] = ImVec4(0.50f, 0.50f, 0.50f, 0.00f);
+    style->Colors[ImGuiCol_PlotLines] = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
+    style->Colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+    style->Colors[ImGuiCol_PlotHistogram] = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+    style->Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+    style->Colors[ImGuiCol_TableHeaderBg] = ImVec4(0.19f, 0.19f, 0.20f, 1.00f);
+    style->Colors[ImGuiCol_TableBorderStrong] = ImVec4(0.31f, 0.31f, 0.35f, 1.00f);
+    style->Colors[ImGuiCol_TableBorderLight] = ImVec4(0.23f, 0.23f, 0.25f, 1.00f);
+    style->Colors[ImGuiCol_TableRowBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    style->Colors[ImGuiCol_TableRowBgAlt] = ImVec4(1.00f, 1.00f, 1.00f, 0.06f);
+    style->Colors[ImGuiCol_TextLink] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    style->Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
+    style->Colors[ImGuiCol_DragDropTarget] = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
+    style->Colors[ImGuiCol_NavCursor] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    style->Colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+    style->Colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
+    style->Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
+
+    style->WindowPadding = ImVec2(20, 20);
+    style->FramePadding = ImVec2(4, 0);
+    style->ItemSpacing = ImVec2(15, 15);
+    style->ScrollbarRounding = 0;
+    style->ScrollbarSize = 20;
+}
+
+// Halalium-style path: draw on eglSwapBuffers (dlsym + hook), query surface size like Halalium.
 EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
 {
     init();
-    int (*width)() = (int (*)())(base + c_offsets->get_width);
-    int (*heigh)() = (int (*)())(base + c_offsets->get_heigth);
-    c_egl->width = width();
-    c_egl->heigth = heigh();
-    // c_globals->init();
+    c_globals->init();
+
+    EGLint w = 0, h = 0;
+    eglQuerySurface(display, surface, EGL_WIDTH, &w);
+    eglQuerySurface(display, surface, EGL_HEIGHT, &h);
+
+    if (w <= 0 || h <= 0)
+    {
+        if (c_methods)
+        {
+            w = c_methods->get_width();
+            h = c_methods->get_heigth();
+        }
+    }
+
+    if (w <= 0 || h <= 0)
+        return old_egl_swap_buffers ? old_egl_swap_buffers(display, surface) : EGL_FALSE;
+
+    c_egl->width = w;
+    c_egl->heigth = h;
 
     if (!egl_inited)
     {
         CreateContext();
         ImGuiIO &io = GetIO();
-        io.DisplaySize = ImVec2(width(), heigh());
+        io.DisplaySize = ImVec2((float)w, (float)h);
         ImGui_ImplOpenGL3_Init("#version 300 es");
         ImGui_ImplAndroid_Init(NULL);
         setup();
-        auto style = &ImGui::GetStyle();
-
-        ImGui::StyleColorsDark();
-
-        style->WindowBorderSize = 1.f;
-        style->ChildBorderSize = 1.f;
-        style->FrameBorderSize = 1.f;
-        style->Colors[ImGuiCol_Text] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
-        style->Colors[ImGuiCol_TextDisabled] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
-        style->Colors[ImGuiCol_WindowBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
-        style->Colors[ImGuiCol_ChildBg] = ImVec4(0.06f, 0.06f, 0.06f, 1.00f);
-        style->Colors[ImGuiCol_PopupBg] = ImVec4(0.08f, 0.08f, 0.08f, 0.94f);
-        style->Colors[ImGuiCol_Border] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
-        style->Colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-        style->Colors[ImGuiCol_FrameBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
-        style->Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
-        style->Colors[ImGuiCol_FrameBgActive] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
-        style->Colors[ImGuiCol_TitleBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
-        style->Colors[ImGuiCol_TitleBgActive] = ImVec4(0.16f, 0.29f, 0.48f, 1.00f);
-        style->Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.00f, 0.00f, 0.00f, 0.51f);
-        style->Colors[ImGuiCol_MenuBarBg] = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
-        style->Colors[ImGuiCol_ScrollbarBg] = ImVec4(0.02f, 0.02f, 0.02f, 0.53f);
-        style->Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
-        style->Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
-        style->Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.51f, 0.51f, 0.51f, 1.00f);
-        style->Colors[ImGuiCol_CheckMark] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
-        style->Colors[ImGuiCol_SliderGrab] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
-        style->Colors[ImGuiCol_SliderGrabActive] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
-        style->Colors[ImGuiCol_Button] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
-        style->Colors[ImGuiCol_ButtonHovered] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
-        style->Colors[ImGuiCol_ButtonActive] = ImVec4(0.08f, 0.08f, 0.08f, 1.00f);
-        style->Colors[ImGuiCol_Header] = ImVec4(0.06f, 0.06f, 0.06f, 1.00f);
-        style->Colors[ImGuiCol_HeaderHovered] = ImVec4(0.06f, 0.06f, 0.06f, 1.00f);
-        style->Colors[ImGuiCol_HeaderActive] = ImVec4(0.06f, 0.06f, 0.06f, 1.00f);
-        style->Colors[ImGuiCol_Separator] = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
-        style->Colors[ImGuiCol_SeparatorHovered] = ImVec4(0.10f, 0.40f, 0.75f, 0.78f);
-        style->Colors[ImGuiCol_SeparatorActive] = ImVec4(0.10f, 0.40f, 0.75f, 1.00f);
-        style->Colors[ImGuiCol_ResizeGrip] = ImVec4(0.25f, 0.25f, 0.25f, 1.f);
-        style->Colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.25f, 0.25f, 0.25f, 1.f);
-        style->Colors[ImGuiCol_ResizeGripActive] = ImVec4(0.35f, 0.35f, 0.35f, 1.f);
-        style->Colors[ImGuiCol_TabHovered] = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
-        style->Colors[ImGuiCol_Tab] = ImVec4(0.18f, 0.35f, 0.58f, 0.86f);
-        style->Colors[ImGuiCol_TabSelected] = ImVec4(0.20f, 0.41f, 0.68f, 1.00f);
-        style->Colors[ImGuiCol_TabSelectedOverline] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-        style->Colors[ImGuiCol_TabDimmed] = ImVec4(0.07f, 0.10f, 0.15f, 0.97f);
-        style->Colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.14f, 0.26f, 0.42f, 1.00f);
-        style->Colors[ImGuiCol_TabDimmedSelectedOverline] = ImVec4(0.50f, 0.50f, 0.50f, 0.00f);
-        style->Colors[ImGuiCol_PlotLines] = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
-        style->Colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
-        style->Colors[ImGuiCol_PlotHistogram] = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
-        style->Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
-        style->Colors[ImGuiCol_TableHeaderBg] = ImVec4(0.19f, 0.19f, 0.20f, 1.00f);
-        style->Colors[ImGuiCol_TableBorderStrong] = ImVec4(0.31f, 0.31f, 0.35f, 1.00f);
-        style->Colors[ImGuiCol_TableBorderLight] = ImVec4(0.23f, 0.23f, 0.25f, 1.00f);
-        style->Colors[ImGuiCol_TableRowBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-        style->Colors[ImGuiCol_TableRowBgAlt] = ImVec4(1.00f, 1.00f, 1.00f, 0.06f);
-        style->Colors[ImGuiCol_TextLink] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-        style->Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
-        style->Colors[ImGuiCol_DragDropTarget] = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
-        style->Colors[ImGuiCol_NavCursor] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-        style->Colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
-        style->Colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
-        style->Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
-
-        style->WindowPadding = ImVec2(20, 20);
-        style->FramePadding = ImVec2(4, 0);
-        style->ItemSpacing = ImVec2(15, 15);
-        style->ScrollbarRounding = 0;
-        style->ScrollbarSize = 20;
+        apply_imgui_style();
         egl_inited = true;
     }
+
     ImGuiIO &io = GetIO();
+    io.DisplaySize = ImVec2((float)w, (float)h);
     ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplAndroid_NewFrame(width(), heigh());
+    ImGui_ImplAndroid_NewFrame(w, h);
 
     NewFrame();
     handle_touch();
     gui::render();
-    // c_globals->update();
+    c_visual->draw_hits();
+    c_visual->hitmarker();
+    c_esp->render();
 
     if (cmi)
     {
@@ -324,11 +349,9 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
     }
 
     EndFrame();
-
     Render();
 
     glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-
     ImGui_ImplOpenGL3_RenderDrawData(GetDrawData());
 
     return old_egl_swap_buffers(display, surface);
@@ -523,13 +546,76 @@ bool is_executable_address(void *ptr)
     return info.dli_fbase != nullptr;
 }
 
+// Halalium: dlsym(libEGL, eglSwapBuffers) + DobbyHook(symbol).
+// Melodium equivalent without embedding Dobby: find GOT slots that already
+// resolve to that symbol (Unity/libEGL callers) and pointer-swap them.
+static bool hook_egl_got_slots(void *symbol, void *replacement, void **out_orig)
+{
+    if (!symbol || !replacement)
+        return false;
+
+    FILE *f = fopen(oxorany("/proc/self/maps"), oxorany("r"));
+    if (!f)
+        return false;
+
+    char line[512];
+    int hooked = 0;
+    while (fgets(line, sizeof(line), f))
+    {
+        uintptr_t start = 0, end = 0;
+        char perms[8]{}, path[256]{};
+        if (sscanf(line, "%" SCNxPTR "-%" SCNxPTR " %7s %*s %*s %*s %255s", &start, &end, perms, path) < 3)
+            continue;
+        if (perms[0] != 'r' || perms[1] != 'w')
+            continue;
+
+        bool interesting =
+            strstr(path, "libunity") ||
+            strstr(path, "libmain") ||
+            strstr(path, "libil2cpp") ||
+            strstr(path, "libEGL") ||
+            strstr(path, "libGLESv") ||
+            strstr(path, "libandroid");
+        if (!interesting)
+            continue;
+
+        for (uintptr_t p = start; p + sizeof(void *) <= end; p += sizeof(void *))
+        {
+            void *val = *(void **)p;
+            if (val != symbol)
+                continue;
+            if (out_orig && !*out_orig)
+                *out_orig = symbol;
+            void *discard = nullptr;
+            swap_ptr((void *)p, replacement, &discard);
+            hooked++;
+        }
+    }
+    fclose(f);
+    return hooked > 0;
+}
+
 void init_render_hook()
 {
-    // TODO(0.39.2): GfxDeviceGLES PresentFrame slot — verify against live libil2cpp/libunity
-    // if menu fails to draw. Old 0.36.x slot kept as fallback starting point.
-    void **present_frame_ptr = (void **)(base + oxorany(0x7B5AD10));
-    if (present_frame_ptr && *present_frame_ptr)
-        swap_ptr(present_frame_ptr, hk_GfxDeviceGLES_PresentFrame, (void **)&orig_GfxDeviceGLES_PresentFrame);
+    void *egl = dlopen(oxorany("libEGL.so"), RTLD_NOW);
+    void *sym = egl ? dlsym(egl, oxorany("eglSwapBuffers")) : nullptr;
+    if (!sym)
+        return;
+
+    old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))sym;
+
+    if (hook_egl_got_slots(sym, (void *)hook_egl_swap_buffers, (void **)&old_egl_swap_buffers))
+        return;
+
+    // PLT may still be lazy; retry in background (Halalium inject also delays).
+    std::thread([sym]() {
+        for (int i = 0; i < 40; i++)
+        {
+            if (hook_egl_got_slots(sym, (void *)hook_egl_swap_buffers, (void **)&old_egl_swap_buffers))
+                break;
+            sleep(1);
+        }
+    }).detach();
 }
 
 #define _GNU_SOURCE

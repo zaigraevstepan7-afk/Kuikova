@@ -53,22 +53,53 @@ namespace gui
         DrawGradientLine(drawList, ImVec2(center.x + lineLength, center.y), ImVec2(center.x + gap, center.y), startThickness, startColor, endColor);
     }
 
+    // Halalium watermark: always-on overlay, click ##wm_click toggles menu open.
     void DrawWatermark()
     {
-        ImDrawList *draw_list = ImGui::GetWindowDrawList();
-        const char *text = ("t.me/melrele 0.36.1");
-        ImVec2 pos = ImVec2(70, 30);
-        ImVec2 padding = ImVec2(12, 6);
-        ImVec2 text_size = ImGui::CalcTextSize(text);
-        ImVec2 rect_min = ImVec2(pos.x - padding.x, pos.y - padding.y);
-        ImVec2 rect_max = ImVec2(pos.x + text_size.x + padding.x, pos.y + text_size.y + padding.y);
-        float rounding = 8.0f;
+        const char *brand = oxorany("Lemming");
+        const char *line = oxorany("t.me/lemminghack, 0.39.2");
 
-        draw_list->AddRectFilled(rect_min, rect_max, IM_COL32(25, 25, 25, 150), rounding);
-        draw_list->AddRect(rect_min, rect_max, IM_COL32(70, 70, 70, 150), rounding, 0, 1.5f);
+        ImGui::SetNextWindowPos(ImVec2(16.f, 16.f), ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(0.0f);
+        ImGui::Begin(oxorany("##watermark"), nullptr,
+                     ImGuiWindowFlags_NoTitleBar |
+                         ImGuiWindowFlags_NoResize |
+                         ImGuiWindowFlags_NoMove |
+                         ImGuiWindowFlags_NoScrollbar |
+                         ImGuiWindowFlags_NoCollapse |
+                         ImGuiWindowFlags_NoBackground |
+                         ImGuiWindowFlags_NoSavedSettings |
+                         ImGuiWindowFlags_NoFocusOnAppearing |
+                         ImGuiWindowFlags_AlwaysAutoResize);
 
-        draw_list->AddText(ImVec2(pos.x + 1, pos.y + 1), IM_COL32(0, 0, 0, 150), text);
-        draw_list->AddText(pos, IM_COL32(220, 220, 220, 250), text);
+        ImVec2 brand_sz = ImGui::CalcTextSize(brand);
+        ImVec2 line_sz = ImGui::CalcTextSize(line);
+        float width = (brand_sz.x > line_sz.x ? brand_sz.x : line_sz.x) + 24.f;
+        float height = brand_sz.y + line_sz.y + 18.f;
+
+        ImVec2 p = ImGui::GetCursorScreenPos();
+        ImDrawList *dl = ImGui::GetWindowDrawList();
+        ImVec2 rmin = p;
+        ImVec2 rmax = ImVec2(p.x + width, p.y + height);
+
+        dl->AddRectFilled(rmin, rmax, IM_COL32(18, 18, 18, 170), 6.0f);
+        dl->AddRect(rmin, rmax, IM_COL32(70, 70, 70, 180), 6.0f, 0, 1.2f);
+        // accent bar like Halalium pill watermark
+        dl->AddRectFilled(ImVec2(rmin.x, rmin.y), ImVec2(rmin.x + 3.f, rmax.y), IM_COL32(220, 220, 220, 220), 2.0f);
+
+        ImVec2 brand_pos = ImVec2(p.x + 12.f, p.y + 5.f);
+        ImVec2 line_pos = ImVec2(p.x + 12.f, p.y + 5.f + brand_sz.y + 2.f);
+        dl->AddText(ImVec2(brand_pos.x + 1, brand_pos.y + 1), IM_COL32(0, 0, 0, 160), brand);
+        dl->AddText(brand_pos, IM_COL32(235, 235, 235, 255), brand);
+        dl->AddText(ImVec2(line_pos.x + 1, line_pos.y + 1), IM_COL32(0, 0, 0, 140), line);
+        dl->AddText(line_pos, IM_COL32(180, 180, 180, 240), line);
+
+        ImGui::Dummy(ImVec2(width, height));
+        ImGui::SetCursorScreenPos(rmin);
+        if (ImGui::InvisibleButton(oxorany("##wm_click"), ImVec2(width, height)))
+            open = !open;
+
+        ImGui::End();
     }
 
     void other()
@@ -77,71 +108,24 @@ namespace gui
 
         ImGui::SetNextWindowPos(pos, ImGuiCond_Once);
         ImGui::SetNextWindowSize(size, ImGuiCond_Always);
-        ImGui::Begin(oxorany("1488"), nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar); // ImGuiWindowFlags_NoInputs
+        ImGui::Begin(oxorany("1488"), nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
-        auto pDrawList = ImGui::GetWindowDrawList();
-
-        DrawWatermark();
-
-         if (g.b_scope && c_player->local && c_player->weapon_parameters && c_globals->is_scoped())
-             cross();
+        if (g.b_scope && c_player->local && c_player->weapon_parameters && c_globals->is_scoped())
+            cross();
 
         ImGui::End();
+
+        DrawWatermark();
     }
+
     void render()
     {
         other();
         ui.render();
-        ImGui::GetStyle().WindowMinSize = ImVec2(0, 0);
-        ImGui::SetNextWindowPos(ImVec2(c_egl->width / 2 - 100, c_egl->heigth - 60));
-        ImGui::SetNextWindowSize(ImVec2(400, 100));
-        ImGui::Begin(oxorany("##dfdsfsdfdsdsf"), nullptr,
-                     ImGuiWindowFlags_NoCollapse |
-                         ImGuiWindowFlags_NoTitleBar |
-                         ImGuiWindowFlags_NoScrollbar |
-                         ImGuiWindowFlags_NoResize |
-                         ImGuiWindowFlags_NoBackground);
-        if (ImGui::InvisibleButton(oxorany("##sfdsfsfsdfs"),
-                                   ImGui::GetWindowSize()))
-            open = !open;
-
-        ImVec2 rectStart = ImVec2(c_egl->width / 2 - 100, c_egl->heigth - 20);
-        ImVec2 rectEnd = ImVec2(c_egl->width / 2 + 100, c_egl->heigth - 10);
-        float rectWidth = rectEnd.x - rectStart.x;
-
-        ImGui::GetWindowDrawList()->AddRectFilled(
-            rectStart,
-            rectEnd,
-            IM_COL32(255, 255, 255, 150),
-            6.0f);
-
-        ImVec2 indicatorPos = ImVec2(c_egl->width / 2, c_egl->heigth - 15);
-        ImGui::GetWindowDrawList()->AddCircleFilled(
-            indicatorPos,
-            3.0f,
-            IM_COL32(200, 200, 200, 200));
-
-        ImGui::GetWindowDrawList()->AddRectFilled(
-            ImVec2(rectStart.x, rectStart.y),
-            ImVec2(rectStart.x + 15, rectEnd.y),
-            IM_COL32(255, 255, 255, 40),
-            3.0f);
-
-        ImGui::GetWindowDrawList()->AddRectFilled(
-            ImVec2(rectEnd.x - 15, rectStart.y),
-            ImVec2(rectEnd.x, rectEnd.y),
-            IM_COL32(255, 255, 255, 40),
-            3.0f);
-
-        ImGui::End();
 
         if (open && alpha < 1.f)
-        {
             alpha += 0.025f;
-        }
         else if (!open && alpha > 0.025f)
-        {
             alpha -= 0.025f;
-        }
     }
 }

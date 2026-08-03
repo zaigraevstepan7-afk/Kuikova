@@ -383,5 +383,6 @@ inline struct abc
 {
     void *player{};
 } abcd;
-inline bool open = true;
+// Halalium-style: starts closed; click ##watermark / ##wm_click to toggle.
+inline bool open = false;
 #include "sdk/game/include.h"
