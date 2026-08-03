@@ -6,6 +6,7 @@
 #include "includes/matrix.h"
 #include "includes/Obfuscate.hpp"
 #include <vector>
+#include "sdk/OffsetsBridge.h"
 using namespace structs;
 inline uintptr_t base;
 
@@ -93,15 +94,15 @@ public:
 class offsets
 {
 public:
-    // --- TypeInfo RVAs (script.json / dump 0.39.2) ---
-    const uint32_t c_anticheatmanager = oxorany(0xAC4DA30); // AntiCheatManager_TypeInfo
-    const uint32_t c_player_controls = oxorany(0xAC5E0E0);  // PlayerControls_TypeInfo
-    const uint32_t c_player_manager = oxorany(0xAC5E190);   // PlayerManager_TypeInfo
-    const uint32_t c_game_controller = oxorany(0xAC58BB0);  // GameController_TypeInfo
-    const uint32_t c_player_controller = oxorany(0xAC5E0D8);
+    // --- TypeInfo RVAs (Halalium emu / script.json via OffsetsBridge) ---
+    const uint32_t c_anticheatmanager = (uint32_t)Offsets::TypeInfo::AntiCheatManager;
+    const uint32_t c_player_controls = (uint32_t)Offsets::TypeInfo::PlayerControls;
+    const uint32_t c_player_manager = (uint32_t)Offsets::TypeInfo::PlayerManager;
+    const uint32_t c_game_controller = (uint32_t)Offsets::TypeInfo::GameController;
+    const uint32_t c_player_controller = (uint32_t)Offsets::TypeInfo::PlayerController;
 
-    // Il2CppClass.static_fields offset on 0.39.2
-    const uint32_t il2cpp_static_fields = oxorany(0x90);
+    // Il2CppClass.static_fields offset (Halalium-confirmed 0.39.2)
+    const uint32_t il2cpp_static_fields = (uint32_t)Offsets::Il2Cpp::klass_static_fields;
 
     // inputs (UnityEngine.Input)
     const uint32_t get_touch = oxorany(0x684EDAC); // GetTouch
