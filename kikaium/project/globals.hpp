@@ -12,7 +12,8 @@
 #include <atomic>
 #include "sdk/OffsetsBridge.h"
 using namespace structs;
-inline uintptr_t base;
+inline uintptr_t base;       // ALWAYS libil2cpp.so (API + TypeInfo)
+inline uintptr_t unity_base; // libunity.so for Halalium method RVAs
 // Wired once after soft update::init — egl must not call game APIs before this.
 inline std::atomic<bool> g_sdk_ready{false};
 

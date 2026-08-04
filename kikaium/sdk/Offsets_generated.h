@@ -73,6 +73,10 @@ namespace Method {
     constexpr uintptr_t AntiCheat_OnStart_getrr = 0x8B9579C;
     constexpr uintptr_t Gun_ExecuteCommands     = 0x0;
     constexpr uintptr_t Hit_StrictHit           = 0x0;
+    // Halalium SkinChanger @0x1d9e00
+    constexpr uintptr_t Skin_CreateOrGet = 0x8E8FE50;
+    constexpr uintptr_t Skin_Mid         = 0x8E852D4;
+    constexpr uintptr_t Skin_Equip       = 0x8E7F7F4;
 }
 
 namespace Hook {
@@ -81,7 +85,12 @@ namespace Hook {
     constexpr bool use_egl_swap_buffers = true;
     constexpr bool open_menu_via_watermark_click = true;
     constexpr bool use_vmt_update_hooks = true;
-    constexpr bool use_getrr_bypass = false; // needs relocating hooker
+    // OFF in lobby-safe build: wrong ABI / early AntiCheat OnStart crashes ~seconds after inject
+    constexpr bool use_getrr_bypass = false;
+    // OFF: Tertiary float ABI + ExtraA/B RVAs crash when hooked with C wrappers
+    constexpr bool use_secondary_hooks = false;
+    // OFF: android::InputEvent is NOT AInputEvent — NDK getters SIGSEGV on consume
+    constexpr bool use_input_consume = false;
 }
 
 } // namespace OffsetsGenerated

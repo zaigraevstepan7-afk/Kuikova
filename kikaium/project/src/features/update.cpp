@@ -139,14 +139,21 @@ void new_lateupdate(c_player_controller *player)
 void (*old_game_update)(c_game_controller *game);
 void new_game_update(c_game_controller *game)
 {
-    if (game)
+    // Lobby-safe: GameController.Update runs in menu. Never touch fields until SDK ready,
+    // and never crash the orig path if game/controls look invalid.
+    if (!old_game_update)
+        return;
+    if (!game || !g_sdk_ready.load(std::memory_order_acquire))
     {
-        c_player->game = game;
-        // GameController.PlayerControls - Halalium/dump 0.39.2 @ Offsets::GameController::player_controls
-        c_player->controls = *(c_player_controls **)((uintptr_t)game + Offsets::GameController::player_controls);
-    } else {
-        c_player->after_match();
+        old_game_update(game);
+        return;
     }
+
+    c_player->game = game;
+    auto *ctrl = *(c_player_controls **)((uintptr_t)game + Offsets::GameController::player_controls);
+    if (ctrl && g.is_allocated(ctrl))
+        c_player->controls = ctrl;
+
     old_game_update(game);
 }
 
@@ -410,14 +417,19 @@ void vmtHook(uintptr_t object, int method, void* news, void** old) {
 // Bypass @0x1d90b8: DobbyDestroy all → call real OnStart@0x8B9579C → DobbyHook reinstall.
 // getrr Bypass_getrr enabled via Offsets::Hook::use_getrr_bypass (Halalium 100%).
 
-static bool hook_rva_tracked(uintptr_t rva, void *hook, void **out_orig, const char *tag)
+static bool hook_rva_tracked(uintptr_t module_base, uintptr_t rva, void *hook, void **out_orig, const char *tag)
 {
-    if (!base || !rva || !hook)
+    if (!module_base || !rva || !hook)
         return false;
-    void *target = (void *)(base + rva);
+    void *target = (void *)(module_base + rva);
     if (!maps_contains_exec((uintptr_t)target))
     {
-        LOGD("hook_rva %s target %p not executable (wrong base?)", tag, target);
+        LOGD("hook_rva %s target %p not executable (wrong module?)", tag, target);
+        return false;
+    }
+    if (!hhooks::looks_like_a64(target))
+    {
+        LOGD("hook_rva %s target %p not a64 prologue", tag, target);
         return false;
     }
     if (!hhooks::install_tracked(target, hook, out_orig))
@@ -425,7 +437,7 @@ static bool hook_rva_tracked(uintptr_t rva, void *hook, void **out_orig, const c
         LOGD("hook_rva %s tracked install failed @%p", tag, target);
         return false;
     }
-    LOGI("hook_rva %s OK rva=0x%lx target=%p (Halalium Dobby path)", tag, (unsigned long)rva, target);
+    LOGI("hook_rva %s OK base=%p rva=0x%lx target=%p", tag, (void *)module_base, (unsigned long)rva, target);
     return true;
 }
 
@@ -474,69 +486,70 @@ void update::init()
     for (int i = 0; i < 8 && !loadedlib(oxorany("libsigner.so")) && !loadedlib(oxorany("lib/arm64/libsigner.so")); i++)
         sleep(1);
 
-    // Halalium resolves game base via "libunity.so" string first.
-    const uintptr_t update_rva = Offsets::Method::PlayerController_Update;
-    const uintptr_t late_rva = Offsets::Method::PlayerController_LateUpdate;
-    auto try_bases = [&]() {
-        uintptr_t candidates[2] = {
-            find_module_base_rx("libunity.so"),
-            find_module_base_rx("libil2cpp.so"),
-        };
-        for (uintptr_t cand : candidates)
-        {
-            if (!cand)
-                continue;
-            if (maps_contains_exec(cand + update_rva))
-            {
-                base = cand;
-                LOGI("Halalium base selected %p (Update RVA executable)", (void *)base);
-                return true;
-            }
-        }
-        if (!base)
-            base = resolve_il2cpp_base();
-        return base != 0;
-    };
-    try_bases();
+    // CRITICAL split:
+    // - base      = libil2cpp.so  (il2cpp API + TypeInfo)
+    // - unity_base= libunity.so   (Halalium method RVAs like Update 0x8E7C40C)
+    // Old code set base=libunity when RVA was executable, then ::init() resolved
+    // il2cpp_domain_get = unity+offset and crashed ~3s after inject on img_to_asm.
+    base = find_module_base_rx("libil2cpp.so");
+    if (!base)
+        base = resolve_il2cpp_base();
+    unity_base = resolve_unity_base();
+
+    if (!base)
+    {
+        LOGI("update::init abort: no libil2cpp base");
+        return;
+    }
+    LOGI("update::init il2cpp=%p unity=%p", (void *)base, (void *)unity_base);
 
     ::init();
+    if (!il2cpp_domain_get || !dll::charp)
+    {
+        LOGI("update::init abort: il2cpp API/image failed");
+        return;
+    }
+
+    globals::init();
+
+    const uintptr_t update_rva = Offsets::Method::PlayerController_Update;
+    const uintptr_t late_rva = Offsets::Method::PlayerController_LateUpdate;
 
     bool hooked_pc = false;
     bool hooked_late = false;
 
-    // Primary: Halalium absolute RVA hooks (Dobby-equivalent via tracked a64).
-    hooked_pc = hook_rva_tracked(update_rva, (void *)new_update, (void **)&old_update, "PlayerController.Update");
-    hooked_late = hook_rva_tracked(late_rva, (void *)new_lateupdate, (void **)&old_lateupdate, "PlayerController.LateUpdate");
-
-    bool hooked_sec = false, hooked_ter = false, hooked_ea = false, hooked_eb = false;
-    if (Offsets::Hook::use_secondary_hooks)
+    if (unity_base)
     {
-        hooked_sec = hook_rva_tracked(Offsets::Method::HookSecondary, (void *)new_secondary_halalium, (void **)&old_secondary, "Halalium.Secondary");
-        hooked_ter = hook_rva_tracked(Offsets::Method::HookTertiary, (void *)new_tertiary_halalium, (void **)&old_tertiary, "Halalium.Tertiary");
-        if (!hooked_ter)
-            hooked_ter = hook_rva_tracked(Offsets::Method::HookTertiaryAlt, (void *)new_tertiary_halalium, (void **)&old_tertiary, "Halalium.TertiaryAlt");
-        hooked_ea = hook_rva_tracked(Offsets::Method::HookExtraA, (void *)new_extraA_halalium, (void **)&old_extraA, "Halalium.ExtraA");
-        hooked_eb = hook_rva_tracked(Offsets::Method::HookExtraB, (void *)new_extraB_halalium, (void **)&old_extraB, "Halalium.ExtraB");
-        LOGI("kikaium: Halalium hooks Secondary=%d Tertiary=%d ExtraA=%d ExtraB=%d",
-             (int)hooked_sec, (int)hooked_ter, (int)hooked_ea, (int)hooked_eb);
+        hooked_pc = hook_rva_tracked(unity_base, update_rva, (void *)new_update, (void **)&old_update, "PC.Update");
+        hooked_late = hook_rva_tracked(unity_base, late_rva, (void *)new_lateupdate, (void **)&old_lateupdate, "PC.LateUpdate");
+
+        if (Offsets::Hook::use_secondary_hooks)
+        {
+            hook_rva_tracked(unity_base, Offsets::Method::HookSecondary, (void *)new_secondary_halalium, (void **)&old_secondary, "Secondary");
+            bool ter = hook_rva_tracked(unity_base, Offsets::Method::HookTertiary, (void *)new_tertiary_halalium, (void **)&old_tertiary, "Tertiary");
+            if (!ter)
+                hook_rva_tracked(unity_base, Offsets::Method::HookTertiaryAlt, (void *)new_tertiary_halalium, (void **)&old_tertiary, "TertiaryAlt");
+            hook_rva_tracked(unity_base, Offsets::Method::HookExtraA, (void *)new_extraA_halalium, (void **)&old_extraA, "ExtraA");
+            hook_rva_tracked(unity_base, Offsets::Method::HookExtraB, (void *)new_extraB_halalium, (void **)&old_extraB, "ExtraB");
+        }
+    }
+    else
+    {
+        LOGI("unity_base missing - RVA hooks skipped (VMT only)");
     }
 
-    if (hooked_pc)
-        LOGI("kikaium: Halalium RVA Update ON (0x%lx)", (unsigned long)update_rva);
-    else
-        LOGI("kikaium: Halalium RVA Update failed - falling back to VMT");
+    LOGI("kikaium: unity RVA Update=%d Late=%d", (int)hooked_pc, (int)hooked_late);
 
-    // VMT fallback / supplement (Melodium-compatible when RVA base wrong).
     Il2CppClass *game_controller = nullptr;
     Il2CppClass *player_controller = nullptr;
     if (il2cpp_class_from_name && dll::charp)
     {
         game_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Game"), oxorany("GameController"));
         player_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Player"), oxorany("PlayerController"));
-        LOGD("class_from_name GameController=%p PlayerController=%p", game_controller, player_controller);
+        LOGD("GameController=%p PlayerController=%p", game_controller, player_controller);
     }
 
-    if (game_controller)
+    if (Offsets::Hook::use_vmt_update_hooks && game_controller)
         vmt(game_controller, oxorany("Update"), (void *)new_game_update, (void **)&old_game_update);
 
     if (!hooked_pc && player_controller)
@@ -552,19 +565,18 @@ void update::init()
         gun_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Inventory.Gun"), oxorany("GunController"));
     }
 
-    if (hit_controller) {
-        LOGD("hit_controller -> %p", hit_controller);
-        // Name-based VMT only - raw vtable[84] overwrite crashes some builds in lobby
+    if (hit_controller)
         vmt(hit_controller, oxorany("ACHHGEDAEGBBHFB"), (void *)strict_hit, (void **)&old_strict_hit);
-    }
-
     if (gun_controller)
-    {
         vmt(gun_controller, oxorany("FEEBGAGHGGCGACA"), (void *)hook_executecommands, (void **)&old_executecommands);
-    }
 
     void *ray_delegate = (void *)(base + c_offsets->ray);
-    for (int i = 0; i < 10 && ray_delegate && !*(void **)ray_delegate; i++)
+    if (!ray_delegate || !g.is_allocated(ray_delegate))
+    {
+        LOGD("ray icall slot addr invalid - silent/AutoWall limited");
+        ray_delegate = nullptr;
+    }
+    for (int i = 0; i < 3 && ray_delegate && !*(void **)ray_delegate; i++)
         sleep(1);
     if (ray_delegate && *(void **)ray_delegate)
     {
@@ -575,23 +587,14 @@ void update::init()
         LOGD("ray icall slot empty - silent/AutoWall limited");
     }
 
-    // Halalium Bypass_getrr @0x1d90b8 - destroy tracked hooks → real OnStart → reinstall
-    bool getrr_ok = false;
-    if (Offsets::Hook::use_getrr_bypass)
+    if (Offsets::Hook::use_getrr_bypass && unity_base)
     {
-        getrr_ok = hhooks::install_getrr_bypass(base);
-        LOGI("kikaium: Halalium_Bypass getrr %s (OnStart 0x%lx)", getrr_ok ? "ON" : "FAIL",
-             (unsigned long)Offsets::Method::AntiCheat_OnStart_getrr);
-    }
-
-    // Halalium InputConsumer - hook for ##wm_click touch (same as egl_install)
-    if (Offsets::Hook::use_input_consume)
-    {
-        // Installed from main.cpp JNI/egl path via install_input_consume_hook()
-        LOGI("kikaium: InputConsumer hook delegated to main (Halalium egl_install)");
+        bool ok = hhooks::install_getrr_bypass(unity_base);
+        LOGI("getrr bypass %s", ok ? "ON" : "FAIL");
     }
 
     g_sdk_ready.store(true, std::memory_order_release);
-    LOGI("kikaium update::init done (Halalium 100%%) rva_pc=%d rva_late=%d getrr=%d base=%p",
-         (int)hooked_pc, (int)hooked_late, (int)getrr_ok, (void *)base);
+    LOGI("kikaium update::init done pc=%d late=%d il2cpp=%p unity=%p",
+         (int)hooked_pc, (int)hooked_late, (void *)base, (void *)unity_base);
 }
+
