@@ -41,71 +41,62 @@ void strict_hit(void* _this, void* hit_data, void* player_hit_controller)
 void (*old_update)(c_player_controller *player);
 void new_update(c_player_controller *player)
 {
-    if (player) {
-        c_photon_player *photon{};
-        bool is_local{};
+    if (!old_update)
+        return;
+    if (!player || !g_sdk_ready.load(std::memory_order_acquire))
+    {
+        old_update(player);
+        return;
+    }
 
-        photon = player->m_pPhoton;
-        if (photon) {
-            is_local = photon->m_bIsLocal;
-            if (is_local)
-                c_player->local = player;
+    c_photon_player *photon{};
+    bool is_local{};
 
-            // if (!is_local)
-            // {
-            //     if (player->m_pCharacterView)
-            //     {
-            //         if (g.b_esp)
-            //             player->m_pCharacterView->oclussion = true;
-            //     }
-            // }
+    photon = player->m_pPhoton;
+    if (photon) {
+        is_local = photon->m_bIsLocal;
+        if (is_local)
+            c_player->local = player;
 
-            if (!is_local)
+        if (!is_local)
+        {
+            if (g.b_through_walls)
             {
-                // Halalium Through Walls (ESP alone does not force visible - allowlist split)
-                if (g.b_through_walls)
-                {
-                    player->m_bCharacterVisible = true;
-                    player->set_visible();
-                }
-                else if (g.b_esp)
-                {
-                    // ESP still needs occlusion bypass for drawing (Halalium enemy path sets visible)
-                    player->m_bCharacterVisible = true;
-                }
+                player->m_bCharacterVisible = true;
+                player->set_visible();
             }
+            else if (g.b_esp)
+            {
+                player->m_bCharacterVisible = true;
+            }
+        }
 
-            if (c_player->local) {
-                if (g.b_third) {
-                    if (c_player->local->m_pPhoton) {
-                        if (c_player->local->m_pPhoton->get_health() > 0) {
-                            if (c_player->weapon_parameters && c_globals->holding_gun())
-                                c_player->local->set_tps();
-                            else
-                                c_player->local->set_fps();
-                        }
+        if (c_player->local) {
+            if (g.b_third) {
+                if (c_player->local->m_pPhoton) {
+                    if (c_player->local->m_pPhoton->get_health() > 0) {
+                        if (c_player->weapon_parameters && c_globals->holding_gun())
+                            c_player->local->set_tps();
+                        else
+                            c_player->local->set_fps();
                     }
                 }
-                // func with local player
-
-                c_misc->init(c_player->local);
-                // Melodium hitmarkers - never (not in Halalium allowlist)
-                c_antiaim->update();
-                if (g.b_world || g.b_apply_world)
-                    c_world->init(c_player->local);
-                c_chams->local(c_player->local);
-                // Halalium SkinChanger - same call site as Update @0x1d7dc0
-                if (is_local)
-                    c_skins->tick(player);
             }
 
-            if (c_globals->is_enemy(c_player->local, player))
-                c_player->enemy = player;
-
-            if (c_player->enemy)
-                c_chams->enemy(c_player->enemy);
-            // Melodium hit_chams instantiate path removed (early-return bug + not Halalium)
+            c_misc->init(c_player->local);
+            c_antiaim->update();
+            if (g.b_world || g.b_apply_world)
+                c_world->init(c_player->local);
+            c_chams->local(c_player->local);
+            if (is_local)
+                c_skins->tick(player);
         }
+
+        if (c_globals->is_enemy(c_player->local, player))
+            c_player->enemy = player;
+
+        if (c_player->enemy)
+            c_chams->enemy(c_player->enemy);
     }
     c_player->collect(player);
     c_player->update();
@@ -563,16 +554,13 @@ void update::init()
 
     if (hit_controller) {
         LOGD("hit_controller -> %p", hit_controller);
+        // Name-based VMT only - raw vtable[84] overwrite crashes some builds in lobby
         vmt(hit_controller, oxorany("ACHHGEDAEGBBHFB"), (void *)strict_hit, (void **)&old_strict_hit);
-        if (hit_controller->vtable)
-            hit_controller->vtable[84].methodPtr = (Il2CppMethodPointer)strict_hit;
     }
 
     if (gun_controller)
     {
         vmt(gun_controller, oxorany("FEEBGAGHGGCGACA"), (void *)hook_executecommands, (void **)&old_executecommands);
-        if (gun_controller->vtable)
-            gun_controller->vtable[20].methodPtr = (Il2CppMethodPointer)hook_executecommands;
     }
 
     void *ray_delegate = (void *)(base + c_offsets->ray);

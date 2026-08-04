@@ -104,6 +104,14 @@ static int32_t hk_input_consume(void *thiz, void *factory, bool consumeBatches,
 
 static bool install_input_consume_hook()
 {
+    // DISABLED: InputConsumer yields android::InputEvent*, not NDK AInputEvent*.
+    // Calling AInputEvent_getType/getX on it SIGSEGVs within seconds of inject.
+    // Touch comes from UnityEngine.Input in handle_touch() after SDK ready.
+    if (!Offsets::Hook::use_input_consume)
+    {
+        LOGI("InputConsumer hook skipped (lobby-safe; Unity touch path)");
+        return false;
+    }
     static bool tried = false;
     if (tried)
         return old_input_consume != nullptr;
@@ -119,7 +127,6 @@ static bool install_input_consume_hook()
         LOGI("InputConsumer::consume symbol missing");
         return false;
     }
-    // Prefer tracked Halalium-style install
     if (hhooks::install_tracked(sym, (void *)hk_input_consume, (void **)&old_input_consume))
     {
         LOGI("InputConsumer::consume hooked @%p (Halalium path)", sym);
@@ -144,12 +151,14 @@ void handle_touch()
         return;
     }
 
-    // 2) UnityEngine.Input backup (il2cpp static + MethodInfo*)
+    // 2) UnityEngine.Input backup
     if (!c_methods || !c_methods->get_count || !c_methods->get_touch)
+        return;
+    if (!g_sdk_ready.load(std::memory_order_acquire))
         return;
 
     int touch_count = 0;
-    touch_count = c_methods->get_count(nullptr);
+    touch_count = c_methods->get_count();
     static bool touch_active = false;
 
     if (touch_count <= 0)
@@ -162,9 +171,13 @@ void handle_touch()
         return;
     }
 
+    // Clamp - garbage count from bad RVA would crash
+    if (touch_count > 8)
+        touch_count = 8;
+
     for (int i = 0; i < touch_count; i++)
     {
-        auto it = c_methods->get_touch(i, nullptr);
+        auto it = c_methods->get_touch(i);
         auto phase = it.fields.m_Phase;
 
         float x = it.fields.m_Position.x;

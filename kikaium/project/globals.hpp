@@ -114,9 +114,9 @@ class methods
 public:
     int (*get_width)();
     int (*get_heigth)();
-    // Il2Cpp static: MethodInfo* is first/last arg — pass nullptr
-    int (*get_count)(void *methodInfo);
-    UnityEngine_Touch_o (*get_touch)(int id, void *methodInfo);
+    // Il2Cpp static Input — Melodium-era ABI without MethodInfo (safer in lobby)
+    int (*get_count)();
+    UnityEngine_Touch_o (*get_touch)(int id);
     void *(*game_controller)();
     bool (*linecast)(Vector3 start, Vector3 end, raycast_hit_t *hitInfo, int layerMask);
     bool (*sphere_cast)(ray_t ray, float radius, raycast_hit_t *hit, float max, int layer);

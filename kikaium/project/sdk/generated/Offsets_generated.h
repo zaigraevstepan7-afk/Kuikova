@@ -85,9 +85,12 @@ namespace Hook {
     constexpr bool use_egl_swap_buffers = true;
     constexpr bool open_menu_via_watermark_click = true;
     constexpr bool use_vmt_update_hooks = true;
-    constexpr bool use_getrr_bypass = true; // Halalium Bypass_getrr @0x1d90b8
-    constexpr bool use_secondary_hooks = true; // egl_install secondary/tertiary/extra
-    constexpr bool use_input_consume = true; // Halalium InputConsumer (best-effort)
+    // OFF in lobby-safe build: wrong ABI / early AntiCheat OnStart crashes ~seconds after inject
+    constexpr bool use_getrr_bypass = false;
+    // OFF: Tertiary float ABI + ExtraA/B RVAs crash when hooked with C wrappers
+    constexpr bool use_secondary_hooks = false;
+    // OFF: android::InputEvent is NOT AInputEvent — NDK getters SIGSEGV on consume
+    constexpr bool use_input_consume = false;
 }
 
 } // namespace OffsetsGenerated
