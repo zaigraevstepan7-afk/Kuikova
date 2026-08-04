@@ -61,10 +61,11 @@ namespace gui
             return;
         (void)k_kikaium_contract; // keep contract string in .rodata for build verify
         const char *brand = oxorany("Kikaium");
-        const char *line = oxorany("private  ·  0.39.2");
+        const char *line = oxorany("private  |  0.39.2");
 
         ImGui::SetNextWindowPos(ImVec2(18.f, 18.f), ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(0.0f);
+        ImGui::SetNextWindowFocus();
         ImGui::Begin(oxorany("##kik_wm"), nullptr,
                      ImGuiWindowFlags_NoTitleBar |
                          ImGuiWindowFlags_NoResize |
@@ -74,7 +75,8 @@ namespace gui
                          ImGuiWindowFlags_NoBackground |
                          ImGuiWindowFlags_NoSavedSettings |
                          ImGuiWindowFlags_NoFocusOnAppearing |
-                         ImGuiWindowFlags_AlwaysAutoResize);
+                         ImGuiWindowFlags_AlwaysAutoResize |
+                         ImGuiWindowFlags_NoNav);
 
         ImVec2 brand_sz = ImGui::CalcTextSize(brand);
         ImVec2 line_sz = ImGui::CalcTextSize(line);
@@ -102,7 +104,19 @@ namespace gui
         ImGui::Dummy(ImVec2(width, height));
         ImGui::SetCursorScreenPos(rmin);
         // Halalium contract id ##wm_click (brand chrome is Kikaium).
-        if (ImGui::InvisibleButton(oxorany("##wm_click"), ImVec2(width, height)))
+        bool clicked = ImGui::InvisibleButton(oxorany("##wm_click"), ImVec2(width, height));
+
+        // Manual edge-detect fallback (Android touch / event race with InvisibleButton)
+        ImGuiIO &io = ImGui::GetIO();
+        const bool hovered = io.MousePos.x >= rmin.x && io.MousePos.x <= rmax.x &&
+                             io.MousePos.y >= rmin.y && io.MousePos.y <= rmax.y;
+        static bool prev_down = false;
+        const bool down = io.MouseDown[0];
+        if (!clicked && hovered && down && !prev_down)
+            clicked = true;
+        prev_down = down;
+
+        if (clicked)
             open = !open;
 
         ImGui::End();
@@ -114,13 +128,15 @@ namespace gui
 
         ImGui::SetNextWindowPos(pos, ImGuiCond_Once);
         ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+        // NoInputs - fullscreen overlay must NOT steal ##wm_click hits
         ImGui::Begin(oxorany("##kik_overlay"), nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground |
                          ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus |
-                         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
+                         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                         ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoNav);
 
         if (g.b_scope && c_player->local && c_player->weapon_parameters && c_globals->is_scoped())
-            cross(); // Melodium remove-scope cross — flag forced off
+            cross(); // Melodium remove-scope cross - flag forced off
 
         ImGui::End();
         DrawWatermark();

@@ -1,5 +1,5 @@
 // ============================================================================
-// Kikaium — Halalium-architecture shell + Kikaium features
+// Kikaium - Halalium-architecture shell + Kikaium features
 // Render: eglSwapBuffers GOT hook (Halalium uses Dobby on same symbol)
 // Menu:   ##watermark / ##wm_click
 // Update: tools/halalium_emu/update.sh  (see UPDATE.md)
@@ -18,6 +18,8 @@
 #include <dlfcn.h>
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
+#include <android/input.h>
+#include <android/log.h>
 #include "includes/imgui/imgui.h"
 #include "includes/imgui/backends/imgui_impl_android.h"
 #include "includes/imgui/backends/imgui_impl_opengl3.h"
@@ -29,7 +31,8 @@
 #include <cinttypes>
 #include <linux/elf.h>
 #include "globals.hpp"
-// Do NOT include <fcntl.h> here — globals.hpp defines `bool open`, which collides.
+// Do NOT include <fcntl.h> here - globals.hpp defines `bool open`, which collides.
+#include "includes/halalium_hooks.h"
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/syscall.h>
@@ -48,17 +51,112 @@
 bool egl_inited = false;
 bool cmi;
 using namespace ImGui;
+
+// ---------------------------------------------------------------------------
+// Touch state - Halalium feeds via InputConsumer::consume; Unity GetTouch backup.
+// Applied to ImGui BEFORE NewFrame (AddMouse*Event).
+// ---------------------------------------------------------------------------
+struct TouchFeed
+{
+    std::atomic<float> x{0.f};
+    std::atomic<float> y{0.f};
+    std::atomic<bool> down{false};
+    std::atomic<bool> from_input{false};
+};
+static TouchFeed g_touch;
+
+using consume_fn = int32_t (*)(void *thiz, void *factory, bool consumeBatches,
+                               int64_t frameTime, uint32_t *outSeq, AInputEvent **outEvent);
+static consume_fn old_input_consume = nullptr;
+
+static int32_t hk_input_consume(void *thiz, void *factory, bool consumeBatches,
+                                int64_t frameTime, uint32_t *outSeq, AInputEvent **outEvent)
+{
+    int32_t status = old_input_consume
+                         ? old_input_consume(thiz, factory, consumeBatches, frameTime, outSeq, outEvent)
+                         : -1;
+    // Halalium input_consume_cb: only when consume OK and event present
+    if (status != 0 || !outEvent || !*outEvent)
+        return status;
+
+    AInputEvent *ev = *outEvent;
+    if (AInputEvent_getType(ev) != AINPUT_EVENT_TYPE_MOTION)
+        return status;
+
+    const int32_t action = AMotionEvent_getAction(ev);
+    const int32_t masked = action & AMOTION_EVENT_ACTION_MASK;
+    const size_t idx = (size_t)((action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT);
+    const float x = AMotionEvent_getX(ev, idx);
+    const float y = AMotionEvent_getY(ev, idx);
+    g_touch.x.store(x, std::memory_order_relaxed);
+    g_touch.y.store(y, std::memory_order_relaxed);
+    g_touch.from_input.store(true, std::memory_order_relaxed);
+
+    if (masked == AMOTION_EVENT_ACTION_DOWN || masked == AMOTION_EVENT_ACTION_POINTER_DOWN ||
+        masked == AMOTION_EVENT_ACTION_MOVE)
+        g_touch.down.store(true, std::memory_order_relaxed);
+    else if (masked == AMOTION_EVENT_ACTION_UP || masked == AMOTION_EVENT_ACTION_POINTER_UP ||
+             masked == AMOTION_EVENT_ACTION_CANCEL)
+        g_touch.down.store(false, std::memory_order_relaxed);
+
+    return status;
+}
+
+static bool install_input_consume_hook()
+{
+    static bool tried = false;
+    if (tried)
+        return old_input_consume != nullptr;
+    tried = true;
+
+    void *lib = dlopen("libinput.so", RTLD_NOW);
+    if (!lib)
+        lib = dlopen("libandroid.so", RTLD_NOW);
+    void *sym = lib ? dlsym(lib, "_ZN7android13InputConsumer7consumeEPNS_26InputEventFactoryInterfaceEblPjPPNS_10InputEventE")
+                    : nullptr;
+    if (!sym)
+    {
+        LOGI("InputConsumer::consume symbol missing");
+        return false;
+    }
+    // Prefer tracked Halalium-style install
+    if (hhooks::install_tracked(sym, (void *)hk_input_consume, (void **)&old_input_consume))
+    {
+        LOGI("InputConsumer::consume hooked @%p (Halalium path)", sym);
+        return true;
+    }
+    LOGI("InputConsumer::consume hook failed @%p", sym);
+    return false;
+}
+
 void handle_touch()
 {
     auto &io = ImGui::GetIO();
-    int touch_count = c_methods ? c_methods->get_count() : 0;
+
+    // 1) Halalium InputConsumer feed (preferred)
+    if (g_touch.from_input.load(std::memory_order_relaxed))
+    {
+        const float x = g_touch.x.load(std::memory_order_relaxed);
+        const float y = g_touch.y.load(std::memory_order_relaxed);
+        const bool down = g_touch.down.load(std::memory_order_relaxed);
+        io.AddMousePosEvent(x, y);
+        io.AddMouseButtonEvent(0, down);
+        return;
+    }
+
+    // 2) UnityEngine.Input backup (il2cpp static + MethodInfo*)
+    if (!c_methods || !c_methods->get_count || !c_methods->get_touch)
+        return;
+
+    int touch_count = 0;
+    touch_count = c_methods->get_count(nullptr);
     static bool touch_active = false;
 
     if (touch_count <= 0)
     {
         if (touch_active)
         {
-            io.MouseDown[0] = false;
+            io.AddMouseButtonEvent(0, false);
             touch_active = false;
         }
         return;
@@ -66,7 +164,7 @@ void handle_touch()
 
     for (int i = 0; i < touch_count; i++)
     {
-        auto it = c_methods->get_touch(i);
+        auto it = c_methods->get_touch(i, nullptr);
         auto phase = it.fields.m_Phase;
 
         float x = it.fields.m_Position.x;
@@ -74,13 +172,14 @@ void handle_touch()
 
         if (phase == TouchPhase::Began || phase == TouchPhase::Stationary || phase == TouchPhase::Moved)
         {
-            io.MousePos = ImVec2(x, y);
-            io.MouseDown[0] = true;
+            io.AddMousePosEvent(x, y);
+            io.AddMouseButtonEvent(0, true);
             touch_active = true;
         }
         else if (phase == TouchPhase::Ended || phase == TouchPhase::Canceled)
         {
-            io.MouseDown[0] = false;
+            io.AddMousePosEvent(x, y);
+            io.AddMouseButtonEvent(0, false);
             touch_active = false;
         }
     }
@@ -192,7 +291,7 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
     c_egl->width = w;
     c_egl->heigth = h;
 
-    // NEVER call ::init()/img_to_asm from the GL thread every frame — that was
+    // NEVER call ::init()/img_to_asm from the GL thread every frame - that was
     // crashing right after ImGui inited (il2cpp_domain_get via bad/racy base).
     // Touch/SDK pointers are wired once from update::init (soft).
 
@@ -214,13 +313,13 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplAndroid_NewFrame(w, h);
 
+    // Touch MUST be queued before NewFrame (ImGui 1.87+ event API)
+    handle_touch();
     NewFrame();
-    const bool sdk = g_sdk_ready.load(std::memory_order_acquire);
-    if (sdk && c_methods)
-        handle_touch();
     gui::render();
 
     // Overlays after SDK ready. No Melodium hitmarkers.
+    const bool sdk = g_sdk_ready.load(std::memory_order_acquire);
     if (sdk)
     {
         if (g.b_fov_check && c_egl && c_egl->width > 0 && c_egl->heigth > 0)
@@ -464,7 +563,7 @@ static bool hook_egl_got_slots(void *symbol, void *replacement, void **out_orig)
         if (perms[0] != 'r' || perms[1] != 'w')
             continue;
 
-        // Scan all writable maps — Unity GOT often lives in anon segments.
+        // Scan all writable maps - Unity GOT often lives in anon segments.
         for (uintptr_t p = start; p + sizeof(void *) <= end; p += sizeof(void *))
         {
             void *val = *(void **)p;
@@ -495,11 +594,12 @@ void init_render_hook()
         return;
     }
 
-    // Another SO copy already inline-hooked — do NOT GOT-fallback (would dual-hook).
+    // Another SO copy already inline-hooked - do NOT GOT-fallback (would dual-hook).
     if (a64hook::already_patched(sym))
     {
-        LOGI("eglSwapBuffers already patched — leave existing hook alone");
+        LOGI("eglSwapBuffers already patched - leave existing hook alone");
         egl_hooked = true;
+        install_input_consume_hook();
         return;
     }
 
@@ -510,6 +610,7 @@ void init_render_hook()
         old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))tramp;
         egl_hooked = true;
         LOGI("eglSwapBuffers inline hook OK sym=%p tramp=%p", sym, tramp);
+        install_input_consume_hook();
         return;
     }
 
@@ -519,6 +620,7 @@ void init_render_hook()
     {
         egl_hooked = true;
         LOGI("eglSwapBuffers GOT hook OK sym=%p", sym);
+        install_input_consume_hook();
         return;
     }
 
@@ -527,8 +629,9 @@ void init_render_hook()
         {
             if (a64hook::already_patched(sym))
             {
-                LOGI("eglSwapBuffers already patched (delayed) — stop retry");
+                LOGI("eglSwapBuffers already patched (delayed) - stop retry");
                 egl_hooked = true;
+                install_input_consume_hook();
                 break;
             }
             void *tramp2 = nullptr;
@@ -537,6 +640,7 @@ void init_render_hook()
                 old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))tramp2;
                 egl_hooked = true;
                 LOGI("eglSwapBuffers inline hook OK (delayed) sym=%p", sym);
+                install_input_consume_hook();
                 break;
             }
             old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))sym;
@@ -544,6 +648,7 @@ void init_render_hook()
             {
                 egl_hooked = true;
                 LOGI("eglSwapBuffers GOT hook OK (delayed)");
+                install_input_consume_hook();
                 break;
             }
             sleep(1);
@@ -709,7 +814,7 @@ void *entry()
 {
     LOGI("entry()");
 
-    // Hook render ASAP — overlay must not wait on il2cpp/base.
+    // Hook render ASAP - overlay must not wait on il2cpp/base.
     for (int i = 0; i < 60; i++)
     {
         void *egl = dlopen(oxorany("libEGL.so"), RTLD_NOW);
@@ -735,7 +840,7 @@ void *entry()
         sleep(1);
     }
 
-    LOGI("game base ready %p — starting update::init", (void *)base);
+    LOGI("game base ready %p - starting update::init", (void *)base);
     if (base > 0)
         c_update->init();
 
@@ -748,7 +853,7 @@ void *entry()
 // REGISTER_ZYGISK_MODULE(tenmi_zygisk)
 #include "jni.h"
 
-// Manual openat flags — cannot include <fcntl.h> (collides with globals.hpp `bool open`).
+// Manual openat flags - cannot include <fcntl.h> (collides with globals.hpp `bool open`).
 #ifndef MELO_AT_FDCWD
 #define MELO_AT_FDCWD (-100)
 #define MELO_O_RDONLY 0
@@ -830,16 +935,16 @@ static int claim_via_pidfile()
             pid_t other = (n > 0) ? (pid_t)atoi(buf) : 0;
             if (other == me)
             {
-                LOGI("pidfile %s already ours (pid=%d) — skip start", p, (int)me);
+                LOGI("pidfile %s already ours (pid=%d) - skip start", p, (int)me);
                 return 0;
             }
             if (other > 0 && kill(other, 0) == 0)
             {
-                LOGI("pidfile %s held by live pid=%d — skip start", p, (int)other);
+                LOGI("pidfile %s held by live pid=%d - skip start", p, (int)other);
                 return 0;
             }
             unlink(p);
-            LOGI("pidfile %s stale (pid=%d) — retry", p, (int)other);
+            LOGI("pidfile %s stale (pid=%d) - retry", p, (int)other);
         }
     }
     return saw_path ? 0 : -1;
@@ -867,7 +972,7 @@ static bool claim_via_abstract_unix()
     const int err = errno;
     close(s);
     if (err == EADDRINUSE)
-        LOGI("abstract unix v3 busy — skip start");
+        LOGI("abstract unix v3 busy - skip start");
     return false;
 }
 
@@ -875,7 +980,7 @@ static bool claim_process_once()
 {
     if (egl_already_owned())
     {
-        LOGI("egl already hooked by another copy — skip start");
+        LOGI("egl already hooked by another copy - skip start");
         return false;
     }
 
@@ -887,14 +992,14 @@ static bool claim_process_once()
 
     if (egl_already_owned())
     {
-        LOGI("egl already hooked after pidfile miss — skip start");
+        LOGI("egl already hooked after pidfile miss - skip start");
         return false;
     }
 
     if (claim_via_abstract_unix())
         return true;
 
-    LOGI("all process locks failed — refuse start to avoid double-hook");
+    LOGI("all process locks failed - refuse start to avoid double-hook");
     return false;
 }
 
@@ -911,7 +1016,7 @@ static void start_kikaium_once()
     std::thread(entry).detach();
 }
 
-// AndKitty / memfd inject often only dlopen()'s the .so — no reserved JNI key.
+// AndKitty / memfd inject often only dlopen()'s the .so - no reserved JNI key.
 __attribute__((constructor)) static void kikaium_ctor()
 {
     start_kikaium_once();

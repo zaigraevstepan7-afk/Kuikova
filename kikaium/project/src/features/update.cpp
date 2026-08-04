@@ -26,7 +26,7 @@ void strict_hit(void* _this, void* hit_data, void* player_hit_controller)
         return;
     }
 
-    // Melodium hit_chams — never arm (not Halalium)
+    // Melodium hit_chams - never arm (not Halalium)
     if (false && g.hit_chams) {
         auto a = safe_type<c_player_controller *>::field(_this, oxorany(0x70));
         if (a.has_value)
@@ -62,7 +62,7 @@ void new_update(c_player_controller *player)
 
             if (!is_local)
             {
-                // Halalium Through Walls (ESP alone does not force visible — allowlist split)
+                // Halalium Through Walls (ESP alone does not force visible - allowlist split)
                 if (g.b_through_walls)
                 {
                     player->m_bCharacterVisible = true;
@@ -89,12 +89,12 @@ void new_update(c_player_controller *player)
                 // func with local player
 
                 c_misc->init(c_player->local);
-                // Melodium hitmarkers — never (not in Halalium allowlist)
+                // Melodium hitmarkers - never (not in Halalium allowlist)
                 c_antiaim->update();
                 if (g.b_world || g.b_apply_world)
                     c_world->init(c_player->local);
                 c_chams->local(c_player->local);
-                // Halalium SkinChanger — same call site as Update @0x1d7dc0
+                // Halalium SkinChanger - same call site as Update @0x1d7dc0
                 if (is_local)
                     c_skins->tick(player);
             }
@@ -131,7 +131,7 @@ void new_lateupdate(c_player_controller *player)
             if (local) {
                 c_globals->updateGun();
                 c_antiaim->late_update(local);
-                // Melodium aspect/scope — never
+                // Melodium aspect/scope - never
                 if (g.b_third && c_player->local && c_player->local->m_pTransform) {
                     if (c_player->local->m_pPhoton) {
                         if (c_player->local->m_pPhoton->get_health() > 0) {
@@ -151,7 +151,7 @@ void new_game_update(c_game_controller *game)
     if (game)
     {
         c_player->game = game;
-        // GameController.PlayerControls — Halalium/dump 0.39.2 @ Offsets::GameController::player_controls
+        // GameController.PlayerControls - Halalium/dump 0.39.2 @ Offsets::GameController::player_controls
         c_player->controls = *(c_player_controls **)((uintptr_t)game + Offsets::GameController::player_controls);
     } else {
         c_player->after_match();
@@ -162,7 +162,7 @@ void new_game_update(c_game_controller *game)
 bool (*old_raycast)(void *, ray_t *, float, raycast_hit_t *, int32_t, uint8_t);
 bool hook_raycast(void *scene, ray_t *ray, float max_distance, raycast_hit_t *hit, int32_t layer, uint8_t trigger)
 {
-    // Halalium Silent Aim — independent of Enable Esp
+    // Halalium Silent Aim - independent of Enable Esp
     if (g.b_silent && layer == 1610637328 && max_distance == 1000.0f)
     {
         Vector3 pos{};
@@ -446,12 +446,12 @@ static bool hook_rva_tracked(uintptr_t rva, void *hook, void **out_orig, const c
 void (*old_secondary)(void *gc);
 void new_secondary_halalium(void *gc)
 {
-    // secondary_hook_cb @0x1d81fc — GameController sibling; passthrough
+    // secondary_hook_cb @0x1d81fc - GameController sibling; passthrough
     if (old_secondary)
         old_secondary(gc);
 }
 
-// tertiary_hook_cb @0x1d8404 — float in s0, ptr x0, int w2; then BR orig
+// tertiary_hook_cb @0x1d8404 - float in s0, ptr x0, int w2; then BR orig
 void (*old_tertiary)(void *a0, void *a1, uint32_t a2, float f0);
 void new_tertiary_halalium(void *a0, void *a1, uint32_t a2, float f0)
 {
@@ -460,7 +460,7 @@ void new_tertiary_halalium(void *a0, void *a1, uint32_t a2, float f0)
         old_tertiary(a0, a1, a2, f0);
 }
 
-// extraA_cb @0x1d82a0 — (self, a1, hit) team gate then BR orig
+// extraA_cb @0x1d82a0 - (self, a1, hit) team gate then BR orig
 void (*old_extraA)(void *a0, void *a1, void *a2);
 void new_extraA_halalium(void *a0, void *a1, void *a2)
 {
@@ -468,7 +468,7 @@ void new_extraA_halalium(void *a0, void *a1, void *a2)
         old_extraA(a0, a1, a2);
 }
 
-// extraB_cb @0x1d83cc — call orig then optional clear *a1 (No spread path)
+// extraB_cb @0x1d83cc - call orig then optional clear *a1 (No spread path)
 void (*old_extraB)(void *a0, void *a1);
 void new_extraB_halalium(void *a0, void *a1)
 {
@@ -533,7 +533,7 @@ void update::init()
     if (hooked_pc)
         LOGI("kikaium: Halalium RVA Update ON (0x%lx)", (unsigned long)update_rva);
     else
-        LOGI("kikaium: Halalium RVA Update failed — falling back to VMT");
+        LOGI("kikaium: Halalium RVA Update failed - falling back to VMT");
 
     // VMT fallback / supplement (Melodium-compatible when RVA base wrong).
     Il2CppClass *game_controller = nullptr;
@@ -584,10 +584,10 @@ void update::init()
     }
     else
     {
-        LOGD("ray icall slot empty — silent/AutoWall limited");
+        LOGD("ray icall slot empty - silent/AutoWall limited");
     }
 
-    // Halalium Bypass_getrr @0x1d90b8 — destroy tracked hooks → real OnStart → reinstall
+    // Halalium Bypass_getrr @0x1d90b8 - destroy tracked hooks → real OnStart → reinstall
     bool getrr_ok = false;
     if (Offsets::Hook::use_getrr_bypass)
     {
@@ -596,13 +596,11 @@ void update::init()
              (unsigned long)Offsets::Method::AntiCheat_OnStart_getrr);
     }
 
-    // Halalium InputConsumer — best-effort probe; ImGui/Android touch is the working path
+    // Halalium InputConsumer - hook for ##wm_click touch (same as egl_install)
     if (Offsets::Hook::use_input_consume)
     {
-        void *lib = dlopen("libinput.so", RTLD_NOW);
-        void *sym = lib ? dlsym(lib, "_ZN7android13InputConsumer7consumeEPNS_26InputEventFactoryInterfaceEblPjPPNS_10InputEventE") : nullptr;
-        LOGI("kikaium: InputConsumer %s (Halalium egl_install; touch via ImGui)",
-             sym ? "symbol present" : "unavailable");
+        // Installed from main.cpp JNI/egl path via install_input_consume_hook()
+        LOGI("kikaium: InputConsumer hook delegated to main (Halalium egl_install)");
     }
 
     g_sdk_ready.store(true, std::memory_order_release);
