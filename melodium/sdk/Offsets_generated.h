@@ -2,6 +2,7 @@
 // Source SO: /workspace/halalium/bin/libhalalium.so
 // BuildID: 12532fca99debbaa836dbbea6e5cceec95f5bbbb
 // Version: t.me/lemminghack, 0.39.2
+// Product: Kikaium (Halalium RE map)
 #pragma once
 #include <cstdint>
 
@@ -12,18 +13,26 @@ namespace Il2Cpp {
 }
 
 namespace TypeInfo {
-    constexpr uintptr_t PlayerManager    = 0xAC5E190;
-    constexpr uintptr_t GameController   = 0xAC58BB0;
-    constexpr uintptr_t PhotonNetwork    = 0xAC5DE18;
-    constexpr uintptr_t BombManager      = 0xAC4FAC0;
-    constexpr uintptr_t InventoryManager = 0xAC5C018;
-    constexpr uintptr_t PlayerControls   = 0xAC5E0E0;
-    constexpr uintptr_t PlayerController = 0xAC5E0D8;
-    constexpr uintptr_t WeaponController = 0xAC61A18;
-    constexpr uintptr_t WeaponManager    = 0xAC61A78;
-    constexpr uintptr_t GameManager      = 0xAC58C00;
-    constexpr uintptr_t TouchController  = 0xAC60B48;
-    constexpr uintptr_t AntiCheatManager = 0xAC4DA30;
+    constexpr uintptr_t PlayerManager      = 0xAC5E190;
+    constexpr uintptr_t GameController     = 0xAC58BB0;
+    constexpr uintptr_t PhotonNetwork      = 0xAC5DE18;
+    constexpr uintptr_t BombManager        = 0xAC4FAC0;
+    constexpr uintptr_t InventoryManager   = 0xAC5C018;
+    constexpr uintptr_t PlayerControls     = 0xAC5E0E0;
+    constexpr uintptr_t PlayerController   = 0xAC5E0D8;
+    constexpr uintptr_t WeaponController   = 0xAC61A18;
+    constexpr uintptr_t WeaponManager      = 0xAC61A78;
+    constexpr uintptr_t GameManager        = 0xAC58C00;
+    constexpr uintptr_t TouchController    = 0xAC60B48;
+    constexpr uintptr_t AntiCheatManager   = 0xAC4DA30;
+    constexpr uintptr_t GunController      = 0xAC59040;
+    constexpr uintptr_t PlayerMainCamera   = 0xAC5E188;
+}
+
+namespace PlayerManager {
+    constexpr uintptr_t players_list = 0x28;
+    constexpr uintptr_t local_player = 0x70;
+    constexpr uintptr_t alt_player   = 0x68;
 }
 
 namespace Player {
@@ -32,6 +41,11 @@ namespace Player {
     constexpr uintptr_t occlusion_controller = 0xB8;
     constexpr uintptr_t main_camera          = 0xE8;
     constexpr uintptr_t team                 = 0x79;
+    constexpr uintptr_t aim_controller       = 0x80;
+    constexpr uintptr_t hit_controller       = 0xA8;
+    constexpr uintptr_t movement_controller  = 0x98;
+    constexpr uintptr_t character_view       = 0x48;
+    constexpr uintptr_t photon_view          = 0x150;
 }
 
 namespace Weaponry {
@@ -40,13 +54,28 @@ namespace Weaponry {
 
 namespace GameController {
     constexpr uintptr_t player_controls = 0x2B0;
+    constexpr uintptr_t local_player    = 0x2C0;
+}
+
+namespace Camera {
+    constexpr uintptr_t matrix = 0xF0;
+}
+
+namespace Method {
+    // Halalium A64 targets (optional; Kikaium prefers VMT name hooks for stability)
+    constexpr uintptr_t PlayerController_Update = 0x8E7C40C;
+    constexpr uintptr_t AntiCheat_OnStart_getrr = 0x8B9579C;
+    constexpr uintptr_t Gun_ExecuteCommands     = 0x0;
+    constexpr uintptr_t Hit_StrictHit           = 0x0;
 }
 
 namespace Hook {
     // Halalium: DobbyHook(dlsym(eglSwapBuffers))
-    // Melodium: GOT swap of same symbol
+    // Kikaium: inline/GOT of same symbol + ImGui on swap
     constexpr bool use_egl_swap_buffers = true;
     constexpr bool open_menu_via_watermark_click = true;
+    constexpr bool use_vmt_update_hooks = true;
+    constexpr bool use_getrr_bypass = false; // needs relocating hooker
 }
 
 } // namespace OffsetsGenerated

@@ -79,6 +79,7 @@
     "Silent Aim",
     "Rage",
     "Anti Aim",
+    "Anti Aim Pitch",
     "No spread",
     "Auto Fire",
     "Auto Wall",
@@ -87,13 +88,16 @@
     "Skin Changer",
     "Chams",
     "Local Chams",
+    "Enemy Chams",
     "Spin",
     "Fov Check",
+    "Fov Color",
     "Health Bar",
     "Bone",
     "Box",
     "Third Person",
-    "Watermark"
+    "Watermark",
+    "scope fov"
   ],
   "hooks": {
     "render": {
@@ -126,7 +130,9 @@
     "WeaponManager": "0xac61a78",
     "GameManager": "0xac58c00",
     "TouchController": "0xac60b48",
-    "AntiCheatManager": "0xac4da30"
+    "AntiCheatManager": "0xac4da30",
+    "GunController": "0xac59040",
+    "PlayerMainCamera": "0xac5e188"
   },
   "fields": {
     "Player.photon_player": "0x160",
@@ -135,10 +141,24 @@
     "Player.occlusion_controller": "0xb8",
     "Player.main_camera": "0xe8",
     "Player.team": "0x79",
+    "Player.aim_controller": "0x80",
+    "Player.hit_controller": "0xa8",
+    "Player.movement_controller": "0x98",
+    "Player.character_view": "0x48",
+    "Player.photon_view": "0x150",
+    "PlayerManager.players_list": "0x28",
+    "PlayerManager.local_player": "0x70",
+    "PlayerManager.alt_player": "0x68",
     "GameController.player_controls": "0x2b0",
+    "GameController.local_player": "0x2c0",
+    "Camera.matrix": "0xf0",
     "Il2Cpp.klass_static_fields": "0x90"
   },
+  "methods": {
+    "AntiCheat.OnStart_getrr": "0x8b9579c",
+    "PlayerController.Update": "0x8e7c40c"
+  },
   "notes": [
-    "Melodium contract: eglSwapBuffers draw path + ##watermark/##wm_click open + Offsets from this profile"
+    "Kikaium contract: eglSwapBuffers draw + ##wm_click open + VMT Update hooks + Offsets from this profile"
   ]
 }

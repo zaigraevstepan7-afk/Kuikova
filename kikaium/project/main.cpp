@@ -215,13 +215,22 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
     ImGui_ImplAndroid_NewFrame(w, h);
 
     NewFrame();
-    if (g_sdk_ready.load(std::memory_order_acquire) && c_methods)
+    const bool sdk = g_sdk_ready.load(std::memory_order_acquire);
+    if (sdk && c_methods)
         handle_touch();
     gui::render();
 
-    // Feature overlays deferred until hooks are re-enabled safely.
-    (void)c_visual;
-    (void)c_esp;
+    // Melodium-style overlays: only after update::init wired VMT/touch.
+    if (sdk)
+    {
+        if (c_visual)
+        {
+            c_visual->draw_hits();
+            c_visual->hitmarker();
+        }
+        if (c_esp)
+            c_esp->render();
+    }
 
     if (cmi)
     {

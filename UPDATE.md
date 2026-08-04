@@ -1,17 +1,15 @@
-# Kikaium = Halalium RE + our Melodium-style source
+# Kikaium = Halalium RE + Melodium-style source (real cheat SO)
 
-Primary product: **Kikaium** built from source (`kikaium/project`), mapped from Halalium reverse.
+Primary product: **Kikaium** (`kikaium/project` → `kikaium/bin/libkikaium.so`).
+
+Unlike the soft menu-only Melodium snapshot, Kikaium builds with:
+- VMT Update/LateUpdate + hit/gun hooks
+- ESP / visual overlays on `eglSwapBuffers` after `g_sdk_ready`
+- Halalium offsets from improved `tools/halalium_emu` (brace-aware dump.cs + ScriptMethod)
 
 ```bash
-# Full RE + offsets refresh
-bash tools/halalium_emu/update.sh \
-  halalium/bin/libhalalium.so \
-  okak/okaakka/script.json \
-  "okak/okaakka/dump (1).cs"
-
-# Build (verify 3x)
-bash kikaium/build.sh --verify
-# → kikaium/bin/libkikaium.so
+bash tools/halalium_emu/update.sh
+bash kikaium/build.sh --verify   # 3× build + JNI/VMT/egl/wm checks
 ```
 
 Docs: `kikaium/README.md`, `kikaium/docs/HALALIUM_FULL_RE.md`.

@@ -2,6 +2,7 @@ Enable Esp
 Silent Aim
 Rage
 Anti Aim
+Anti Aim Pitch
 No spread
 Auto Fire
 Auto Wall
@@ -10,10 +11,13 @@ Wallshot
 Skin Changer
 Chams
 Local Chams
+Enemy Chams
 Spin
 Fov Check
+Fov Color
 Health Bar
 Bone
 Box
 Third Person
 Watermark
+scope fov

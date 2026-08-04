@@ -191,8 +191,8 @@ void new_game_update(c_game_controller *game)
     if (game)
     {
         c_player->game = game;
-        // GameController.PlayerControls @ 0x2B0 on 0.39.2 (was 0x298 / 0x2A0)
-        c_player->controls = *(c_player_controls **)((uintptr_t)game + oxorany(0x2B0));
+        // GameController.PlayerControls — Halalium/dump 0.39.2 @ Offsets::GameController::player_controls
+        c_player->controls = *(c_player_controls **)((uintptr_t)game + Offsets::GameController::player_controls);
     } else {
         c_player->after_match();
     }

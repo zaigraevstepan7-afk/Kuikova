@@ -58,6 +58,7 @@ FEATURE_STRINGS = [
     "Silent Aim",
     "Rage",
     "Anti Aim",
+    "Anti Aim Pitch",
     "No spread",
     "Auto Fire",
     "Auto Wall",
@@ -66,13 +67,16 @@ FEATURE_STRINGS = [
     "Skin Changer",
     "Chams",
     "Local Chams",
+    "Enemy Chams",
     "Spin",
     "Fov Check",
+    "Fov Color",
     "Health Bar",
     "Bone",
     "Box",
     "Third Person",
     "Watermark",
+    "scope fov",
 ]
 
 # Fields Halalium LDR-confirmed; used as Melodium ground truth defaults.
@@ -83,7 +87,17 @@ CONFIRMED_FIELDS = {
     "Player.occlusion_controller": 0xB8,
     "Player.main_camera": 0xE8,
     "Player.team": 0x79,
+    "Player.aim_controller": 0x80,
+    "Player.hit_controller": 0xA8,
+    "Player.movement_controller": 0x98,
+    "Player.character_view": 0x48,
+    "Player.photon_view": 0x150,
+    "PlayerManager.players_list": 0x28,
+    "PlayerManager.local_player": 0x70,
+    "PlayerManager.alt_player": 0x68,
     "GameController.player_controls": 0x2B0,
+    "GameController.local_player": 0x2C0,
+    "Camera.matrix": 0xF0,
     "Il2Cpp.klass_static_fields": 0x90,
 }
 
@@ -100,6 +114,11 @@ TYPEINFO_KEYS = {
     "GameManager": "GameManager_TypeInfo",
     "TouchController": "TouchController_TypeInfo",
     "AntiCheatManager": "AntiCheatManager_TypeInfo",
+    "GunController": "GunController_TypeInfo",
+    "PlayerHitController": "PlayerHitController_TypeInfo",
+    "PlayerMainCamera": "PlayerMainCamera_TypeInfo",
+    "AimController": "AimController_TypeInfo",
+    "WeaponryController": "WeaponryController_TypeInfo",
 }
 
 
@@ -121,6 +140,7 @@ class Profile:
     hooks: Dict[str, Any] = field(default_factory=dict)
     typeinfo: Dict[str, int] = field(default_factory=dict)
     fields: Dict[str, int] = field(default_factory=dict)
+    methods: Dict[str, int] = field(default_factory=dict)
     notes: List[str] = field(default_factory=list)
 
 
@@ -278,19 +298,38 @@ def load_typeinfo_from_script(script_path: Path) -> Dict[str, int]:
     return out
 
 
+def extract_class_body(dump_text: str, class_name: str, max_span: int = 200000) -> Optional[str]:
+    """Brace-balanced class body extractor (dump.cs nested types break naive regex)."""
+    m = re.search(
+        rf"(?:public |internal |private )?(?:abstract |sealed )?class {re.escape(class_name)}\b[^{{]*\{{",
+        dump_text,
+    )
+    if not m:
+        return None
+    i = m.end() - 1
+    depth = 0
+    for j in range(i, min(i + max_span, len(dump_text))):
+        c = dump_text[j]
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                return dump_text[m.start() : j + 1]
+    return None
+
+
 def parse_dump_fields(dump_path: Path) -> Dict[str, int]:
-    """Best-effort field scrape from dump.cs for PlayerController / related."""
+    """Brace-aware field scrape from dump.cs for PlayerController / related."""
     if not dump_path.exists():
         return {}
-    text = dump_path.read_text(encoding="utf-8", errors="replace")
+    dump_text = dump_path.read_text(encoding="utf-8", errors="replace")
     out: Dict[str, int] = {}
 
-    def grab(class_name: str, field_substr: str, key: str):
-        # naive: find class block then first matching // 0xNN field
-        m = re.search(rf"class {re.escape(class_name)}\b[^{{]*\{{(?P<body>.*?)\n\}}", text, re.S)
-        if not m:
+    def grab(class_name: str, field_substr: str, key: str) -> None:
+        body = extract_class_body(dump_text, class_name)
+        if not body:
             return
-        body = m.group("body")
         fm = re.search(
             rf"{re.escape(field_substr)}[^;\n]*;\s*//\s*(0x[0-9A-Fa-f]+)",
             body,
@@ -302,9 +341,59 @@ def parse_dump_fields(dump_path: Path) -> Dict[str, int]:
     grab("PlayerController", "WeaponryController", "Player.weaponry_controller")
     grab("PlayerController", "PlayerOcclusionController", "Player.occlusion_controller")
     grab("PlayerController", "PlayerMainCamera", "Player.main_camera")
-    grab("PlayerController", "Team", "Player.team")
+    grab("PlayerController", "AimController", "Player.aim_controller")
+    grab("PlayerController", "PlayerHitController", "Player.hit_controller")
+    grab("PlayerController", "MovementController", "Player.movement_controller")
+    grab("PlayerController", "PlayerCharacterView", "Player.character_view")
+    grab("PlayerController", "PhotonView", "Player.photon_view")
     grab("WeaponryController", "WeaponController", "Weaponry.weapon_controller")
     grab("GameController", "PlayerControls", "GameController.player_controls")
+    grab("PlayerManager", "PlayerController", "PlayerManager.local_player")  # last match often 0x70
+    # Prefer explicit local slot @0x70 when both 0x68/0x70 exist
+    pm = extract_class_body(dump_text, "PlayerManager")
+    if pm:
+        slots = re.findall(
+            r"PlayerController[^;\n]*;\s*//\s*(0x[0-9A-Fa-f]+)",
+            pm,
+        )
+        if len(slots) >= 2:
+            out["PlayerManager.alt_player"] = int(slots[0], 16)
+            out["PlayerManager.local_player"] = int(slots[1], 16)
+        elif slots:
+            out["PlayerManager.local_player"] = int(slots[0], 16)
+        lm = re.search(r"object [^;\n]*;\s*//\s*(0x28)\b", pm)
+        if lm:
+            out["PlayerManager.players_list"] = 0x28
+    return out
+
+
+def load_methods_from_script(script_path: Path) -> Dict[str, int]:
+    """Pull key method RVAs from script.json ScriptMethod table."""
+    if not script_path.exists():
+        return {}
+    raw = json.loads(script_path.read_text(encoding="utf-8", errors="replace"))
+    methods = raw.get("ScriptMethod") if isinstance(raw, dict) else None
+    if not isinstance(methods, list):
+        return {}
+    out: Dict[str, int] = {}
+    # Halalium bypass target (obfuscated OnStart)
+    for item in methods:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("Name", ""))
+        try:
+            addr = int(item.get("Address", 0))
+        except Exception:
+            continue
+        if name.endswith("ECGCHECCBBBAEBB$$OnStart") or name == "ECGCHECCBBBAEBB$$OnStart":
+            out["AntiCheat.OnStart_getrr"] = addr
+        if name.endswith("$$FEEBGAGHGGCGACA"):
+            out["GunController.ExecuteCommands"] = addr
+        if name.endswith("$$ACHHGEDAEGBBHFB"):
+            out["PlayerHitController.StrictHit"] = addr
+    # Documented Halalium PlayerController Update RVA (not always in ScriptMethod)
+    out.setdefault("PlayerController.Update", 0x8E7C40C)
+    out.setdefault("AntiCheat.OnStart_getrr", 0x8B9579C)
     return out
 
 
@@ -380,9 +469,17 @@ def build_profile(so: Path, script: Optional[Path], dump: Optional[Path]) -> Pro
     else:
         prof.notes.append("no dump.cs — using Halalium-confirmed field defaults")
 
-    # Emulator contract: Melodium must implement these
+    if script and script.exists():
+        prof.methods = load_methods_from_script(script)
+    else:
+        prof.methods = {
+            "PlayerController.Update": 0x8E7C40C,
+            "AntiCheat.OnStart_getrr": 0x8B9579C,
+        }
+
+    # Emulator contract: Kikaium must implement these (Halalium architecture)
     prof.notes.append(
-        "Melodium contract: eglSwapBuffers draw path + ##watermark/##wm_click open + Offsets from this profile"
+        "Kikaium contract: eglSwapBuffers draw + ##wm_click open + VMT Update hooks + Offsets from this profile"
     )
     return prof
 
@@ -390,6 +487,7 @@ def build_profile(so: Path, script: Optional[Path], dump: Optional[Path]) -> Pro
 def emit_offsets_header(prof: Profile, out_path: Path, ns: str = "OffsetsGenerated") -> None:
     ti = prof.typeinfo
     fields = prof.fields
+    methods = getattr(prof, "methods", {}) or {}
     ver = prof.version_string or "unknown"
 
     def g(key: str, default: int) -> str:
@@ -398,10 +496,14 @@ def emit_offsets_header(prof: Profile, out_path: Path, ns: str = "OffsetsGenerat
     def t(key: str, default: int) -> str:
         return f"0x{ti.get(key, default):X}"
 
+    def m(key: str, default: int) -> str:
+        return f"0x{methods.get(key, default):X}"
+
     body = f"""// AUTO-GENERATED by tools/halalium_emu/halalium_emu.py — do not edit by hand.
 // Source SO: {prof.so_path}
 // BuildID: {prof.build_id}
 // Version: {ver}
+// Product: Kikaium (Halalium RE map)
 #pragma once
 #include <cstdint>
 
@@ -412,18 +514,26 @@ namespace Il2Cpp {{
 }}
 
 namespace TypeInfo {{
-    constexpr uintptr_t PlayerManager    = {t('PlayerManager', 0xAC5E190)};
-    constexpr uintptr_t GameController   = {t('GameController', 0xAC58BB0)};
-    constexpr uintptr_t PhotonNetwork    = {t('PhotonNetwork', 0xAC5DE18)};
-    constexpr uintptr_t BombManager      = {t('BombManager', 0xAC4FAC0)};
-    constexpr uintptr_t InventoryManager = {t('InventoryManager', 0xAC5C018)};
-    constexpr uintptr_t PlayerControls   = {t('PlayerControls', 0xAC5E0E0)};
-    constexpr uintptr_t PlayerController = {t('PlayerController', 0xAC5E0D8)};
-    constexpr uintptr_t WeaponController = {t('WeaponController', 0xAC61A18)};
-    constexpr uintptr_t WeaponManager    = {t('WeaponManager', 0xAC61A78)};
-    constexpr uintptr_t GameManager      = {t('GameManager', 0xAC58C00)};
-    constexpr uintptr_t TouchController  = {t('TouchController', 0xAC60B48)};
-    constexpr uintptr_t AntiCheatManager = {t('AntiCheatManager', 0xAC4DA30)};
+    constexpr uintptr_t PlayerManager      = {t('PlayerManager', 0xAC5E190)};
+    constexpr uintptr_t GameController     = {t('GameController', 0xAC58BB0)};
+    constexpr uintptr_t PhotonNetwork      = {t('PhotonNetwork', 0xAC5DE18)};
+    constexpr uintptr_t BombManager        = {t('BombManager', 0xAC4FAC0)};
+    constexpr uintptr_t InventoryManager   = {t('InventoryManager', 0xAC5C018)};
+    constexpr uintptr_t PlayerControls     = {t('PlayerControls', 0xAC5E0E0)};
+    constexpr uintptr_t PlayerController   = {t('PlayerController', 0xAC5E0D8)};
+    constexpr uintptr_t WeaponController   = {t('WeaponController', 0xAC61A18)};
+    constexpr uintptr_t WeaponManager      = {t('WeaponManager', 0xAC61A78)};
+    constexpr uintptr_t GameManager        = {t('GameManager', 0xAC58C00)};
+    constexpr uintptr_t TouchController    = {t('TouchController', 0xAC60B48)};
+    constexpr uintptr_t AntiCheatManager   = {t('AntiCheatManager', 0xAC4DA30)};
+    constexpr uintptr_t GunController      = {t('GunController', 0xAC59040)};
+    constexpr uintptr_t PlayerMainCamera   = {t('PlayerMainCamera', 0xAC5E188)};
+}}
+
+namespace PlayerManager {{
+    constexpr uintptr_t players_list = {g('PlayerManager.players_list', 0x28)};
+    constexpr uintptr_t local_player = {g('PlayerManager.local_player', 0x70)};
+    constexpr uintptr_t alt_player   = {g('PlayerManager.alt_player', 0x68)};
 }}
 
 namespace Player {{
@@ -432,6 +542,11 @@ namespace Player {{
     constexpr uintptr_t occlusion_controller = {g('Player.occlusion_controller', 0xB8)};
     constexpr uintptr_t main_camera          = {g('Player.main_camera', 0xE8)};
     constexpr uintptr_t team                 = {g('Player.team', 0x79)};
+    constexpr uintptr_t aim_controller       = {g('Player.aim_controller', 0x80)};
+    constexpr uintptr_t hit_controller       = {g('Player.hit_controller', 0xA8)};
+    constexpr uintptr_t movement_controller  = {g('Player.movement_controller', 0x98)};
+    constexpr uintptr_t character_view       = {g('Player.character_view', 0x48)};
+    constexpr uintptr_t photon_view          = {g('Player.photon_view', 0x150)};
 }}
 
 namespace Weaponry {{
@@ -440,13 +555,28 @@ namespace Weaponry {{
 
 namespace GameController {{
     constexpr uintptr_t player_controls = {g('GameController.player_controls', 0x2B0)};
+    constexpr uintptr_t local_player    = {g('GameController.local_player', 0x2C0)};
+}}
+
+namespace Camera {{
+    constexpr uintptr_t matrix = {g('Camera.matrix', 0xF0)};
+}}
+
+namespace Method {{
+    // Halalium A64 targets (optional; Kikaium prefers VMT name hooks for stability)
+    constexpr uintptr_t PlayerController_Update = {m('PlayerController.Update', 0x8E7C40C)};
+    constexpr uintptr_t AntiCheat_OnStart_getrr = {m('AntiCheat.OnStart_getrr', 0x8B9579C)};
+    constexpr uintptr_t Gun_ExecuteCommands     = {m('GunController.ExecuteCommands', 0)};
+    constexpr uintptr_t Hit_StrictHit           = {m('PlayerHitController.StrictHit', 0)};
 }}
 
 namespace Hook {{
     // Halalium: DobbyHook(dlsym(eglSwapBuffers))
-    // Melodium: GOT swap of same symbol
+    // Kikaium: inline/GOT of same symbol + ImGui on swap
     constexpr bool use_egl_swap_buffers = true;
     constexpr bool open_menu_via_watermark_click = true;
+    constexpr bool use_vmt_update_hooks = true;
+    constexpr bool use_getrr_bypass = false; // needs relocating hooker
 }}
 
 }} // namespace {ns}
@@ -485,29 +615,58 @@ def apply_profile(profile_path: Path) -> None:
     prof.version_string = prof_data.get("version_string", "")
     prof.typeinfo = {k: int(v, 0) if isinstance(v, str) else int(v) for k, v in prof_data.get("typeinfo", {}).items()}
     prof.fields = {k: int(v, 0) if isinstance(v, str) else int(v) for k, v in prof_data.get("fields", {}).items()}
+    prof.methods = {k: int(v, 0) if isinstance(v, str) else int(v) for k, v in prof_data.get("methods", {}).items()}
 
-    gen = ROOT / "internal-main/internal-main/sdk/generated/Offsets_generated.h"
-    emit_offsets_header(prof, gen)
-    emit_offsets_header(prof, ROOT / "melodium/sdk/Offsets_generated.h")
-    emit_offsets_header(prof, ROOT / "halalium/sdk/Offsets_generated.h")
-    emit_melodium_bridge(ROOT / "internal-main/internal-main/sdk/OffsetsBridge.h")
+    targets = [
+        ROOT / "kikaium/project/sdk/generated/Offsets_generated.h",
+        ROOT / "kikaium/sdk/Offsets_generated.h",
+        ROOT / "kikaium/project/sdk/halalium/Offsets_generated.h",
+        ROOT / "tools/halalium_emu/out/Offsets_generated.h",
+        ROOT / "halalium/sdk/Offsets_generated.h",
+        # legacy Melodium trees (kept in sync, product is Kikaium)
+        ROOT / "internal-main/internal-main/sdk/generated/Offsets_generated.h",
+        ROOT / "melodium/sdk/Offsets_generated.h",
+    ]
+    for gen in targets:
+        emit_offsets_header(prof, gen)
+        print(f"[apply] wrote {gen.relative_to(ROOT)}")
 
-    # Also refresh curated header TypeInfo block if we have values
-    curated = ROOT / "melodium/sdk/Offsets_0.39.2.h"
-    if curated.exists() and prof.typeinfo:
-        text = curated.read_text(encoding="utf-8")
-        for key, addr in prof.typeinfo.items():
-            text = re.sub(
-                rf"(constexpr uintptr_t {re.escape(key)}\s*=\s*)0x[0-9A-Fa-f]+",
-                rf"\g<1>0x{addr:X}",
-                text,
+    # Kikaium bridge
+    bridge = ROOT / "kikaium/project/sdk/OffsetsBridge.h"
+    bridge.write_text(
+        """#pragma once
+// Kikaium ↔ Halalium RE bridge.
+#if __has_include("sdk/generated/Offsets_generated.h")
+#include "sdk/generated/Offsets_generated.h"
+namespace Offsets = OffsetsGenerated;
+#elif __has_include("sdk/halalium/Offsets_0.39.2.h")
+#include "sdk/halalium/Offsets_0.39.2.h"
+namespace Offsets = Offsets0392;
+#else
+#error "No Halalium/Kikaium offsets header found"
+#endif
+""",
+        encoding="utf-8",
+    )
+    print(f"[apply] wrote {bridge.relative_to(ROOT)}")
+
+    # Copy profile artifacts into kikaium/docs
+    docs = ROOT / "kikaium/docs"
+    docs.mkdir(parents=True, exist_ok=True)
+    for name in ("profile.json", "hooks.json", "features.txt"):
+        src = out_dir / name
+        if src.exists():
+            (docs / f"halalium_{name}" if name != "profile.json" else docs / "halalium_profile.json").write_text(
+                src.read_text(encoding="utf-8"), encoding="utf-8"
             )
-        curated.write_text(text, encoding="utf-8")
-        (ROOT / "halalium/sdk/Offsets_0.39.2.h").write_text(text, encoding="utf-8")
+    # normalize names
+    if (out_dir / "profile.json").exists():
+        (docs / "halalium_profile.json").write_text((out_dir / "profile.json").read_text(encoding="utf-8"), encoding="utf-8")
+    if (out_dir / "hooks.json").exists():
+        (docs / "halalium_hooks.json").write_text((out_dir / "hooks.json").read_text(encoding="utf-8"), encoding="utf-8")
+    if (out_dir / "features.txt").exists():
+        (docs / "halalium_features.txt").write_text((out_dir / "features.txt").read_text(encoding="utf-8"), encoding="utf-8")
 
-    print(f"[apply] wrote {gen}")
-    print(f"[apply] wrote melodium/sdk/Offsets_generated.h")
-    print(f"[apply] wrote OffsetsBridge.h")
 
 
 def cmd_profile(args: argparse.Namespace) -> int:
@@ -522,6 +681,7 @@ def cmd_profile(args: argparse.Namespace) -> int:
     blob = asdict(prof)
     blob["typeinfo"] = {k: hex(v) for k, v in prof.typeinfo.items()}
     blob["fields"] = {k: hex(v) for k, v in prof.fields.items()}
+    blob["methods"] = {k: hex(v) for k, v in prof.methods.items()}
     (out / "profile.json").write_text(json.dumps(blob, indent=2), encoding="utf-8")
     emit_offsets_header(prof, out / "Offsets_generated.h")
     (out / "features.txt").write_text("\n".join(prof.features) + "\n", encoding="utf-8")
@@ -561,17 +721,20 @@ def cmd_diff(args: argparse.Namespace) -> int:
 
 
 def cmd_emu_check(args: argparse.Namespace) -> int:
-    """Validate Melodium source still matches Halalium emulator contract."""
-    main_cpp = (ROOT / "internal-main/internal-main/main.cpp").read_text(encoding="utf-8", errors="replace")
-    gui_cpp = (ROOT / "internal-main/internal-main/src/menu/gui.cpp").read_text(encoding="utf-8", errors="replace")
+    """Validate Kikaium source still matches Halalium emulator contract."""
+    main_cpp = (ROOT / "kikaium/project/main.cpp").read_text(encoding="utf-8", errors="replace")
+    gui_cpp = (ROOT / "kikaium/project/src/menu/gui.cpp").read_text(encoding="utf-8", errors="replace")
+    update_cpp = (ROOT / "kikaium/project/src/features/update.cpp").read_text(encoding="utf-8", errors="replace")
     ok = True
     checks = [
         ("eglSwapBuffers hook present", "hook_egl_swap_buffers" in main_cpp and "eglSwapBuffers" in main_cpp),
-        ("PresentFrame not used as primary init", "init_render_hook" in main_cpp and "7B5AD10" not in main_cpp.split("void init_render_hook")[1][:800]),
-        ("watermark click open", "##wm_click" in gui_cpp or "wm_click" in gui_cpp),
-        ("Lemming watermark", "Lemming" in gui_cpp or "lemminghack" in gui_cpp),
-        ("Offsets bridge exists", (ROOT / "internal-main/internal-main/sdk/OffsetsBridge.h").exists()
-         or (ROOT / "melodium/sdk/Offsets_0.39.2.h").exists()),
+        ("ESP overlay draw gated by sdk", "c_esp->render()" in main_cpp and "g_sdk_ready" in main_cpp),
+        ("watermark click open (##wm_click)", "##wm_click" in gui_cpp),
+        ("Kikaium brand watermark", "Kikaium" in gui_cpp),
+        ("VMT update hooks", "vmt(" in update_cpp and "new_update" in update_cpp),
+        ("Offsets bridge exists", (ROOT / "kikaium/project/sdk/OffsetsBridge.h").exists()),
+        ("Generated offsets exist", (ROOT / "kikaium/project/sdk/generated/Offsets_generated.h").exists()),
+        ("libkikaium.so present", (ROOT / "kikaium/bin/libkikaium.so").exists()),
     ]
     for name, passed in checks:
         mark = "OK" if passed else "FAIL"
@@ -580,8 +743,9 @@ def cmd_emu_check(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+
 def main(argv: Optional[List[str]] = None) -> int:
-    ap = argparse.ArgumentParser(description="Halalium emulator / Melodium update toolkit")
+    ap = argparse.ArgumentParser(description="Halalium emulator / Kikaium update toolkit")
     sp = ap.add_subparsers(dest="cmd", required=True)
 
     p = sp.add_parser("profile", help="Analyze Halalium SO (+ dumps) into a profile")
@@ -589,10 +753,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--script", default="")
     p.add_argument("--dump", default="")
     p.add_argument("--out", default=str(ROOT / "tools/halalium_emu/out"))
-    p.add_argument("--apply", action="store_true", help="also apply into Melodium tree")
+    p.add_argument("--apply", action="store_true", help="also apply into Kikaium (+ legacy Melodium) tree")
     p.set_defaults(func=cmd_profile)
 
-    a = sp.add_parser("apply", help="Apply profile.json into Melodium/halalium sdk headers")
+    a = sp.add_parser("apply", help="Apply profile.json into Kikaium/halalium sdk headers")
     a.add_argument("--profile", required=True)
     a.set_defaults(func=cmd_apply)
 
@@ -602,7 +766,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     d.add_argument("--out", default="")
     d.set_defaults(func=cmd_diff)
 
-    c = sp.add_parser("emu-check", help="Check Melodium still matches Halalium contract")
+    c = sp.add_parser("emu-check", help="Check Kikaium still matches Halalium contract")
     c.set_defaults(func=cmd_emu_check)
 
     args = ap.parse_args(argv)

@@ -6,6 +6,10 @@ float alpha = 0.0f;
 inline C_UserInterface ui;
 namespace gui
 {
+    // Plaintext build/contract marker (oxorany hides ##wm_click in the SO).
+    __attribute__((used, retain)) static const char k_kikaium_contract[] =
+        "kikaium_contract:wm_click+egl+vmt+esp";
+
     void DrawGradientLine(ImDrawList *drawList, ImVec2 start, ImVec2 end, float startThickness, ImU32 startColor, ImU32 endColor, int segments = 20)
     {
         for (int i = 0; i < segments; i++)
@@ -53,6 +57,7 @@ namespace gui
 
     void DrawWatermark()
     {
+        (void)k_kikaium_contract; // keep contract string in .rodata for build verify
         const char *brand = oxorany("Kikaium");
         const char *line = oxorany("private  ·  0.39.2");
 
@@ -94,7 +99,8 @@ namespace gui
 
         ImGui::Dummy(ImVec2(width, height));
         ImGui::SetCursorScreenPos(rmin);
-        if (ImGui::InvisibleButton(oxorany("##kik_wm_click"), ImVec2(width, height)))
+        // Halalium contract id ##wm_click (brand chrome is Kikaium).
+        if (ImGui::InvisibleButton(oxorany("##wm_click"), ImVec2(width, height)))
             open = !open;
 
         ImGui::End();

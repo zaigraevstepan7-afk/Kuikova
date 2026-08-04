@@ -54,8 +54,28 @@ build_once() {
     echo "FAIL: update::init marker missing" >&2
     exit 3
   fi
+  if ! grep -q 'kikaium_contract:wm_click' "$dump"; then
+    rm -f "$dump"
+    echo "FAIL: menu contract marker missing" >&2
+    exit 4
+  fi
+  if ! grep -q 'Halalium-style VMT' "$dump"; then
+    rm -f "$dump"
+    echo "FAIL: VMT init path missing — not a full cheat build" >&2
+    exit 4
+  fi
+  if ! readelf -Ws "$so" 2>/dev/null | grep -q 'JNI_OnLoad'; then
+    rm -f "$dump"
+    echo "FAIL: JNI_OnLoad not exported" >&2
+    exit 5
+  fi
+  if ! readelf -d "$so" 2>/dev/null | grep -q 'INIT_ARRAY'; then
+    rm -f "$dump"
+    echo "FAIL: INIT_ARRAY (constructor) missing" >&2
+    exit 5
+  fi
   rm -f "$dump"
-  echo "OK build #$n → $so ($sz bytes)"
+  echo "OK build #$n → $so ($sz bytes) [JNI+VMT+egl+wm]"
 }
 
 if [[ "$VERIFY" -eq 1 ]]; then

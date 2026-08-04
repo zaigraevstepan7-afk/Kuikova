@@ -22,7 +22,7 @@ AndKittyInjector --memfd --libs libkikaium.so
 ctor / JNI_OnLoad → process-once → entry()
         │
         ├─ dlsym(libEGL, eglSwapBuffers) + A64/GOT hook  (Halalium: DobbyHook)
-        │     └─ ImGui draw + watermark click → menu
+        │     └─ ImGui + ##wm_click + c_esp/c_visual overlays (when g_sdk_ready)
         │
         └─ resolve libil2cpp/libunity base
               └─ update::init: ::init() + VMT Game/Player Update

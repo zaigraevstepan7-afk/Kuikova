@@ -1,24 +1,37 @@
-# Halalium emulator — Melodium update toolkit
-#
-# One-command update when a new Halalium drops:
-#
-#   python3 tools/halalium_emu/halalium_emu.py profile \
-#     --so /path/to/libhalalium.so \
-#     --script /path/to/script.json \
-#     --dump /path/to/dump.cs \
-#     --out tools/halalium_emu/out \
-#     --apply
-#
-#   # then rebuild Melodium (release-phone) and ship melodium/bin/libmelodium.so
-#
-# Commands:
-#   profile   — RE Halalium SO → profile.json + Offsets_generated.h
-#   apply     — write generated offsets into Melodium/halalium sdk trees
-#   diff      — compare two Halalium SOs (features/strings/hooks)
-#   emu-check — assert Melodium still follows Halalium render/menu contract
-#
-# Melodium architecture contract (emulated Halalium):
-#   1. Render via eglSwapBuffers (NOT Unity PresentFrame)
-#   2. Menu open via ##watermark / ##wm_click
-#   3. Offsets from Offsets_generated.h / OffsetsBridge.h
-#   4. Keep Melodium feature code (ESP/aim/chams/…) — Halalium is the map, not the product
+# Halalium emulator — Kikaium update toolkit
+
+One-command update when a new Halalium drops:
+
+```bash
+bash tools/halalium_emu/update.sh \
+  /path/to/libhalalium.so \
+  /path/to/script.json \
+  /path/to/dump.cs
+
+bash kikaium/build.sh --verify
+```
+
+## Commands
+
+| Cmd | Role |
+|-----|------|
+| `profile` | RE Halalium SO → profile.json + Offsets_generated.h |
+| `apply` | write generated offsets into **Kikaium** (+ legacy Melodium) trees |
+| `diff` | compare two Halalium SOs |
+| `emu-check` | assert Kikaium still follows Halalium contract |
+
+## Improved RE (v2)
+
+- Brace-balanced `dump.cs` class scrape (nested types)
+- ScriptMethod method RVAs (`getrr` OnStart, …)
+- Extra TypeInfos: GunController, PlayerMainCamera
+- Expanded field map (aim/hit/movement/PlayerManager slots)
+- 23 Halalium feature UI labels
+
+## Kikaium architecture contract
+
+1. Render via `eglSwapBuffers` (NOT Unity PresentFrame)
+2. Menu open via `##wm_click`
+3. Offsets from `Offsets_generated.h` / `OffsetsBridge.h`
+4. VMT Update hooks + ESP/visual overlays when `g_sdk_ready`
+5. Melodium-style feature code — Halalium is the map, Kikaium is the product

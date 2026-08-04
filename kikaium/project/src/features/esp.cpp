@@ -23,8 +23,8 @@ Matrix esp::matrix()
                 cashed = *(void **)((uintptr_t)ptr + oxorany(0x10));
                 if (cashed)
                 {
-                    // Camera view matrix: community 0xF0; some builds use 0x100 — prefer 0xF0 on 0.39.2
-                    mat = *(Matrix *)((uintptr_t)cashed + oxorany(0xF0));
+                    // Camera view matrix — Halalium RE / Offsets::Camera::matrix (0xF0 on 0.39.2)
+                    mat = *(Matrix *)((uintptr_t)cashed + Offsets::Camera::matrix);
                 }
             }
         }
@@ -51,7 +51,7 @@ bool esp::update_matrix()
     if (!cashed)
         return false;
 
-    this->matrix() = *(Matrix *)((uintptr_t)cashed + oxorany(0xF0));
+    this->matrix() = *(Matrix *)((uintptr_t)cashed + Offsets::Camera::matrix);
     return true;
 }
 

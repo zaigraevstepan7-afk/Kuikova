@@ -10,3 +10,6 @@ okak/
 kikaium/project/build/
 internal-main/internal-main/build/
 
+
+__pycache__/
+*.pyc

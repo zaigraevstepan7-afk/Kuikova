@@ -2,6 +2,12 @@
 
 Generated/maintained for Kikaium builds. Upstream binary: `halalium/bin/libhalalium.so`.
 
+Refresh:
+```bash
+bash tools/halalium_emu/update.sh
+bash kikaium/build.sh --verify
+```
+
 ## 1. Binary identity
 
 | Field | Value |
@@ -20,28 +26,25 @@ Generated/maintained for Kikaium builds. Upstream binary: `halalium/bin/libhalal
 | Hook strategy | `dlsym("libEGL.so","eglSwapBuffers")` + `DobbyHook` |
 | Install PC | `0x1d84e8` (xref from egl string load) |
 | Callback | draws ImGui each frame, then orig swap |
-| Menu open | InvisibleButton `##wm_click` → toggle byte `@0x279064` |
-| Watermark | `##watermark`, brand `Lemming`, line version string |
-| Settings WM | `##settings_watermark` |
+| Menu open | InvisibleButton `##wm_click` → toggle open |
+| Watermark | `##watermark`, brand `Lemming` |
 | ImGui | Dear ImGui + `imgui_impl_opengl3` |
-| Input | also hooks `android::InputConsumer::consume` (libinput) |
 
-**Kikaium mapping:** same egl symbol hook (A64 inline / GOT), watermark click open, copper UI (not Lemming chrome).
+**Kikaium:** same egl symbol hook; watermark brand `Kikaium`; click id `##wm_click`; copper UI; ESP/hit overlays on swap after `g_sdk_ready`.
 
-## 3. Threads / bypass labels
+## 3. Threads / bypass
 
 | String | Role |
 |--------|------|
-| `Halalium_Hooks` | feature / hook init logging |
+| `Halalium_Hooks` | feature / hook init |
 | `Halalium_Bypass` | getrr / OnStart path |
-| getrr | obfuscated anti-cheat OnStart @ RVA `0x8B9579C` |
-| Bypass pattern | destroy hooks → call orig → reinstall (needs relocating hooker) |
+| getrr | `ECGCHECCBBBAEBB$$OnStart` @ RVA `0x8B9579C` |
 
-**Kikaium:** getrr **disabled** until Dobby-class reloc exists (`use_getrr_bypass = false`).
+**Kikaium:** getrr **disabled** (`Hook::use_getrr_bypass = false`).
 
 ## 4. Memory model
 
-Halalium does **not** use `process_vm_readv/writev`. After inject it uses in-process LDR/STR with null checks; `/proc/self/maps` for module bases / soft validity.
+In-process LDR/STR after inject (no `process_vm_*`). `/proc/self/maps` for bases.
 
 **Kikaium:** `includes/halalium_mem.h` + `egl/memory.cpp`.
 
@@ -49,8 +52,8 @@ Halalium does **not** use `process_vm_readv/writev`. After inject it uses in-pro
 
 ```text
 klass = *(libil2cpp + TypeInfo_RVA)
-statics = *(klass + 0x90)          // Il2CppClass.static_fields
-instance = *(statics + 0x10)       // common singleton slot
+statics = *(klass + 0x90)
+instance = *(statics + 0x10)   // common singleton slot
 ```
 
 | TypeInfo | RVA |
@@ -62,62 +65,53 @@ instance = *(statics + 0x10)       // common singleton slot
 | BombManager | 0xAC4FAC0 |
 | PlayerController | 0xAC5E0D8 |
 | PlayerControls | 0xAC5E0E0 |
+| PlayerMainCamera | 0xAC5E188 |
 | WeaponController | 0xAC61A18 |
 | WeaponManager | 0xAC61A78 |
+| GunController | 0xAC59040 |
 | GameManager | 0xAC58C00 |
 | TouchController | 0xAC60B48 |
 | AntiCheatManager | 0xAC4DA30 |
 
-### Fields (Halalium LDR + dump)
+### Fields (dump.cs brace-parse + Halalium LDR)
 
 | Path | Off |
 |------|-----|
 | PlayerManager.players_list | 0x28 |
+| PlayerManager.alt_player | 0x68 |
 | PlayerManager.local_player | 0x70 |
-| Player.photon_player | 0x160 |
+| Player.character_view | 0x48 |
+| Player.team | 0x79 |
+| Player.aim_controller | 0x80 |
 | Player.weaponry | 0x88 |
+| Player.movement | 0x98 |
+| Player.hit_controller | 0xA8 |
 | Player.occlusion | 0xB8 |
 | Player.main_camera | 0xE8 |
-| Player.team | 0x79 |
-| Weaponry.weapon | 0xA0 |
-| GameController.PlayerControls | 0x2B0 |
+| Player.photon_view | 0x150 |
+| Player.photon_player | 0x160 |
+| Weaponry.weapon_controller | 0xA0 |
+| GameController.player_controls | 0x2B0 |
+| GameController.local_player | 0x2C0 |
+| Camera.matrix | 0xF0 |
 
-### Method RVAs (feng 0.39.2 / Halalium install immediates)
+### Methods
 
-| Method | RVA |
-|--------|-----|
-| PlayerController.Update | 0x8E7C40C |
-| PlayerController.LateUpdate | 0x8E7CF50 |
+| Name | RVA | Notes |
+|------|-----|-------|
+| PlayerController.Update | 0x8E7C40C | Halalium A64 target; Kikaium uses VMT `"Update"` |
+| AntiCheat OnStart (getrr) | 0x8B9579C | bypass off |
 
-**Kikaium default:** VMT name hooks (stable). A64 stolen-byte tramp optional / off.
+## 6. Feature surface (Halalium UI strings → Kikaium)
 
-## 6. Feature surface (strings in SO)
+23 labels recovered from SO (Enable Esp, Silent Aim, Auto Wall, Chams, …).  
+Kikaium menu: Melodium-style tabs (`esp`, `silent`, `chams`, `anti aims`, …) via oxorany.
 
-Enable Esp, Silent Aim, Rage, Anti Aim, No spread, Auto Fire, Auto Wall, Through Walls,
-Wallshot, Skin Changer, Chams, Local Chams, Spin, Fov Check, Health Bar, Bone, Box,
-Third Person, Watermark, Inf Ammo, …
+## 7. Kikaium product contract
 
-## 7. padla
-
-UnityFS AssetBundle with `fresnel.shader` / `shador.shader` for chams only. Not offsets.
-
-## 8. Why Melodium features died historically
-
-1. Menu drew (egl OK) but TypeInfo/`static_fields` wrong → null managers  
-2. Field drift (occlusion, PlayerControls)  
-3. Method RVA not refreshed  
-4. Double inject / double egl hook → crash after ImGui  
-
-Kikaium project ships correct Halalium offsets + process-once + VMT init.
-
-## 9. Re-run RE
-
-```bash
-python3 tools/halalium_emu/halalium_emu.py profile \
-  --so halalium/bin/libhalalium.so \
-  --script okak/okaakka/script.json \
-  --dump "okak/okaakka/dump (1).cs" \
-  --out tools/halalium_emu/out --apply
-```
-
-Artifacts: `kikaium/docs/halalium_profile.json`, `halalium_hooks.json`, `sdk/Offsets_*`.
+1. `eglSwapBuffers` draw path (not PresentFrame)
+2. Menu open via `##wm_click`
+3. Offsets from `sdk/generated/Offsets_generated.h`
+4. VMT hooks: GameController/PlayerController Update + LateUpdate + hit/gun
+5. Overlay: `c_esp->render()` + visual hits when `g_sdk_ready`
+6. Process-once inject guard (`kikaium.once`)
