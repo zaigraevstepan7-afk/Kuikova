@@ -20,9 +20,11 @@ from pathlib import Path
 from capstone import CS_ARCH_ARM64, CS_MODE_ARM, Cs
 from elftools.elf.elffile import ELFFile
 
-# new <= old (NUL-padded). Longer keys first.
+# Exact replacements (new <= old → NUL-padded). Longer first.
 EXACT: list[tuple[bytes, bytes]] = [
-    (b"t.me/lemminghack, 0.39.2", b"t.me/xxxstuxxx, 0.39.2"),  # 21 <= 24
+    # Credits / watermark lines
+    (b"from hehket: real thank u", b"\x00" + b"\x00" * 24),  # wipe credit (empty)
+    (b"t.me/lemminghack, 0.39.2", b"t.me/xxxstuxxx"),  # watermark TG only
     (b"##rage_right_bottom", b"##stx_right_bottom"),
     (b"##misc_right_bottom", b"##utl_right_bottom"),
     (b"##vis_right_bottom", b"##sgt_right_bottom"),
@@ -31,36 +33,43 @@ EXACT: list[tuple[bytes, bytes]] = [
     (b"##misc_right_top", b"##utl_right_top"),
     (b"##vis_right_top", b"##sgt_right_top"),
     (b"##weapons_list", b"##loadout_list"),
-    (b"##settings_left", b"##sys_left_pane"),  # 14 == 14
+    (b"##settings_left", b"##sys_left_pane"),
     (b"##skins_panel", b"##skin_panel0"),
     (b"##skins_list", b"##skin_list0"),
     (b"##rage_left", b"##stx_left0"),
     (b"##misc_left", b"##utl_left0"),
-    (b"##vis_left", b"##sgt_left"),   # 9 == 9
+    (b"##vis_left", b"##sgt_left"),
     (b"##watermark", b"##stux_mark"),
     (b"##wm_click", b"##stux_clk"),
     (b"##tab_bar", b"##stx_bar"),
     (b"##tabbtn", b"##stxbtn"),
-    (b"Halalium_Bypass", b"xxxpastuxxx_BP"),   # 14 <= 15
-    (b"Halalium_Hooks", b"xxxpastuxxx_Hk"),    # 14 == 14
-    (b"libhalalium.so", b"libxxxpastu.so"),    # 14 == 14 (SONAME slot)
+    (b"Halalium_Bypass", b"xxxpastuxxx_BP"),
+    (b"Halalium_Hooks", b"xxxpastuxxx_Hk"),
+    (b"libhalalium.so", b"libxxxpastu.so"),
 ]
 
-# Exact same length, null-bounded labels (tabs etc.)
+# Null-bounded tab labels — more distinct from Halalium names
 NUL_BOUNDED: list[tuple[bytes, bytes]] = [
     (b"Rage", b"Aim "),
-    (b"Visuals", b"Sight  "),
-    (b"Misc", b"Util"),
-    (b"Settings", b"System  "),
-    (b"Skins", b"Items"),
+    (b"Visuals", b"ESP    "),
+    (b"Misc", b"More"),
+    (b"Settings", b"Config  "),
+    (b"Skins", b"Paint"),
     (b"Watermark", b"Hud Label"),
+]
+
+MUST_GONE = [
+    b"Lemming",
+    b"lemminghack",
+    b"Halalium",
+    b"libhalalium",
+    b"hehket",
+    b"real thank",
 ]
 
 # "Lemming" (7) cannot hold "xxxpastuxxx" (11) — plant + retarget ADRP/ADD.
 PLANT_BRAND = b"xxxpastuxxx\x00"
 OLD_BRAND = b"Lemming\x00"
-
-MUST_GONE = [b"Lemming", b"lemminghack", b"Halalium", b"libhalalium"]
 MUST_KEEP = [b"Silent Aim", b"Enable Esp", b"Anti Aim"]
 
 
