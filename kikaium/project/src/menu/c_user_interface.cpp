@@ -639,15 +639,17 @@ void C_UserInterface::rage()
     float half_h = (h - ImGui::GetStyle().ItemSpacing.y) * 0.5f;
     if (this->beginChild("##vis_left", ImVec2(half, h), ImGuiChildFlags_Borders))
     {
+        // menu_body ADRP order: Enable Esp, Box, Box Type, Box Color, Corner Size,
+        // Health Bar, Distance, Distance Color
         checkbox(oxorany("Enable Esp"), &g.b_esp);
         checkbox(oxorany("Box"), &g.b_rect);
-        ImGui::SameLine();
-        ImGui::ColorEdit4(oxorany("Box Color"), g.m_rect, color_flags);
         {
             int bt = g.i_box_type;
             ImGui::Combo(oxorany("Box Type"), &bt, "Full\0Corner\0\0");
             g.i_box_type = bt;
         }
+        ImGui::SameLine();
+        ImGui::ColorEdit4(oxorany("Box Color"), g.m_rect, color_flags);
         if (g.i_box_type == 1)
             slider_float(oxorany("Corner Size"), &g.f_corner_size, 2.f, 40.f);
         checkbox(oxorany("Health Bar"), &g.b_health);
@@ -656,35 +658,36 @@ void C_UserInterface::rage()
         checkbox(oxorany("Distance"), &g.b_distance);
         ImGui::SameLine();
         ImGui::ColorEdit4(oxorany("Distance Color"), g.m_distance, color_flags);
-        // Bone ESP draw follows Enable Esp; rage "Bone" is silent-aim bone (menu_body)
     }
     this->endChild();
     ImGui::SameLine();
     ImGui::BeginChild("##vis_right_col", ImVec2(half, h), ImGuiChildFlags_None);
     if (this->beginChild("##vis_right_top", ImVec2(0, half_h), ImGuiChildFlags_Borders))
     {
+        // menu_body: Chams, Enemy Chams, Enemy Color, Through Walls
         checkbox(oxorany("Chams"), &g.b_players);
-        ImGui::SameLine();
-        ImGui::ColorEdit4(oxorany("Enemy Color"), g.m_players, color_flags);
         if (g.b_players)
         {
             int chams = g.i_players;
             ImGui::Combo(oxorany("Enemy Chams"), &chams, enemy_, IM_ARRAYSIZE(enemy_));
             g.i_players = chams;
         }
+        ImGui::SameLine();
+        ImGui::ColorEdit4(oxorany("Enemy Color"), g.m_players, color_flags);
         checkbox(oxorany("Through Walls"), &g.b_through_walls);
     }
     this->endChild();
     if (this->beginChild("##vis_right_bottom", ImVec2(0, 0), ImGuiChildFlags_Borders))
     {
+        // menu_body: World, World Color, Solid World Color, Apply World Color, Spin Speed, Reverse Spin
+        // Spin toggle gates Spin Speed (allowlist); not a separate ADRP string in SO
         checkbox(oxorany("World"), &g.b_world);
         ImGui::SameLine();
         ImGui::ColorEdit4(oxorany("World Color"), g.m_world, color_flags);
         checkbox(oxorany("Solid World Color"), &g.b_solid);
         checkbox(oxorany("Apply World Color"), &g.b_apply_world);
         checkbox(oxorany("Spin"), &g.b_spin);
-        if (g.b_spin)
-            slider_float(oxorany("Spin Speed"), &g.f_speed, 0, 180);
+        slider_float(oxorany("Spin Speed"), &g.f_speed, 0, 180);
         checkbox(oxorany("Reverse Spin"), &g.b_reverse_spin);
     }
     this->endChild();
@@ -748,9 +751,10 @@ void C_UserInterface::misc()
     float half_h = (h - ImGui::GetStyle().ItemSpacing.y) * 0.5f;
     if (this->beginChild(oxorany("##misc_left"), ImVec2(half, h), ImGuiChildFlags_Borders))
     {
+        // menu_body ##misc_left: Third Person only (Distance label is ESP vis_left)
         checkbox(oxorany("Third Person"), &g.b_third);
         if (g.b_third)
-            slider_float(oxorany("Distance"), &g.mom, 2, 3);
+            slider_float(oxorany("##tps_dist"), &g.mom, 2, 3);
     }
     this->endChild();
     ImGui::SameLine();
@@ -799,9 +803,6 @@ void C_UserInterface::config()
     if (this->beginChild(oxorany("##settings_left"), ImVec2(half, h), ImGuiChildFlags_Borders))
     {
         ImGui::ColorEdit4(oxorany("Accent Color"), g.m_accent, color_flags);
-        ImGui::Dummy(ImVec2(0, 8));
-        ImGui::TextColored(ImVec4(g.m_accent[0], g.m_accent[1], g.m_accent[2], 1.f), "%s", oxorany("Kikaium"));
-        ImGui::TextDisabled("%s", oxorany("Halalium functions only"));
     }
     this->endChild();
     ImGui::SameLine();
