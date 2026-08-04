@@ -103,7 +103,8 @@ namespace Hook {
     constexpr bool use_vmt_update_hooks = true;
     constexpr bool use_getrr_bypass = false;
     constexpr bool use_secondary_hooks = false;
-    constexpr bool use_input_consume = false;
+    // Halalium path: InputConsumer::consume + AInputEvent_getType/AMotionEvent_getX/Y
+    constexpr bool use_input_consume = true;
 }
 
 } // namespace OffsetsGenerated

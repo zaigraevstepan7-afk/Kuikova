@@ -49,7 +49,7 @@ Binary: `halalium/bin/libhalalium.so` BuildID `12532fca…` / `t.me/lemminghack,
 | eglSwapBuffers draw | ✅ |
 | ##wm_click open (closed default) | ✅ |
 | Absolute RVA Update/LateUpdate | ✅ tracked a64 (Dobby-equiv) + VMT fallback |
-| InputConsumer | ❌ (Unity GetTouch) |
+| InputConsumer | ✅ (AInputEvent_getType/getX/Y like Halalium) |
 | getrr Bypass thread | scaffolding only (off) |
 | Feature UI labels | ✅ Halalium names |
 | Melodium widget quality | ✅ left rail + copper |

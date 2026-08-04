@@ -86,7 +86,7 @@ Layout: right column stacks top+bottom under one parent (not three SameLine sibl
 | LateUpdate | `0x8E7CF50` | tracked a64 ON |
 | Secondary / Tertiary / ExtraA/B | see above | **OFF** (`use_secondary_hooks`) |
 | eglSwapBuffers | dlsym | ON |
-| InputConsumer | libinput | **OFF** (`use_input_consume`) |
+| InputConsumer | libinput | **ON** (`use_input_consume` — Halalium AInputEvent path) |
 | getrr Bypass | `0x8B9579C` | **OFF** (`use_getrr_bypass`) |
 | GameController VMT | — | ON (hardened) |
 

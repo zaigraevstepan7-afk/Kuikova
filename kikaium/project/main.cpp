@@ -33,6 +33,7 @@
 #include "globals.hpp"
 // Do NOT include <fcntl.h> here - globals.hpp defines `bool open`, which collides.
 #include "includes/halalium_hooks.h"
+#include "includes/kikaium_touch.h"
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/syscall.h>
@@ -40,6 +41,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <mutex>
 #include "src/menu/gui.h"
 #include "includes/fonts/verdana.h"
 #include "includes/fonts/smallest_pixel.h"
@@ -53,21 +55,83 @@ bool cmi;
 using namespace ImGui;
 
 // ---------------------------------------------------------------------------
-// Touch state - Halalium feeds via InputConsumer::consume; Unity GetTouch backup.
+// Touch — Halalium input_consume_cb @0x1d760c:
+//   InputConsumer::consume → AInputEvent_getType / AMotionEvent_getAction/getX/getY
+//   (UND imports in libhalalium.so — same NDK APIs, NOT raw C++ vtable).
+// Unity GetTouch is backup after SDK ready.
 // Applied to ImGui BEFORE NewFrame (AddMouse*Event).
 // ---------------------------------------------------------------------------
 struct TouchFeed
 {
-    std::atomic<float> x{0.f};
-    std::atomic<float> y{0.f};
-    std::atomic<bool> down{false};
-    std::atomic<bool> from_input{false};
+    float x = 0.f;
+    float y = 0.f;
+    bool down = false;
+    bool from_input = false;
+    bool prev_down = false;
+    bool tap_edge = false; // false→true transition this update
 };
 static TouchFeed g_touch;
+static std::mutex g_touch_mu;
+
+using ain_get_type_fn = int32_t (*)(const AInputEvent *);
+using am_get_action_fn = int32_t (*)(const AInputEvent *);
+using am_get_xy_fn = float (*)(const AInputEvent *, size_t);
+static ain_get_type_fn g_ain_get_type = nullptr;
+static am_get_action_fn g_am_get_action = nullptr;
+static am_get_xy_fn g_am_get_x = nullptr;
+static am_get_xy_fn g_am_get_y = nullptr;
 
 using consume_fn = int32_t (*)(void *thiz, void *factory, bool consumeBatches,
                                int64_t frameTime, uint32_t *outSeq, AInputEvent **outEvent);
 static consume_fn old_input_consume = nullptr;
+
+static bool resolve_ainput_apis()
+{
+    if (g_ain_get_type && g_am_get_action && g_am_get_x && g_am_get_y)
+        return true;
+    void *lib = dlopen("libandroid.so", RTLD_NOW);
+    if (!lib)
+        return false;
+    g_ain_get_type = (ain_get_type_fn)dlsym(lib, "AInputEvent_getType");
+    g_am_get_action = (am_get_action_fn)dlsym(lib, "AMotionEvent_getAction");
+    g_am_get_x = (am_get_xy_fn)dlsym(lib, "AMotionEvent_getX");
+    g_am_get_y = (am_get_xy_fn)dlsym(lib, "AMotionEvent_getY");
+    // Fallback to linked NDK symbols if dlsym missed (same as Halalium UND).
+    if (!g_ain_get_type)
+        g_ain_get_type = &AInputEvent_getType;
+    if (!g_am_get_action)
+        g_am_get_action = &AMotionEvent_getAction;
+    if (!g_am_get_x)
+        g_am_get_x = &AMotionEvent_getX;
+    if (!g_am_get_y)
+        g_am_get_y = &AMotionEvent_getY;
+    return g_ain_get_type && g_am_get_action && g_am_get_x && g_am_get_y;
+}
+
+static void touch_store(float x, float y, bool down, bool from_input)
+{
+    std::lock_guard<std::mutex> lock(g_touch_mu);
+    g_touch.x = x;
+    g_touch.y = y;
+    g_touch.tap_edge = down && !g_touch.down;
+    g_touch.prev_down = g_touch.down;
+    g_touch.down = down;
+    if (from_input)
+        g_touch.from_input = true;
+}
+
+bool kik_input::consume_tap_in_rect(float x0, float y0, float x1, float y1)
+{
+    std::lock_guard<std::mutex> lock(g_touch_mu);
+    if (!g_touch.tap_edge)
+        return false;
+    const float x = g_touch.x;
+    const float y = g_touch.y;
+    if (x < x0 || x > x1 || y < y0 || y > y1)
+        return false;
+    g_touch.tap_edge = false; // consume once
+    return true;
+}
 
 static int32_t hk_input_consume(void *thiz, void *factory, bool consumeBatches,
                                 int64_t frameTime, uint32_t *outSeq, AInputEvent **outEvent)
@@ -75,47 +139,57 @@ static int32_t hk_input_consume(void *thiz, void *factory, bool consumeBatches,
     int32_t status = old_input_consume
                          ? old_input_consume(thiz, factory, consumeBatches, frameTime, outSeq, outEvent)
                          : -1;
-    // Halalium input_consume_cb: only when consume OK and event present
+    // Halalium: only when consume OK (status==0) and outEvent non-null with event
     if (status != 0 || !outEvent || !*outEvent)
+        return status;
+    if (!g_ain_get_type || !g_am_get_action || !g_am_get_x || !g_am_get_y)
         return status;
 
     AInputEvent *ev = *outEvent;
-    if (AInputEvent_getType(ev) != AINPUT_EVENT_TYPE_MOTION)
+    // AINPUT_EVENT_TYPE_MOTION == 2 (Halalium cmp w0, #2)
+    if (g_ain_get_type(ev) != AINPUT_EVENT_TYPE_MOTION)
         return status;
 
-    const int32_t action = AMotionEvent_getAction(ev);
-    const int32_t masked = action & AMOTION_EVENT_ACTION_MASK;
-    const size_t idx = (size_t)((action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT);
-    const float x = AMotionEvent_getX(ev, idx);
-    const float y = AMotionEvent_getY(ev, idx);
-    g_touch.x.store(x, std::memory_order_relaxed);
-    g_touch.y.store(y, std::memory_order_relaxed);
-    g_touch.from_input.store(true, std::memory_order_relaxed);
+    const int32_t action = g_am_get_action(ev);
+    // Halalium: ands w8, w21, #0xfd — only DOWN(0)/UP(1) flip down-bit; MOVE keeps prior
+    const int32_t masked_fd = action & 0xfd;
+    const float x = g_am_get_x(ev, 0);
+    const float y = g_am_get_y(ev, 0);
 
-    if (masked == AMOTION_EVENT_ACTION_DOWN || masked == AMOTION_EVENT_ACTION_POINTER_DOWN ||
-        masked == AMOTION_EVENT_ACTION_MOVE)
-        g_touch.down.store(true, std::memory_order_relaxed);
-    else if (masked == AMOTION_EVENT_ACTION_UP || masked == AMOTION_EVENT_ACTION_POINTER_UP ||
-             masked == AMOTION_EVENT_ACTION_CANCEL)
-        g_touch.down.store(false, std::memory_order_relaxed);
-
+    {
+        std::lock_guard<std::mutex> lock(g_touch_mu);
+        bool down = g_touch.down;
+        if (masked_fd == 0)
+            down = true; // ACTION_DOWN
+        else if (masked_fd == 1)
+            down = false; // ACTION_UP
+        g_touch.tap_edge = down && !g_touch.down;
+        g_touch.prev_down = g_touch.down;
+        g_touch.x = x;
+        g_touch.y = y;
+        g_touch.down = down;
+        g_touch.from_input = true;
+    }
     return status;
 }
 
 static bool install_input_consume_hook()
 {
-    // DISABLED: InputConsumer yields android::InputEvent*, not NDK AInputEvent*.
-    // Calling AInputEvent_getType/getX on it SIGSEGVs within seconds of inject.
-    // Touch comes from UnityEngine.Input in handle_touch() after SDK ready.
     if (!Offsets::Hook::use_input_consume)
     {
-        LOGI("InputConsumer hook skipped (lobby-safe; Unity touch path)");
+        LOGI("InputConsumer hook skipped (flag off)");
         return false;
     }
     static bool tried = false;
     if (tried)
         return old_input_consume != nullptr;
     tried = true;
+
+    if (!resolve_ainput_apis())
+    {
+        LOGI("AInputEvent APIs missing — InputConsumer skipped");
+        return false;
+    }
 
     void *lib = dlopen("libinput.so", RTLD_NOW);
     if (!lib)
@@ -129,7 +203,7 @@ static bool install_input_consume_hook()
     }
     if (hhooks::install_tracked(sym, (void *)hk_input_consume, (void **)&old_input_consume))
     {
-        LOGI("InputConsumer::consume hooked @%p (Halalium path)", sym);
+        LOGI("InputConsumer::consume hooked @%p (Halalium AInput path)", sym);
         return true;
     }
     LOGI("InputConsumer::consume hook failed @%p", sym);
@@ -141,24 +215,33 @@ void handle_touch()
     auto &io = ImGui::GetIO();
 
     // 1) Halalium InputConsumer feed (preferred)
-    if (g_touch.from_input.load(std::memory_order_relaxed))
     {
-        const float x = g_touch.x.load(std::memory_order_relaxed);
-        const float y = g_touch.y.load(std::memory_order_relaxed);
-        const bool down = g_touch.down.load(std::memory_order_relaxed);
-        io.AddMousePosEvent(x, y);
-        io.AddMouseButtonEvent(0, down);
-        return;
+        float x, y;
+        bool down, from_input;
+        {
+            std::lock_guard<std::mutex> lock(g_touch_mu);
+            x = g_touch.x;
+            y = g_touch.y;
+            down = g_touch.down;
+            from_input = g_touch.from_input;
+        }
+        if (from_input)
+        {
+            io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
+            io.AddMousePosEvent(x, y);
+            io.AddMouseButtonEvent(0, down);
+            return;
+        }
     }
 
-    // 2) UnityEngine.Input backup
+    // 2) UnityEngine.Input backup (MethodInfo* last; icalls accept nullptr)
     if (!c_methods || !c_methods->get_count || !c_methods->get_touch)
         return;
     if (!g_sdk_ready.load(std::memory_order_acquire))
         return;
 
     int touch_count = 0;
-    touch_count = c_methods->get_count();
+    touch_count = c_methods->get_count(nullptr);
     static bool touch_active = false;
 
     if (touch_count <= 0)
@@ -167,17 +250,24 @@ void handle_touch()
         {
             io.AddMouseButtonEvent(0, false);
             touch_active = false;
+            float lx, ly;
+            {
+                std::lock_guard<std::mutex> lock(g_touch_mu);
+                lx = g_touch.x;
+                ly = g_touch.y;
+            }
+            touch_store(lx, ly, false, false);
         }
         return;
     }
 
-    // Clamp - garbage count from bad RVA would crash
+    // Clamp - garbage count from bad resolve would crash
     if (touch_count > 8)
         touch_count = 8;
 
     for (int i = 0; i < touch_count; i++)
     {
-        auto it = c_methods->get_touch(i);
+        auto it = c_methods->get_touch(i, nullptr);
         auto phase = it.fields.m_Phase;
 
         float x = it.fields.m_Position.x;
@@ -185,15 +275,19 @@ void handle_touch()
 
         if (phase == TouchPhase::Began || phase == TouchPhase::Stationary || phase == TouchPhase::Moved)
         {
+            io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
             io.AddMousePosEvent(x, y);
             io.AddMouseButtonEvent(0, true);
             touch_active = true;
+            touch_store(x, y, true, false);
         }
         else if (phase == TouchPhase::Ended || phase == TouchPhase::Canceled)
         {
+            io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
             io.AddMousePosEvent(x, y);
             io.AddMouseButtonEvent(0, false);
             touch_active = false;
+            touch_store(x, y, false, false);
         }
     }
 }
@@ -323,11 +417,12 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
 
     ImGuiIO &io = GetIO();
     io.DisplaySize = ImVec2((float)w, (float)h);
+
+    // Touch MUST be queued before ImGui::NewFrame (ImGui 1.87+ event API)
+    handle_touch();
+
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplAndroid_NewFrame(w, h);
-
-    // Touch MUST be queued before NewFrame (ImGui 1.87+ event API)
-    handle_touch();
     NewFrame();
     gui::render();
 

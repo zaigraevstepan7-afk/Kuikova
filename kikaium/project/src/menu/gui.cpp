@@ -1,6 +1,7 @@
 #include "gui.h"
 #include <globals.hpp>
 #include "c_user_interface.hpp"
+#include "includes/kikaium_touch.h"
 #include <cmath>
 
 float alpha = 0.0f;
@@ -115,12 +116,16 @@ namespace gui
 
         ImGui::Dummy(ImVec2(width, height));
         ImGui::SetCursorScreenPos(rmin);
+        // Always consume raw tap-edge first so ImGui + direct path cannot double-toggle
+        const bool raw_tap = kik_input::consume_tap_in_rect(rmin.x, rmin.y, rmax.x, rmax.y);
         bool clicked = ImGui::InvisibleButton(oxorany("##wm_click"), ImVec2(width, height));
 
         ImGuiIO &io = ImGui::GetIO();
         const bool hovered = io.MousePos.x >= rmin.x && io.MousePos.x <= rmax.x &&
                              io.MousePos.y >= rmin.y && io.MousePos.y <= rmax.y;
         if (!clicked && hovered && ImGui::IsMouseClicked(0))
+            clicked = true;
+        if (!clicked && raw_tap)
             clicked = true;
 
         if (clicked)
