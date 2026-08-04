@@ -22,16 +22,18 @@ AndKittyInjector --package com.axlebolt.standoff2 --libs libhalalium.so --memfd 
 
 `Bypass_getrr`: destroy tracked → `blr` orig trampoline → reinstall.
 
-## xxx = same
+## xxx = same hide for AC
 
 | | |
 |--|--|
-| Engine | `libdobby.a` → `DobbyHook` / `DobbyDestroy` |
+| Engine (game/getrr) | `libdobby.a` → `DobbyHook` / `DobbyDestroy` |
+| Engine (egl/input) | **a64 first** (menu-critical), Dobby fallback — still **UNTRACKED** |
 | memfd | `xxx/inj.sh` |
-| egl / Input | untracked DobbyHook |
 | Update / Late / Secondary… | tracked DobbyHook |
-| getrr | untracked DobbyHook + trampoline call (site stays patched) |
+| getrr | untracked DobbyHook + trampoline call |
 | GameController VMT | none (TypeInfo) |
+
+Watermark **xxx** top-left → tap to open menu.
 
 ```sh
 ./AndKittyInjector --package com.axlebolt.standoff2 --libs libxxx.so --memfd --delay 2000000

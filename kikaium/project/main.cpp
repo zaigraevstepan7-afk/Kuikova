@@ -203,20 +203,19 @@ static bool install_input_consume_hook()
         LOGI("InputConsumer::consume symbol missing");
         return false;
     }
-    // Halalium: egl + InputConsumer are UNTRACKED — getrr destroy must NOT tear them down
+    // Prefer a64 for InputConsumer (menu tap). Dobby fallback. Always UNTRACKED.
+    void *tramp = nullptr;
+    if (a64hook::install(sym, (void *)hk_input_consume, &tramp) && tramp)
+    {
+        old_input_consume = (decltype(old_input_consume))tramp;
+        LOGI("InputConsumer::consume a64 @%p (untracked)", sym);
+        return true;
+    }
     void *orig = nullptr;
     if (hhooks::install_untracked(sym, (void *)hk_input_consume, &orig) && orig)
     {
         old_input_consume = (decltype(old_input_consume))orig;
         LOGI("InputConsumer::consume DobbyHook @%p (untracked)", sym);
-        return true;
-    }
-    // a64 fallback so watermark ##wm_click still works if Dobby rejects libinput
-    void *tramp = nullptr;
-    if (a64hook::install(sym, (void *)hk_input_consume, &tramp) && tramp)
-    {
-        old_input_consume = (decltype(old_input_consume))tramp;
-        LOGI("InputConsumer::consume a64 @%p (untracked fallback)", sym);
         return true;
     }
     LOGI("InputConsumer::consume hook failed @%p", sym);
@@ -709,7 +708,7 @@ void init_render_hook()
     if (egl_hooked)
         return;
 
-    // Absolute trampolines — near-branch can miss across libEGL / our .so
+    // Absolute trampolines for any Dobby game hooks installed later
     dobby_set_near_trampoline(false);
 
     void *egl = dlopen(oxorany("libEGL.so"), RTLD_NOW);
@@ -729,25 +728,25 @@ void init_render_hook()
         install_input_consume_hook();
     };
 
-    // 1) Halalium path: DobbyHook (UNTRACKED)
-    void *orig = nullptr;
-    if (hhooks::install_untracked(sym, (void *)hook_egl_swap_buffers, &orig) && orig)
-    {
-        finish_ok(orig, "Dobby");
-        return;
-    }
-    LOGI("egl DobbyHook failed — trying a64 fallback");
-
-    // 2) Proven a64 inline (same untracked profile) — restores menu if Dobby rejects
+    // MENU CRITICAL: prefer a64 inline for egl (stable on OnePlus / AndKitty).
+    // Halalium uses Dobby here too, but broken Dobby trampolines = no watermark.
+    // Game RVAs + getrr still use Dobby (hide profile). egl/input stay UNTRACKED either way.
     void *tramp = nullptr;
     if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &tramp) && tramp)
     {
         finish_ok(tramp, "a64");
         return;
     }
+    LOGI("egl a64 failed — trying Dobby");
 
-    // 3) GOT scan last resort
-    LOGI("egl a64 failed — GOT scan");
+    void *orig = nullptr;
+    if (hhooks::install_untracked(sym, (void *)hook_egl_swap_buffers, &orig) && orig)
+    {
+        finish_ok(orig, "Dobby");
+        return;
+    }
+
+    LOGI("egl Dobby failed — GOT scan");
     old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))sym;
     if (hook_egl_got_slots(sym, (void *)hook_egl_swap_buffers, (void **)&old_egl_swap_buffers))
     {
@@ -761,21 +760,21 @@ void init_render_hook()
         dobby_set_near_trampoline(false);
         for (int i = 0; i < 40; i++)
         {
-            void *o = nullptr;
-            if (hhooks::install_untracked(sym, (void *)hook_egl_swap_buffers, &o) && o)
-            {
-                old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))o;
-                egl_hooked = true;
-                LOGI("eglSwapBuffers Dobby OK (delayed)");
-                install_input_consume_hook();
-                break;
-            }
             void *t = nullptr;
             if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &t) && t)
             {
                 old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))t;
                 egl_hooked = true;
                 LOGI("eglSwapBuffers a64 OK (delayed)");
+                install_input_consume_hook();
+                break;
+            }
+            void *o = nullptr;
+            if (hhooks::install_untracked(sym, (void *)hook_egl_swap_buffers, &o) && o)
+            {
+                old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))o;
+                egl_hooked = true;
+                LOGI("eglSwapBuffers Dobby OK (delayed)");
                 install_input_consume_hook();
                 break;
             }
@@ -964,6 +963,14 @@ void *entry()
         sleep(1);
     }
 
+    // If first pass missed (libEGL late), keep retrying until ImGui inits
+    for (int i = 0; i < 30 && !egl_inited; i++)
+    {
+        init_render_hook();
+        sleep(1);
+    }
+    LOGI("entry render: egl_inited=%d", (int)egl_inited);
+
     if (!_il2cpp)
         _il2cpp = new il2cpp_t();
 
@@ -981,6 +988,13 @@ void *entry()
     LOGI("game base ready %p - starting update::init", (void *)base);
     if (base > 0)
         c_update->init();
+
+    // Keep process alive + retry egl if still dark
+    for (int i = 0; i < 20 && !egl_inited; i++)
+    {
+        init_render_hook();
+        sleep(2);
+    }
 
     sleep(4);
     pthread_exit(nullptr);
@@ -1115,39 +1129,60 @@ static bool claim_via_abstract_unix()
 
 static bool claim_process_once()
 {
-    if (egl_already_owned())
+    // Only skip if overlay is already live in this process
+    if (egl_inited)
     {
-        LOGI("egl already hooked by another copy - skip start");
+        LOGI("imgui already inited - skip duplicate start");
         return false;
     }
 
     const int pf = claim_via_pidfile();
     if (pf == 1)
         return true;
+    // pf==0: pidfile held — still allow start if menu never came up (failed first inject)
     if (pf == 0)
-        return false; // held by us or another live process
-
-    if (egl_already_owned())
-    {
-        LOGI("egl already hooked after pidfile miss - skip start");
-        return false;
-    }
+        LOGI("pidfile busy but egl not inited - allow retry");
 
     if (claim_via_abstract_unix())
         return true;
 
-    LOGI("all process locks failed - refuse start to avoid double-hook");
-    return false;
+    LOGI("locks contended - start anyway (menu recovery)");
+    return true;
 }
 
 static void start_kikaium_once()
 {
     static std::atomic<bool> local_started{false};
+    // If first start claimed but egl never inited, allow another attempt
+    if (local_started.load(std::memory_order_acquire) && egl_inited)
+        return;
+    if (local_started.load(std::memory_order_acquire) && !egl_inited)
+    {
+        LOGI("retry start_kikaium_once (egl still dark)");
+        // fall through — don't double-spawn if entry thread still running
+        static std::atomic<bool> retrying{false};
+        bool expected = false;
+        if (!retrying.compare_exchange_strong(expected, true))
+            return;
+        if (!claim_process_once())
+        {
+            retrying.store(false);
+            return;
+        }
+        melo_truncate_log();
+        LOGI("start_kikaium_once RETRY pid=%d", (int)getpid());
+        std::thread(entry).detach();
+        return;
+    }
+
     bool expected = false;
     if (!local_started.compare_exchange_strong(expected, true))
         return;
     if (!claim_process_once())
+    {
+        local_started.store(false); // allow future retry
         return;
+    }
     melo_truncate_log();
     LOGI("start_kikaium_once pid=%d", (int)getpid());
     std::thread(entry).detach();
