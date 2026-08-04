@@ -53,10 +53,10 @@ namespace gui
 
         const char *brand = oxorany("xxx");
 
-        ImGui::SetNextWindowPos(ImVec2(12.f, 12.f), ImGuiCond_Always);
+        // Top-left, always on top of game UI so tap target is obvious
+        ImGui::SetNextWindowPos(ImVec2(16.f, 16.f), ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(0.0f);
-        if (!open)
-            ImGui::SetNextWindowFocus();
+        ImGui::SetNextWindowFocus();
 
         ImGui::Begin(oxorany("##stux_wm"), nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
@@ -65,9 +65,10 @@ namespace gui
                          ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_AlwaysAutoResize |
                          ImGuiWindowFlags_NoNav);
 
+        ImGui::PushFont(nullptr);
         ImVec2 ts = ImGui::CalcTextSize(brand);
-        float pad = 10.f;
-        float width = ts.x + pad * 2.f;
+        float pad = 14.f;
+        float width = ts.x + pad * 2.f + 8.f;
         float height = ts.y + pad * 2.f;
 
         ImVec2 p = ImGui::GetCursorScreenPos();
@@ -75,8 +76,10 @@ namespace gui
         ImVec2 rmin = p;
         ImVec2 rmax = ImVec2(p.x + width, p.y + height);
 
-        dl->AddRectFilled(rmin, rmax, IM_COL32(0, 0, 0, 160), 0.f);
-        dl->AddText(ImVec2(p.x + pad, p.y + pad), IM_COL32(255, 255, 255, 245), brand);
+        dl->AddRectFilled(rmin, rmax, IM_COL32(0, 0, 0, 200), 0.f);
+        dl->AddRect(rmin, rmax, IM_COL32(255, 196, 72, 220), 0.f, 0, 1.5f);
+        dl->AddText(ImVec2(p.x + pad, p.y + pad), IM_COL32(255, 255, 255, 255), brand);
+        ImGui::PopFont();
 
         ImGui::Dummy(ImVec2(width, height));
         ImGui::SetCursorScreenPos(rmin);

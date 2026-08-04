@@ -33,6 +33,7 @@
 #include "globals.hpp"
 // Do NOT include <fcntl.h> here - globals.hpp defines `bool open`, which collides.
 #include "includes/halalium_hooks.h"
+#include "includes/a64_inline_hook.h"
 #include "includes/kikaium_touch.h"
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -204,13 +205,21 @@ static bool install_input_consume_hook()
     }
     // Halalium: egl + InputConsumer are UNTRACKED — getrr destroy must NOT tear them down
     void *orig = nullptr;
-    if (hhooks::install_untracked(sym, (void *)hk_input_consume, &orig))
+    if (hhooks::install_untracked(sym, (void *)hk_input_consume, &orig) && orig)
     {
         old_input_consume = (decltype(old_input_consume))orig;
-        LOGI("InputConsumer::consume DobbyHook @%p (Halalium untracked)", sym);
+        LOGI("InputConsumer::consume DobbyHook @%p (untracked)", sym);
         return true;
     }
-    LOGI("InputConsumer::consume DobbyHook failed @%p", sym);
+    // a64 fallback so watermark ##wm_click still works if Dobby rejects libinput
+    void *tramp = nullptr;
+    if (a64hook::install(sym, (void *)hk_input_consume, &tramp) && tramp)
+    {
+        old_input_consume = (decltype(old_input_consume))tramp;
+        LOGI("InputConsumer::consume a64 @%p (untracked fallback)", sym);
+        return true;
+    }
+    LOGI("InputConsumer::consume hook failed @%p", sym);
     return false;
 }
 
@@ -655,6 +664,7 @@ bool is_executable_address(void *ptr)
 }
 
 // Halalium: dlsym/DobbySymbolResolver(libEGL, eglSwapBuffers) + DobbyHook(symbol).
+// a64hook emergency fallback declared via includes/a64_inline_hook.h (top).
 
 static bool hook_egl_got_slots(void *symbol, void *replacement, void **out_orig)
 {
@@ -699,31 +709,45 @@ void init_render_hook()
     if (egl_hooked)
         return;
 
+    // Absolute trampolines — near-branch can miss across libEGL / our .so
+    dobby_set_near_trampoline(false);
+
     void *egl = dlopen(oxorany("libEGL.so"), RTLD_NOW);
     void *sym = egl ? dlsym(egl, oxorany("eglSwapBuffers")) : nullptr;
     if (!sym)
-    {
-        // Halalium: DobbySymbolResolver(libEGL, eglSwapBuffers)
         sym = DobbySymbolResolver("libEGL.so", "eglSwapBuffers");
-    }
     if (!sym)
     {
         LOGI("eglSwapBuffers resolve failed");
         return;
     }
 
-    // Halalium egl_install: DobbyHook only (UNTRACKED)
-    void *orig = nullptr;
-    if (hhooks::install_untracked(sym, (void *)hook_egl_swap_buffers, &orig))
-    {
+    auto finish_ok = [&](void *orig, const char *how) {
         old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))orig;
         egl_hooked = true;
-        LOGI("eglSwapBuffers DobbyHook OK sym=%p orig=%p", sym, orig);
+        LOGI("eglSwapBuffers hook OK via %s sym=%p orig=%p", how, sym, orig);
         install_input_consume_hook();
+    };
+
+    // 1) Halalium path: DobbyHook (UNTRACKED)
+    void *orig = nullptr;
+    if (hhooks::install_untracked(sym, (void *)hook_egl_swap_buffers, &orig) && orig)
+    {
+        finish_ok(orig, "Dobby");
+        return;
+    }
+    LOGI("egl DobbyHook failed — trying a64 fallback");
+
+    // 2) Proven a64 inline (same untracked profile) — restores menu if Dobby rejects
+    void *tramp = nullptr;
+    if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &tramp) && tramp)
+    {
+        finish_ok(tramp, "a64");
         return;
     }
 
-    LOGI("egl DobbyHook failed, falling back to GOT scan");
+    // 3) GOT scan last resort
+    LOGI("egl a64 failed — GOT scan");
     old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))sym;
     if (hook_egl_got_slots(sym, (void *)hook_egl_swap_buffers, (void **)&old_egl_swap_buffers))
     {
@@ -734,14 +758,24 @@ void init_render_hook()
     }
 
     std::thread([sym]() {
+        dobby_set_near_trampoline(false);
         for (int i = 0; i < 40; i++)
         {
-            void *orig2 = nullptr;
-            if (hhooks::install_untracked(sym, (void *)hook_egl_swap_buffers, &orig2))
+            void *o = nullptr;
+            if (hhooks::install_untracked(sym, (void *)hook_egl_swap_buffers, &o) && o)
             {
-                old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))orig2;
+                old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))o;
                 egl_hooked = true;
-                LOGI("eglSwapBuffers DobbyHook OK (delayed) sym=%p", sym);
+                LOGI("eglSwapBuffers Dobby OK (delayed)");
+                install_input_consume_hook();
+                break;
+            }
+            void *t = nullptr;
+            if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &t) && t)
+            {
+                old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))t;
+                egl_hooked = true;
+                LOGI("eglSwapBuffers a64 OK (delayed)");
                 install_input_consume_hook();
                 break;
             }
@@ -749,7 +783,7 @@ void init_render_hook()
             if (hook_egl_got_slots(sym, (void *)hook_egl_swap_buffers, (void **)&old_egl_swap_buffers))
             {
                 egl_hooked = true;
-                LOGI("eglSwapBuffers GOT hook OK (delayed)");
+                LOGI("eglSwapBuffers GOT OK (delayed)");
                 install_input_consume_hook();
                 break;
             }
@@ -916,6 +950,7 @@ void *entry()
     // Match Halalium thread naming (Hooks / Bypass style)
     pthread_setname_np(pthread_self(), "xxx_Hooks");
     LOGI("entry()");
+    dobby_set_near_trampoline(false);
 
     // Hook render ASAP - overlay must not wait on il2cpp/base.
     for (int i = 0; i < 60; i++)

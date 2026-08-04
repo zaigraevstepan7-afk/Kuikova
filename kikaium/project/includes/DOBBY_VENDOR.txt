@@ -1,1 +1,2 @@
 Dobby commit 2d67b83 + NDK android-arm64 patches (os_arch_features, ProcessRuntimeUtility, symbol_resolver, asm GOT)
+Dobby PIC-safe 20260804

@@ -570,6 +570,9 @@ void update::init()
         return;
     }
 
+    // Also disable near trampoline for game hooks (Update/getrr) — absolute jumps
+    dobby_set_near_trampoline(false);
+
     c_globals->init();
 
     const uintptr_t update_rva = Offsets::Method::PlayerController_Update;
