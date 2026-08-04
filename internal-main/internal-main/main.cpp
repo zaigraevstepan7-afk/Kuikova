@@ -13,6 +13,7 @@
 #include <fstream>
 #include <iostream>
 #include <thread>
+#include <atomic>
 #include <pthread.h>
 #include <dlfcn.h>
 #include <EGL/egl.h>
@@ -205,7 +206,7 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
         setup();
         apply_imgui_style();
         egl_inited = true;
-        __android_log_print(ANDROID_LOG_INFO, "melodium", "ImGui egl inited %dx%d", w, h);
+        LOGI("ImGui egl inited %dx%d", w, h);
     }
 
     ImGuiIO &io = GetIO();
@@ -485,8 +486,18 @@ void init_render_hook()
         return;
     }
 
-    // Prefer GOT pointer-swap: call REAL eglSwapBuffers as orig (no stolen-byte trampoline).
-    // Inline patch of libEGL often crashes on first frame when orig tramp has PC-relative ops.
+    // Primary: inline-hook the real symbol (Halalium Dobby path).
+    // GOT-only often "succeeds" on dead slots while the game never hits our draw path → blank menu.
+    void *tramp = nullptr;
+    if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &tramp))
+    {
+        old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))tramp;
+        egl_hooked = true;
+        LOGI("eglSwapBuffers inline hook OK sym=%p tramp=%p", sym, tramp);
+        return;
+    }
+
+    LOGI("inline hook failed, falling back to GOT scan");
     old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))sym;
     if (hook_egl_got_slots(sym, (void *)hook_egl_swap_buffers, (void **)&old_egl_swap_buffers))
     {
@@ -495,19 +506,17 @@ void init_render_hook()
         return;
     }
 
-    LOGI("GOT hook missed, trying inline (may be unstable)");
-    void *tramp = nullptr;
-    if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &tramp))
-    {
-        old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))tramp;
-        egl_hooked = true;
-        LOGI("eglSwapBuffers inline hook OK sym=%p", sym);
-        return;
-    }
-
     std::thread([sym]() {
         for (int i = 0; i < 40; i++)
         {
+            void *tramp2 = nullptr;
+            if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &tramp2))
+            {
+                old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))tramp2;
+                egl_hooked = true;
+                LOGI("eglSwapBuffers inline hook OK (delayed) sym=%p", sym);
+                break;
+            }
             old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))sym;
             if (hook_egl_got_slots(sym, (void *)hook_egl_swap_buffers, (void **)&old_egl_swap_buffers))
             {
@@ -719,10 +728,10 @@ void *entry()
 
 static void start_melodium_once()
 {
-    static bool started = false;
-    if (started)
+    static std::atomic<bool> started{false};
+    bool expected = false;
+    if (!started.compare_exchange_strong(expected, true))
         return;
-    started = true;
     LOGI("start_melodium_once");
     std::thread(entry).detach();
 }
