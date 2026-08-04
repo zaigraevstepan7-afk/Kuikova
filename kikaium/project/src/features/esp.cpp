@@ -309,10 +309,8 @@ void esp::render()
             x = headpos.x - width * 0.5f;
             y = headpos.y;
 
-            if (g.b_skeleton)
-            {
-                DrawSkeleton({g.m_skeleton[0], g.m_skeleton[1], g.m_skeleton[2], g.m_skeleton[3]}, false, false, false, matrix(), player);
-            }
+            // Halalium vis_left has no separate Bone toggle — skeleton with Enable Esp
+            DrawSkeleton({g.m_skeleton[0], g.m_skeleton[1], g.m_skeleton[2], g.m_skeleton[3]}, false, false, false, matrix(), player);
 
             if (g.b_rect)
             {

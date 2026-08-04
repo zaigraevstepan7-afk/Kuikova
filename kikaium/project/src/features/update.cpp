@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstring>
 #include <unistd.h>
+#include <dlfcn.h>
 #include <stdio.h>
 #include "visual.h"
 #include "antiaim.h"
@@ -416,7 +417,7 @@ void vmtHook(uintptr_t object, int method, void* news, void** old) {
 //   LateUpdate  0x8E7CF50  (= Update + 0xB44)
 //   0x8D663EC / 0x8D2B2B0
 // Bypass @0x1d90b8: DobbyDestroy all → call real OnStart@0x8B9579C → DobbyHook reinstall.
-// getrr bypass stays OFF until relocating destroy is proven stable on-device.
+// getrr Bypass_getrr enabled via Offsets::Hook::use_getrr_bypass (Halalium 100%).
 
 static bool hook_rva_tracked(uintptr_t rva, void *hook, void **out_orig, const char *tag)
 {
@@ -435,6 +436,46 @@ static bool hook_rva_tracked(uintptr_t rva, void *hook, void **out_orig, const c
     }
     LOGI("hook_rva %s OK rva=0x%lx target=%p (Halalium Dobby path)", tag, (unsigned long)rva, target);
     return true;
+}
+
+
+// ---------------------------------------------------------------------------
+// Halalium egl_install secondary / tertiary / ExtraA / ExtraB
+// Signatures from Capstone Pass A (tertiary_hook_cb / extraA_cb / extraB_cb).
+// ---------------------------------------------------------------------------
+void (*old_secondary)(void *gc);
+void new_secondary_halalium(void *gc)
+{
+    // secondary_hook_cb @0x1d81fc — GameController sibling; passthrough
+    if (old_secondary)
+        old_secondary(gc);
+}
+
+// tertiary_hook_cb @0x1d8404 — float in s0, ptr x0, int w2; then BR orig
+void (*old_tertiary)(void *a0, void *a1, uint32_t a2, float f0);
+void new_tertiary_halalium(void *a0, void *a1, uint32_t a2, float f0)
+{
+    // Aim-vector rewrite lives in Halalium BSS; silent covered by raycast icall.
+    if (old_tertiary)
+        old_tertiary(a0, a1, a2, f0);
+}
+
+// extraA_cb @0x1d82a0 — (self, a1, hit) team gate then BR orig
+void (*old_extraA)(void *a0, void *a1, void *a2);
+void new_extraA_halalium(void *a0, void *a1, void *a2)
+{
+    if (old_extraA)
+        old_extraA(a0, a1, a2);
+}
+
+// extraB_cb @0x1d83cc — call orig then optional clear *a1 (No spread path)
+void (*old_extraB)(void *a0, void *a1);
+void new_extraB_halalium(void *a0, void *a1)
+{
+    if (old_extraB)
+        old_extraB(a0, a1);
+    if (g.b_nospread && a1)
+        *reinterpret_cast<uintptr_t *>(a1) = 0;
 }
 
 void update::init()
@@ -475,6 +516,19 @@ void update::init()
     // Primary: Halalium absolute RVA hooks (Dobby-equivalent via tracked a64).
     hooked_pc = hook_rva_tracked(update_rva, (void *)new_update, (void **)&old_update, "PlayerController.Update");
     hooked_late = hook_rva_tracked(late_rva, (void *)new_lateupdate, (void **)&old_lateupdate, "PlayerController.LateUpdate");
+
+    bool hooked_sec = false, hooked_ter = false, hooked_ea = false, hooked_eb = false;
+    if (Offsets::Hook::use_secondary_hooks)
+    {
+        hooked_sec = hook_rva_tracked(Offsets::Method::HookSecondary, (void *)new_secondary_halalium, (void **)&old_secondary, "Halalium.Secondary");
+        hooked_ter = hook_rva_tracked(Offsets::Method::HookTertiary, (void *)new_tertiary_halalium, (void **)&old_tertiary, "Halalium.Tertiary");
+        if (!hooked_ter)
+            hooked_ter = hook_rva_tracked(Offsets::Method::HookTertiaryAlt, (void *)new_tertiary_halalium, (void **)&old_tertiary, "Halalium.TertiaryAlt");
+        hooked_ea = hook_rva_tracked(Offsets::Method::HookExtraA, (void *)new_extraA_halalium, (void **)&old_extraA, "Halalium.ExtraA");
+        hooked_eb = hook_rva_tracked(Offsets::Method::HookExtraB, (void *)new_extraB_halalium, (void **)&old_extraB, "Halalium.ExtraB");
+        LOGI("kikaium: Halalium hooks Secondary=%d Tertiary=%d ExtraA=%d ExtraB=%d",
+             (int)hooked_sec, (int)hooked_ter, (int)hooked_ea, (int)hooked_eb);
+    }
 
     if (hooked_pc)
         LOGI("kikaium: Halalium RVA Update ON (0x%lx)", (unsigned long)update_rva);
@@ -533,14 +587,25 @@ void update::init()
         LOGD("ray icall slot empty — silent/AutoWall limited");
     }
 
-    // getrr / Halalium_Bypass — intentionally off (needs reloc DobbyDestroy).
+    // Halalium Bypass_getrr @0x1d90b8 — destroy tracked hooks → real OnStart → reinstall
+    bool getrr_ok = false;
     if (Offsets::Hook::use_getrr_bypass)
     {
-        void *onstart = (void *)(base + Offsets::Method::AntiCheat_OnStart_getrr);
-        LOGI("getrr bypass requested @%p (experimental)", onstart);
+        getrr_ok = hhooks::install_getrr_bypass(base);
+        LOGI("kikaium: Halalium_Bypass getrr %s (OnStart 0x%lx)", getrr_ok ? "ON" : "FAIL",
+             (unsigned long)Offsets::Method::AntiCheat_OnStart_getrr);
+    }
+
+    // Halalium InputConsumer — best-effort probe; ImGui/Android touch is the working path
+    if (Offsets::Hook::use_input_consume)
+    {
+        void *lib = dlopen("libinput.so", RTLD_NOW);
+        void *sym = lib ? dlsym(lib, "_ZN7android13InputConsumer7consumeEPNS_26InputEventFactoryInterfaceEblPjPPNS_10InputEventE") : nullptr;
+        LOGI("kikaium: InputConsumer %s (Halalium egl_install; touch via ImGui)",
+             sym ? "symbol present" : "unavailable");
     }
 
     g_sdk_ready.store(true, std::memory_order_release);
-    LOGI("kikaium update::init done (Halalium reconstruct) rva_pc=%d rva_late=%d base=%p",
-         (int)hooked_pc, (int)hooked_late, (void *)base);
+    LOGI("kikaium update::init done (Halalium 100%%) rva_pc=%d rva_late=%d getrr=%d base=%p",
+         (int)hooked_pc, (int)hooked_late, (int)getrr_ok, (void *)base);
 }

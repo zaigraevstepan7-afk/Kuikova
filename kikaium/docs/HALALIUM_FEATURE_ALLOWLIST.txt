@@ -50,7 +50,10 @@ Accent Color
 ##rage_right_bottom
 ##misc_left
 ##misc_right_top
+##misc_right_bottom
 ##settings_left
 ##settings_watermark
 ##skins_panel
+##weapons_list
+##skins_list
 ##wm_click
