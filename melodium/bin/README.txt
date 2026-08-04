@@ -1,8 +1,9 @@
-# Melodium builds (Halalium-compatible)
+# Melodium / Kikaium builds
 
 | File | Notes |
-|---|---|
-| `libmelodium.so` | Latest arm64 — Halalium egl/menu + emu-wired TypeInfo |
-| `libmelodium-halalium-emu.so` | Same as latest |
+|------|------|
+| **`libkikaium.so`** | **Preferred** — Halalium engine, Kikaium brand (stable) |
+| `libmelodium.so` | Experimental Melodium shell (can crash on inject) |
+| `libmelodium-halalium-emu.so` | Same as latest Melodium build |
 
-Update workflow: see `/UPDATE.md` and `tools/halalium_emu/`.
+See `/kikaium/README.md` and `/UPDATE.md`.

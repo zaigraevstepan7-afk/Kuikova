@@ -496,7 +496,7 @@ void C_UserInterface::render()
 
             if (this->beginChild(" ", ImVec2(ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2), 48), ImGuiChildFlags_Borders, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
             {
-                const char *labeltext = ("Lemming");
+                const char *labeltext = ("Kikaium");
                 ImVec2 labelsize = ImGui::CalcTextSize(labeltext);
                 ImVec2 labelpos = ImVec2((ImGui::GetWindowPos().x + (ImGui::GetWindowSize().x / 2)) - (labelsize.x / 2), (ImGui::GetWindowPos().y + (ImGui::GetWindowSize().y / 2)) - (labelsize.y / 2));
                 ImGui::GetWindowDrawList()->AddText(labelpos, ImColor(255, 255, 255, 255), labeltext);

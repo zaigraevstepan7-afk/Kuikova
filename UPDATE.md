@@ -1,59 +1,23 @@
-# Melodium = Halalium architecture + our features
+# UPDATE — Kikaium (Halalium engine)
 
-Melodium is **not** a full decompile of Halalium. It is a Halalium-compatible shell:
-
-| Halalium (binary) | Melodium (source) |
-|---|---|
-| `dlsym` + `DobbyHook(eglSwapBuffers)` | `dlsym` + GOT pointer-swap of `eglSwapBuffers` |
-| Menu open via `##wm_click` on watermark | same |
-| Watermark `Lemming` / `t.me/lemminghack, 0.39.2` | same branding |
-| Offsets buried in LDR / runtime | `Offsets_generated.h` from emulator |
-| Closed features | Melodium ESP / silent / AA / chams / world / misc |
-| In-process `LDR`/`STR` (+ maps null checks) | `includes/halalium_mem.h` + `egl/memory.cpp` (no `process_vm_*`) |
-| getrr bypass (`OnStart` @ `0x8B9579C`) | **disabled** — needs Dobby-class reloc; patch crashed on inject |
-
-## Bypass (Halalium-style)
-
-Halalium temporarily destroys hooks around obfuscated `OnStart` (`0x8B9579C`). Melodium keeps the registry helper in `halalium_hooks.h` but **does not arm it** until a relocating hooker exists (`use_getrr_bypass = false`).
-
-## Memory (Halalium-style)
-
-Halalium does **not** use `process_vm_readv` / `process_vm_writev`. After inject it reads/writes the game address space directly (`ldr [base, TypeInfo]`, `ldr [player, #0x160]`, `strb …`) with null checks. Maps (`/proc/self/maps`) are for module base / soft validity — Melodium refreshes the maps cache on miss so heap growth after inject does not silently fail reads.
-
-Melodium mirrors that via `hmem::read` / `hmem::write` / `hmem::typeinfo` / `hmem::field`. The old `memory::` API is a thin wrapper over the same path.
-
-## Update (no more hand-pain)
-
-When a new Halalium drops + you have a fresh dump:
+Primary product is now **Kikaium** = Halalium `.so` with brand strings renamed.
 
 ```bash
-# 1) put new SO
+# Drop new Halalium SO, then:
 cp /path/to/libhalalium.so halalium/bin/libhalalium.so
+python3 tools/kikaium/rebrand_halalium.py
+# → kikaium/bin/libkikaium.so
+```
 
-# 2) put dumps (script.json + dump.cs) under okak/okaakka/ or pass paths
+Cheat feature names are left untouched. Melodium source under `internal-main/`
+remains for porting extras (god mode / OHK / DT / …) later — do not inject
+`libmelodium.so` together with `libkikaium.so`.
+
+Offset emulator (optional, for Melodium source):
+
+```bash
 bash tools/halalium_emu/update.sh \
   halalium/bin/libhalalium.so \
   okak/okaakka/script.json \
   "okak/okaakka/dump (1).cs"
-
-# 3) rebuild Melodium release-phone → melodium/bin/libmelodium.so
 ```
-
-What the emulator does:
-
-1. Profiles Halalium SO (strings, egl install xrefs, features, watermark)
-2. Pulls TypeInfo from `script.json` (exact FQ names, not substring traps)
-3. Merges Halalium-confirmed fields + dump.cs scrapes
-4. Writes `Offsets_generated.h` into Melodium / melodium/sdk / halalium/sdk
-5. `emu-check` asserts Melodium still follows the Halalium render/menu contract
-
-## Diff two Halalium builds
-
-```bash
-python3 tools/halalium_emu/halalium_emu.py diff \
-  --old old/libhalalium.so --new new/libhalalium.so
-```
-
-## Why this instead of rewriting from Halalium RE
-
-Halalium is stripped. Full source recovery is a dead end. This path keeps **our** feature code and treats Halalium as the **map** that regenerates every patch.

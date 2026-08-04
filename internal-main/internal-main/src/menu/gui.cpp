@@ -56,8 +56,8 @@ namespace gui
     // Halalium watermark: always-on overlay, click ##wm_click toggles menu open.
     void DrawWatermark()
     {
-        const char *brand = oxorany("Lemming");
-        const char *line = oxorany("t.me/lemminghack, 0.39.2");
+        const char *brand = oxorany("Kikaium");
+        const char *line = oxorany("t.me/kikaiumhack, 0.39.2");
 
         ImGui::SetNextWindowPos(ImVec2(16.f, 16.f), ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(0.0f);
