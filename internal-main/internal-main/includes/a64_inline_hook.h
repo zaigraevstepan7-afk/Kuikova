@@ -1,9 +1,10 @@
 #pragma once
-// Minimal AArch64 inline hook (Halalium/Dobby-equivalent).
-// Backs up the first 16 bytes, patches an absolute LDR/BR trampoline into the
-// target, and builds an executable stub that runs the original bytes then
-// jumps back to target+16.
-// Supports restore() for Halalium-style getrr bypass (Destroy → orig → Hook).
+// Minimal AArch64 inline hook (Halalium/Dobby-equivalent for safe prologues).
+// Backs up the first 16 bytes, patches LDR/BR into the target, builds a trampoline
+// that runs the original bytes then jumps to target+16.
+//
+// For targets with PC-relative prologues use patch_jump() + temporary restore to
+// call the real function (see getrr bypass) — do NOT use the stolen-byte trampoline.
 
 #include <cstdint>
 #include <cstring>
@@ -17,12 +18,6 @@ namespace a64hook {
 #define MELODIUM_HOOK_LOG(...) \
     __android_log_print(ANDROID_LOG_INFO, "melodium", __VA_ARGS__)
 #endif
-
-inline void *page_of(void *p)
-{
-    long ps = sysconf(_SC_PAGESIZE);
-    return (void *)((uintptr_t)p & ~(uintptr_t)(ps - 1));
-}
 
 inline bool make_rwx(void *addr, size_t len)
 {
@@ -40,17 +35,66 @@ inline bool make_rx(void *addr, size_t len)
     return mprotect((void *)start, end - start, PROT_READ | PROT_EXEC) == 0;
 }
 
-// Patch layout at target (16 bytes):
-//   LDR X16, #8
-//   BR  X16
-//   .quad replacement
 constexpr size_t kPatchSize = 16;
 constexpr size_t kStubSize = 16 + 16;
+
+// Stolen-byte trampolines break on PC-relative insns in the stolen window.
+inline bool prologue_is_safe(const void *target)
+{
+    auto *w = reinterpret_cast<const uint32_t *>(target);
+    for (int i = 0; i < (int)(kPatchSize / 4); i++)
+    {
+        uint32_t insn = w[i];
+        if ((insn & 0x1f000000) == 0x10000000) // ADR/ADRP
+            return false;
+        if ((insn & 0xfc000000) == 0x14000000) // B
+            return false;
+        if ((insn & 0xff000010) == 0x54000000) // B.cond
+            return false;
+        if ((insn & 0xfc000000) == 0x94000000) // BL
+            return false;
+        if ((insn & 0x7e000000) == 0x34000000) // CBZ/CBNZ
+            return false;
+        if ((insn & 0x7e000000) == 0x36000000) // TBZ/TBNZ
+            return false;
+        if ((insn & 0x3b000000) == 0x18000000) // LDR literal
+            return false;
+    }
+    return true;
+}
+
+// Backup + patch jump to replacement. No trampoline. Safe for getrr-style hooks.
+inline bool patch_jump(void *target, void *replacement, uint8_t backup[kPatchSize])
+{
+    if (!target || !replacement || !backup)
+        return false;
+    if (((uintptr_t)target & 3) != 0)
+        return false;
+
+    auto *t = (uint8_t *)target;
+    memcpy(backup, t, kPatchSize);
+
+    if (!make_rwx(target, kPatchSize))
+        return false;
+
+    uint32_t *patch = (uint32_t *)t;
+    patch[0] = 0x58000050; // LDR X16, #8
+    patch[1] = 0xD61F0200; // BR X16
+    *(uint64_t *)(t + 8) = (uint64_t)replacement;
+
+    __builtin___clear_cache((char *)t, (char *)t + kPatchSize);
+    make_rx(target, kPatchSize);
+    return true;
+}
 
 inline bool install_with_backup(void *target, void *replacement, void **out_trampoline, uint8_t backup[kPatchSize])
 {
     if (!target || !replacement || !out_trampoline || !backup)
         return false;
+
+    // Prefer safe prologues; still allow with warning (egl historically worked).
+    if (!prologue_is_safe(target))
+        MELODIUM_HOOK_LOG("a64hook WARN PC-relative prologue @%p (tramp may fault on orig call)", target);
 
     void *stub = mmap(nullptr, kStubSize, PROT_READ | PROT_WRITE | PROT_EXEC,
                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -60,16 +104,13 @@ inline bool install_with_backup(void *target, void *replacement, void **out_tram
     auto *t = (uint8_t *)target;
     auto *s = (uint8_t *)stub;
 
-    // Save original prologue for restore / trampoline
     memcpy(backup, t, kPatchSize);
     memcpy(s, t, kPatchSize);
 
-    // Jump back to target+16
     uint32_t *back = (uint32_t *)(s + 16);
-    back[0] = 0x58000050; // LDR X16, #8
-    back[1] = 0xD61F0200; // BR X16
+    back[0] = 0x58000050;
+    back[1] = 0xD61F0200;
     *(uint64_t *)(s + 16 + 8) = (uint64_t)(t + 16);
-
     __builtin___clear_cache((char *)s, (char *)s + kStubSize);
 
     if (!make_rwx(target, kPatchSize))
@@ -79,10 +120,9 @@ inline bool install_with_backup(void *target, void *replacement, void **out_tram
     }
 
     uint32_t *patch = (uint32_t *)t;
-    patch[0] = 0x58000050; // LDR X16, #8
-    patch[1] = 0xD61F0200; // BR X16
+    patch[0] = 0x58000050;
+    patch[1] = 0xD61F0200;
     *(uint64_t *)(t + 8) = (uint64_t)replacement;
-
     __builtin___clear_cache((char *)t, (char *)t + kPatchSize);
     make_rx(target, kPatchSize);
 

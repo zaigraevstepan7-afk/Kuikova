@@ -1,12 +1,8 @@
 #pragma once
 // Halalium-style hook registry + getrr (OnStart) bypass.
-// When AC hits OnStart @ RVA 0x8B9579C Halalium:
-//   1) logs "got call from getrr." (tag Halalium_Bypass)
-//   2) DobbyDestroy every registered game hook
-//   3) calls original OnStart
-//   4) DobbyHook's them back
-//   5) logs "bypas hok result %d"
-// egl / input hooks are NOT in that list (same as Halalium).
+// OnStart @ RVA 0x8B9579C: destroy tracked hooks → call real OnStart → reinstall.
+// Critical: do NOT call OnStart via a stolen-byte trampoline (PC-relative crash).
+// Instead temporarily restore OnStart bytes and call the real address (Dobby-like safe path).
 
 #include "a64_inline_hook.h"
 
@@ -22,7 +18,7 @@ struct Entry
 {
     void *target{};
     void *replacement{};
-    void **orig_out{}; // updated on (re)install
+    void **orig_out{};
     void *trampoline{};
     uint8_t backup[a64hook::kPatchSize]{};
     bool active{false};
@@ -40,21 +36,30 @@ inline std::vector<Entry> &list()
     return v;
 }
 
+inline bool looks_like_a64(void *target)
+{
+    if (!target || ((uintptr_t)target & 3))
+        return false;
+    // First word should be a plausible A64 insn (not all-zero / all-ff filler).
+    uint32_t w = *reinterpret_cast<uint32_t *>(target);
+    if (w == 0 || w == 0xffffffffu)
+        return false;
+    return true;
+}
+
 inline bool install_tracked(void *target, void *replacement, void **orig_out)
 {
-    if (!target || !replacement)
+    if (!target || !replacement || !looks_like_a64(target))
         return false;
 
     std::lock_guard<std::mutex> lock(mu());
 
-    // Already tracked?
     for (auto &e : list())
     {
         if (e.target != target)
             continue;
         if (e.active)
             return true;
-        // reinstall into existing slot (don't clobber old tramp before release)
         void *tramp = nullptr;
         if (!a64hook::install_with_backup(target, replacement, &tramp, e.backup))
             return false;
@@ -91,7 +96,6 @@ inline void destroy_all()
             continue;
         a64hook::restore(e.target, e.backup);
         e.active = false;
-        // Keep trampoline mapping — unused until reinstall replaces it.
     }
 }
 
@@ -105,7 +109,6 @@ inline void reinstall_all()
         void *tramp = nullptr;
         if (!a64hook::install_with_backup(e.target, e.replacement, &tramp, e.backup))
             continue;
-        // Drop previous trampoline page if any
         if (e.trampoline && e.trampoline != tramp)
             a64hook::release_trampoline(e.trampoline);
         e.trampoline = tramp;
@@ -128,45 +131,103 @@ inline int tracked_count()
 // --- getrr / OnStart bypass (Halalium RVA 0x8B9579C) ---
 constexpr uintptr_t kGetrrRva = 0x8B9579C;
 
-using getrr_fn = void *(*)(void *self, int32_t p, void *method);
-inline getrr_fn &old_getrr()
+inline void *&getrr_target()
 {
-    static getrr_fn f = nullptr;
-    return f;
+    static void *t = nullptr;
+    return t;
 }
+
+inline uint8_t *getrr_backup()
+{
+    static uint8_t b[a64hook::kPatchSize]{};
+    return b;
+}
+
+inline bool &getrr_armed()
+{
+    static bool v = false;
+    return v;
+}
+
+inline bool &getrr_reentrant()
+{
+    static bool v = false;
+    return v;
+}
+
+using getrr_fn = void *(*)(void *self, int32_t p, void *method);
 
 inline void *hk_getrr(void *self, int32_t p, void *method)
 {
+    // Re-entrancy: if AC nests, just run real code path once we're unhooked.
+    if (getrr_reentrant())
+    {
+        if (getrr_target() && getrr_armed())
+        {
+            // Should not happen while patched; fall through carefully.
+        }
+        return nullptr;
+    }
+    getrr_reentrant() = true;
+
     __android_log_print(ANDROID_LOG_INFO, "Halalium_Bypass", "got call from getrr.");
 
+    // 1) Hide tracked game hooks from AC scan
     destroy_all();
 
+    // 2) Temporarily restore OnStart itself, call REAL function (no trampoline)
     void *ret = nullptr;
-    if (old_getrr())
-        ret = old_getrr()(self, p, method);
+    void *target = getrr_target();
+    if (target && getrr_armed())
+    {
+        a64hook::restore(target, getrr_backup());
+        getrr_armed() = false;
 
+        ret = ((getrr_fn)target)(self, p, method);
+
+        // 3) Re-arm OnStart hook (patch only — no trampoline)
+        if (a64hook::patch_jump(target, (void *)hk_getrr, getrr_backup()))
+            getrr_armed() = true;
+        else
+            __android_log_print(ANDROID_LOG_ERROR, "Halalium_Bypass", "getrr re-arm failed");
+    }
+
+    // 4) Put game hooks back
     reinstall_all();
 
     __android_log_print(ANDROID_LOG_INFO, "Halalium_Bypass", "bypas hok result %d",
                         tracked_count());
+
+    getrr_reentrant() = false;
     return ret;
 }
 
-// Install bypass itself — NOT added to the destroy list.
 inline bool install_getrr_bypass(uintptr_t game_base)
 {
     if (!game_base)
         return false;
+    if (getrr_armed())
+        return true;
+
     void *target = (void *)(game_base + kGetrrRva);
-    void *tramp = nullptr;
-    uint8_t unused_backup[a64hook::kPatchSize]{};
-    if (!a64hook::install_with_backup(target, (void *)hk_getrr, &tramp, unused_backup))
+    if (!looks_like_a64(target))
+    {
+        __android_log_print(ANDROID_LOG_ERROR, "Halalium_Bypass",
+                            "getrr target %p not a64 — skipped", target);
+        return false;
+    }
+
+    // Patch jump only — calling orig uses temporary restore (avoids PC-relative tramp crash).
+    if (!a64hook::patch_jump(target, (void *)hk_getrr, getrr_backup()))
     {
         __android_log_print(ANDROID_LOG_ERROR, "Halalium_Bypass", "getrr install failed @%p", target);
         return false;
     }
-    old_getrr() = (getrr_fn)tramp;
-    __android_log_print(ANDROID_LOG_INFO, "Halalium_Bypass", "getrr OnStart hook OK rva=0x%lx @%p",
+
+    getrr_target() = target;
+    getrr_armed() = true;
+    __android_log_print(ANDROID_LOG_INFO, "Halalium_Bypass",
+                        "getrr OnStart hook OK rva=0x%lx @%p (safe restore-call)",
                         (unsigned long)kGetrrRva, target);
     return true;
 }

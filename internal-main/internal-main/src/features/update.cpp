@@ -4,6 +4,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <stdio.h>
+#include <thread>
 #include "visual.h"
 #include "antiaim.h"
 #include "world.h"
@@ -527,12 +528,27 @@ void update::init()
     bool hooked_pc = hook_rva(oxorany(0x8E7C40C), (void *)new_update, (void **)&old_update, "PlayerController.Update");
     hook_rva(oxorany(0x8E7CF50), (void *)new_lateupdate, (void **)&old_lateupdate, "PlayerController.LateUpdate");
 
-    // Halalium getrr bypass: hook obfuscated OnStart @ 0x8B9579C.
-    // On AC call → destroy tracked hooks → orig → reinstall (tag Halalium_Bypass).
-    if (maps_contains_exec(base + hhooks::kGetrrRva))
-        hhooks::install_getrr_bypass(base);
+    // Halalium getrr bypass: OnStart @ 0x8B9579C.
+    // Deferred slightly so inject/load is stable; install only on libil2cpp-style base.
+    // Uses restore→call→rehook (no stolen-byte trampoline) to avoid PC-relative crashes.
+    if (hooked_pc && base && maps_contains_exec(base + hhooks::kGetrrRva))
+    {
+        std::thread([]() {
+            sleep(3);
+            if (!base)
+                return;
+            if (!maps_contains_exec(base + hhooks::kGetrrRva))
+            {
+                LOGD("getrr deferred: RVA not executable");
+                return;
+            }
+            hhooks::install_getrr_bypass(base);
+        }).detach();
+    }
     else
-        LOGD("getrr OnStart RVA not executable — bypass skipped");
+    {
+        LOGD("getrr OnStart bypass deferred/skipped (hooked_pc=%d)", (int)hooked_pc);
+    }
 
     // --- Fallback: name VMT if il2cpp APIs work ---
     Il2CppClass *game_controller = nullptr;
