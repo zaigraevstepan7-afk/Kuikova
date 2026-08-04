@@ -72,6 +72,7 @@ class c_weapon_controller;
 class c_gun_controller;
 class c_weapon_parameters;
 class c_gun_parameters;
+class c_transform;
 class globals
 {
 public:
@@ -89,6 +90,8 @@ public:
     void updateTarget();
     void init();
     bool is_scoped();
+    // Halalium "Fov Check" — angle (deg) from camera forward to world point
+    bool in_fov(c_transform *cam, const Vector3 &cam_pos, const Vector3 &world, float fov_deg);
 };
 
 inline struct target

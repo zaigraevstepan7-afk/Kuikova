@@ -136,60 +136,60 @@ void antiaim::init(c_player_controller *local, c_player_inputs *inputs)
 
     euler_angles_t aa_angles{orig_camera_angles.pitch, orig_camera_angles.yaw, 0.f};
 
-    switch (g.i_pitch)
+    // Halalium Anti Aim Pitch — only when Anti Aim enabled (not Spin-alone)
+    if (g.b_antiaim)
     {
-    case 0:
-        aa_angles.pitch = 0.f;
-        break;
-    case 1:
-        aa_angles.pitch = -90.f;
-        break;
-    case 2:
-        aa_angles.pitch = 90.f;
-        break;
-    default:
-        break;
+        switch (g.i_pitch)
+        {
+        case 0:
+            aa_angles.pitch = 0.f;
+            break;
+        case 1:
+            aa_angles.pitch = -90.f;
+            break;
+        case 2:
+            aa_angles.pitch = 90.f;
+            break;
+        default:
+            break;
+        }
     }
 
     float base_yaw = orig_camera_angles.yaw;
 
-    switch (g.i_yaw)
+    // Melodium yaw modes (backward/spiral/chaos) — only if somehow enabled; Halalium UI has no yaw combo
+    if (g.b_antiaim)
     {
-    case 0:
-        if (stop)
-            return;
-        base_yaw = 0.f;
-        break;
-    case 1:
-        if (stop)
-            return;
-        base_yaw = 165.f;
-        break;
-    case 2:
-        if (stop)
-            return;
-        static float ang = 0.f;
-        static float rad = 0.f;
-        ang += 8.f;
-        rad += 0.5f;
-        if (ang >= 360.f)
-            ang = rad = 0.f;
-        base_yaw = ang + (sinf(rad) * 180.f);
-        break;
-    case 3:
-        if (stop)
-            return;
-        aa_angles.pitch = static_cast<float>(rand() % 179 - 89);
-        base_yaw = static_cast<float>(rand() % 360);
-        break;
-    default:
-        break;
+        switch (g.i_yaw)
+        {
+        case 0:
+            break;
+        case 1:
+            base_yaw = 165.f;
+            break;
+        case 2:
+        {
+            static float ang = 0.f;
+            static float rad = 0.f;
+            ang += 8.f;
+            rad += 0.5f;
+            if (ang >= 360.f)
+                ang = rad = 0.f;
+            base_yaw = ang + (sinf(rad) * 180.f);
+            break;
+        }
+        case 3:
+            aa_angles.pitch = static_cast<float>(rand() % 179 - 89);
+            base_yaw = static_cast<float>(rand() % 360);
+            break;
+        default:
+            break;
+        }
     }
 
+    // Melodium leftovers — flags forced false
     if (g.b_chaos && inputs->jump)
     {
-        if (stop)
-            return;
         aa_angles.pitch = static_cast<float>(rand() % 179 - 89);
         base_yaw = static_cast<float>(rand() % 360);
     }
@@ -199,7 +199,6 @@ void antiaim::init(c_player_controller *local, c_player_inputs *inputs)
         if (stop)
             return;
         static float spin_angle = 0.f;
-        // Halalium "Reverse Spin" — negate Spin Speed
         const float step = g.b_reverse_spin ? -g.f_speed : g.f_speed;
         spin_angle += step;
         if (spin_angle >= 360.f)
@@ -213,34 +212,13 @@ void antiaim::init(c_player_controller *local, c_player_inputs *inputs)
     {
         static int frames{};
         static bool flip{};
-
-        if (frames >= g.frames) {
+        if (frames >= g.frames)
+        {
             frames = 0;
             flip = !flip;
         }
         ++frames;
-
-        int range = g.i_range;
-
-        base_yaw = Vector3::NormalizeAngle(base_yaw + ( flip ? range : -range ));
-
-
-
-
-        // static float timer = 0.f;
-        //
-        //
-        // float range = g.i_range * 0.5f;
-        // float speed = std::clamp(g.f_jitter_speed, 0.1f, 1.0f);
-        //
-        // timer += speed;
-        //
-        // if (timer >= 1.0f)
-        // {
-        //     base_yaw += flip ? range : -range;
-        //     flip = !flip;
-        //     timer = 0.f;
-        // }
+        base_yaw = Vector3::NormalizeAngle(base_yaw + (flip ? g.i_range : -g.i_range));
     }
 
     float yaw_angle = Vector3::NormalizeAngle(orig_camera_angles.yaw + base_yaw);

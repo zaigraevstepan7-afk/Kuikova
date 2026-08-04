@@ -12,7 +12,7 @@ public:
     char padd[0x4];
     monoString *m_nameField; // 0x20
     monoString *m_UserId;    // 0x28 (pack(1) sequential)
-    // Halalium Update @0x1d7a5c: ldrb [photon,#0x30] — isLocal (NOT Melodium comment 0x28)
+    // Halalium Update @0x1d7a5c: ldrb [photon,#0x30] — isLocal
     bool m_bIsLocal;        // 0x30
     bool m_bIsInactive;     // 0x31
     char paddddddd[0x6];
@@ -24,4 +24,5 @@ public:
 };
 #pragma pack()
 
-//static_assert(offsetof(c_photon_player, m_nameField) == 0x20);
+static_assert(offsetof(c_photon_player, m_bIsLocal) == 0x30, "Halalium photon isLocal @0x30");
+static_assert(offsetof(c_photon_player, m_pCustomProperties) == 0x38, "photon properties @0x38");

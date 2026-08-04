@@ -9,6 +9,7 @@
 
 | Offset | Meaning | Count |
 |---|---|---|
+| `0x8` | unknown | 1 |
 | `0x10` | unknown | 6 |
 | `0x30` | Photon.isLocal (ldrb) / nested | 1 |
 | `0x50` | unknown | 1 |

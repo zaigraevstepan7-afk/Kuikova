@@ -24,7 +24,8 @@ void strict_hit(void* _this, void* hit_data, void* player_hit_controller)
         return;
     }
 
-    if (g.hit_chams) {
+    // Melodium hit_chams — never arm (not Halalium)
+    if (false && g.hit_chams) {
         auto a = safe_type<c_player_controller *>::field(_this, oxorany(0x70));
         if (a.has_value)
             target_t.hitted = a.value;
@@ -92,44 +93,9 @@ void new_update(c_player_controller *player)
             if (c_globals->is_enemy(c_player->local, player))
                 c_player->enemy = player;
 
-            // c_chams->init(is_local, player->m_team, player);
-
-            if (c_player->enemy) {
-
-                // func with enemy player
+            if (c_player->enemy)
                 c_chams->enemy(c_player->enemy);
-                static int last_damage{};
-
-                if (g.hit_chams) {
-                    static std::unordered_map<int, int> last_dmg;
-                    c_transform* transform{};
-                    c_characher_lod_group* lod_group{};
-                    c_renderer* skinned_mesh{};
-                    Vector3 pos{};
-                    Quaternion rot{};
-                    static int aaa;
-
-                    transform = c_player->enemy->m_pTransform;
-                    lod_group = c_player->enemy->m_pCharacterLOD;
-                    if (!transform || !lod_group) return;
-
-                    skinned_mesh = lod_group->skinned_mesh_render;
-                    if (!skinned_mesh) return;
-
-                    pos = transform->get_position();
-                    rot = transform->get_rotation();
-
-                    int prev = last_dmg[aaa];
-                    bool new_hit = (target_t.damage > prev);
-
-                    if (new_hit && target_t.fire) {
-                        void* obj = c_methods->object_instantiate((void*)skinned_mesh, pos, rot);
-                        if (obj) c_methods->object_destroy(obj, 3);
-                    }
-
-                    last_dmg[aaa] = target_t.damage;
-                }
-            }
+            // Melodium hit_chams instantiate path removed (early-return bug + not Halalium)
         }
     }
     c_player->collect(player);
@@ -156,33 +122,25 @@ void new_lateupdate(c_player_controller *player)
             if (local) {
                 c_globals->updateGun();
                 c_antiaim->late_update(local);
-                if (g.b_scope)
-                    c_visual->remove(c_player->local);
-
-                if (g.b_aspect)
-                {
-                    void *cashed{};
-                    c_camera *get_main;
-                    float aspect = g.f_aspect;
-
-                    get_main = (c_camera *)camera.get_main();
-                    if (get_main)
-                    {
-                        cashed = *(void **)((uintptr_t)get_main + oxorany(0x10));
-                        if (cashed)
-                        {
-                            *(float *)((uintptr_t)cashed + oxorany(0x4f0)) = aspect;
-                            get_main->set_fov(59.9f);
-                            if (g.update_matrix)
-                                c_esp->update_matrix();
-                        }
-                    }
-                }
+                // Melodium aspect/scope — never
                 if (g.b_third && c_player->local && c_player->local->m_pTransform) {
                     if (c_player->local->m_pPhoton) {
                         if (c_player->local->m_pPhoton->get_health() > 0) {
                             c_visual->third_view(c_player->local->m_pTransform);
                         }
+                    }
+                }
+                // Halalium Skin Changer — LateUpdate InstantiateViaServer path (RE @0x1d7ff0+)
+                // Full RPC box build still TBD; arming is logged once per id change.
+                if (g.b_skin_changer)
+                {
+                    static int last_w = -1, last_s = -1;
+                    if (last_w != g.i_skin_weapon || last_s != g.i_skin_id)
+                    {
+                        last_w = g.i_skin_weapon;
+                        last_s = g.i_skin_id;
+                        LOGI("Skin Changer: Swapped to weapon %d (skin %d) [Halalium InstantiateViaServer pending full wire]",
+                             g.i_skin_weapon, g.i_skin_id);
                     }
                 }
             }
@@ -208,7 +166,8 @@ void new_game_update(c_game_controller *game)
 bool (*old_raycast)(void *, ray_t *, float, raycast_hit_t *, int32_t, uint8_t);
 bool hook_raycast(void *scene, ray_t *ray, float max_distance, raycast_hit_t *hit, int32_t layer, uint8_t trigger)
 {
-    if (g.b_esp && g.b_silent && g.hitbox && layer == 1610637328 && max_distance == 1000.0f)
+    // Halalium Silent Aim — independent of Enable Esp
+    if (g.b_silent && layer == 1610637328 && max_distance == 1000.0f)
     {
         Vector3 pos{};
         bool b_found = false;
@@ -231,84 +190,69 @@ bool hook_raycast(void *scene, ray_t *ray, float max_distance, raycast_hit_t *hi
         if (!main_camera)
             return old_raycast(scene, ray, max_distance, hit, layer, trigger);
 
-        auto cashed = *(void **)((uintptr_t)main_camera + oxorany(0x10));
-        if (!cashed)
+        Vector3 a = main_camera->get_position();
+        if (a == Vector3{})
             return old_raycast(scene, ray, max_distance, hit, layer, trigger);
+        camera_pos = a;
 
-        if (c_offsets)
-        {
-            Vector3 a = main_camera->get_position();
-            if (a != Vector3{})
-                camera_pos = a;
-            else
-                return old_raycast(scene, ray, max_distance, hit, layer, trigger);
-        }
-        else
-        {
-            return old_raycast(scene, ray, max_distance, hit, layer, trigger);
-        }
-
-        for (int i{}; i < c_player->entity.size(); i++)
+        for (int i{}; i < (int)c_player->entity.size(); i++)
         {
             player = c_player->entity[i];
             if (!player)
                 continue;
 
-            if (c_globals->is_alive(player))
+            if (c_globals->is_alive(player) && c_globals->is_enemy(local, player))
             {
-                if (c_globals->is_enemy(local, player))
+                c_character = player->m_pCharacterView;
+                if (!c_character)
+                    continue;
+
+                c_biped = c_character->c_biped;
+                if (!c_biped)
+                    continue;
+
+                c_transform *_head[] = {c_biped->head, c_biped->neck};
+                c_transform *_body[] = {c_biped->spine, c_biped->spine1, c_biped->left_toe_base, c_biped->right_toe_base};
+                c_transform *_arms[] = {c_biped->hip};
+                c_transform *_legs[] = {c_biped->left_leg, c_biped->left_up_leg, c_biped->right_leg, c_biped->right_up_leg};
+
+                struct hitbox_group
                 {
-                    c_character = player->m_pCharacterView;
-                    if (!c_character)
+                    bool enabled;
+                    c_transform **bones;
+                    int count;
+                };
+
+                const bool bone_aim = g.b_silent_bone;
+                hitbox_group groups[] = {
+                    {!bone_aim && g.hitbox[1], _body, (int)(sizeof(_body) / sizeof(_body[0]))},
+                    {bone_aim || g.hitbox[0], _head, (int)(sizeof(_head) / sizeof(_head[0]))},
+                    {!bone_aim && g.hitbox[2], _arms, (int)(sizeof(_arms) / sizeof(_arms[0]))},
+                    {!bone_aim && g.hitbox[3], _legs, (int)(sizeof(_legs) / sizeof(_legs[0]))},
+                };
+
+                for (int w{}; w < 4; w++)
+                {
+                    if (!groups[w].enabled)
                         continue;
-
-                    c_biped = c_character->c_biped;
-                    if (!c_biped)
-                        continue;
-
-                    c_transform *_head[] = {c_biped->head, c_biped->neck};
-                    c_transform *_body[] = {c_biped->spine, c_biped->spine1, c_biped->left_toe_base, c_biped->right_toe_base};
-                    c_transform *_arms[] = {c_biped->hip};
-                    c_transform *_legs[] = {c_biped->left_leg, c_biped->left_up_leg, c_biped->right_leg, c_biped->right_up_leg};
-
-                    struct hitbox_group
+                    for (int j{}; j < groups[w].count; j++)
                     {
-                        bool enabled;
-                        c_transform **bones;
-                        int count;
-                    };
-
-                    // Halalium rage "Bone" → head priority; else Melodium-style hitbox[] (defaults head)
-                    const bool bone_aim = g.b_silent_bone;
-                    hitbox_group groups[] = {
-                        {!bone_aim && g.hitbox[1], _body, (int)(sizeof(_body) / sizeof(_body[0]))},
-                        {bone_aim || g.hitbox[0], _head, (int)(sizeof(_head) / sizeof(_head[0]))},
-                        {!bone_aim && g.hitbox[2], _arms, (int)(sizeof(_arms) / sizeof(_arms[0]))},
-                        {!bone_aim && g.hitbox[3], _legs, (int)(sizeof(_legs) / sizeof(_legs[0]))},
-                    };
-
-                    for (int w{}; w < 4; w++)
-                    {
-                        if (!groups[w].enabled)
+                        bone = groups[w].bones[j];
+                        if (!bone)
                             continue;
-                        for (int j{}; j < groups[w].count; j++)
+
+                        bonepos = bone->get_position();
+                        if (g.b_fov_check && !c_globals->in_fov(main_camera, camera_pos, bonepos, g.f_fov_check))
+                            continue;
+                        if (!g.b_autowall && !c_globals->is_bone_visible(camera_pos, bonepos))
+                            continue;
+
+                        float dist = (bonepos - camera_pos).length();
+                        if (dist < best_dist)
                         {
-                            bone = groups[w].bones[j];
-                            if (!bone)
-                                continue;
-
-                            bonepos = bone->get_position();
-                            // Halalium Auto Wall — skip visibility gate
-                            if (!g.b_autowall && !c_globals->is_bone_visible(camera_pos, bonepos))
-                                continue;
-
-                            float dist = (bonepos - camera_pos).length();
-                            if (dist < best_dist)
-                            {
-                                best_dist = dist;
-                                pos = bonepos;
-                                b_found = true;
-                            }
+                            best_dist = dist;
+                            pos = bonepos;
+                            b_found = true;
                         }
                     }
                 }

@@ -2,6 +2,7 @@
 #include "includes/halalium_mem.h"
 #include <unistd.h>
 #include <thread>
+#include <cmath>
 #include "src/features/exploits.h"
 
 bool globals::is_allocated(void *x)
@@ -261,107 +262,99 @@ void globals::updateGun()
     c_exploits->init(c_player->gun_controller);
 }
 
+bool globals::in_fov(c_transform *cam, const Vector3 &cam_pos, const Vector3 &world, float fov_deg)
+{
+    if (!cam || fov_deg <= 0.f)
+        return true;
+    Vector3 fwd = cam->get_forward();
+    Vector3 dir = (world - cam_pos).nnormalized();
+    if (fwd == Vector3{} || dir == Vector3{})
+        return true;
+    const float flen = fwd.length();
+    if (flen < 1e-4f)
+        return true;
+    fwd = fwd * (1.f / flen);
+    float d = fwd.x * dir.x + fwd.y * dir.y + fwd.z * dir.z;
+    if (d > 1.f)
+        d = 1.f;
+    if (d < -1.f)
+        d = -1.f;
+    const float ang = acosf(d) * (180.f / static_cast<float>(M_PI));
+    return ang <= (fov_deg * 0.5f);
+}
+
 void globals::updateTarget() {
-    if (g.b_esp && g.b_silent && g.hitbox) {
-        // c_player->clear();
-        //c_player->update();
-        target_t.pos = Vector3{};
-        target_t.b_found = false;
-        float best_dist = FLT_MAX;
+    // Halalium Silent Aim does NOT require Enable Esp
+    if (!g.b_silent)
+        return;
 
-        c_player_controller *player{};
-        c_player_controller *local{};
-        c_player_character_view *c_character{};
-        c_biped_map *c_biped{};
-        c_transform *bone{};
-        c_transform *main_camera{};
-        Vector3 camera_pos{};
-        Vector3 bonepos{};
+    target_t.pos = Vector3{};
+    target_t.b_found = false;
+    float best_dist = FLT_MAX;
 
-        local = c_player->local;
-        if (!local)
-            return;
-        main_camera = local->m_pMainCameraHolder;
-        if (!main_camera)
-            return ;
+    c_player_controller *local = c_player->local;
+    if (!local)
+        return;
+    c_transform *main_camera = local->m_pMainCameraHolder;
+    if (!main_camera)
+        return;
 
-        auto cashed = *(void **)((uintptr_t)main_camera + oxorany(0x10));
-        if (!cashed)
-            return ;
+    Vector3 camera_pos = main_camera->get_position();
+    if (camera_pos == Vector3{})
+        return;
 
-        if (c_offsets)
+    for (int i{}; i < (int)c_player->entity.size(); i++)
+    {
+        c_player_controller *player = c_player->entity[i];
+        if (!player || !c_globals->is_alive(player) || !c_globals->is_enemy(local, player))
+            continue;
+
+        auto *c_character = player->m_pCharacterView;
+        if (!c_character)
+            continue;
+        auto *c_biped = c_character->c_biped;
+        if (!c_biped)
+            continue;
+
+        c_transform *_head[] = {c_biped->head, c_biped->neck};
+        c_transform *_body[] = {c_biped->spine, c_biped->spine1, c_biped->left_toe_base, c_biped->right_toe_base};
+        c_transform *_arms[] = {c_biped->hip};
+        c_transform *_legs[] = {c_biped->left_leg, c_biped->left_up_leg, c_biped->right_leg, c_biped->right_up_leg};
+
+        const bool bone_aim = g.b_silent_bone;
+        struct hitbox_group
         {
-            Vector3 a = main_camera->get_position();
-            if (a != Vector3{})
-                camera_pos = a;
-            else
-                return;
-        }
-        else
-        {
-            return;
-        }
+            bool enabled;
+            c_transform **bones;
+            int count;
+        };
+        hitbox_group groups[] = {
+            {!bone_aim && g.hitbox[1], _body, (int)(sizeof(_body) / sizeof(_body[0]))},
+            {bone_aim || g.hitbox[0], _head, (int)(sizeof(_head) / sizeof(_head[0]))},
+            {!bone_aim && g.hitbox[2], _arms, (int)(sizeof(_arms) / sizeof(_arms[0]))},
+            {!bone_aim && g.hitbox[3], _legs, (int)(sizeof(_legs) / sizeof(_legs[0]))},
+        };
 
-        for (int i{}; i < c_player->entity.size(); i++)
+        for (int w{}; w < 4; w++)
         {
-            player = c_player->entity[i];
-            if (!player)
+            if (!groups[w].enabled)
                 continue;
-
-            if (c_globals->is_alive(player))
+            for (int j{}; j < groups[w].count; j++)
             {
-                if (c_globals->is_enemy(local, player))
+                c_transform *bone = groups[w].bones[j];
+                if (!bone)
+                    continue;
+                Vector3 bonepos = bone->get_position();
+                if (g.b_fov_check && !in_fov(main_camera, camera_pos, bonepos, g.f_fov_check))
+                    continue;
+                if (!g.b_autowall && !c_globals->is_bone_visible(camera_pos, bonepos))
+                    continue;
+                float dist = (bonepos - camera_pos).length();
+                if (dist < best_dist)
                 {
-                    c_character = player->m_pCharacterView;
-                    if (!c_character)
-                        continue;
-
-                    c_biped = c_character->c_biped;
-                    if (!c_biped)
-                        continue;
-
-                    c_transform *_head[] = {c_biped->head, c_biped->neck};
-                    c_transform *_body[] = {c_biped->spine, c_biped->spine1, c_biped->left_toe_base, c_biped->right_toe_base};
-                    c_transform *_arms[] = {c_biped->hip};
-                    c_transform *_legs[] = {c_biped->left_leg, c_biped->left_up_leg, c_biped->right_leg, c_biped->right_up_leg};
-
-                    struct hitbox_group
-                    {
-                        bool enabled;
-                        c_transform **bones;
-                        int count;
-                    };
-
-                    hitbox_group groups[] = {
-                        {g.hitbox[1], _body, (int)(sizeof(_body) / sizeof(_body[0]))},
-                        {g.hitbox[0], _head, (int)(sizeof(_head) / sizeof(_head[0]))},
-                        {g.hitbox[2], _arms, (int)(sizeof(_arms) / sizeof(_arms[0]))},
-                        {g.hitbox[3], _legs, (int)(sizeof(_legs) / sizeof(_legs[0]))},
-                    };
-
-                    for (int w{}; w < 4; w++)
-                    {
-                        if (!groups[w].enabled)
-                            continue;
-                        for (int j{}; j < groups[w].count; j++)
-                        {
-                            bone = groups[w].bones[j];
-                            if (!bone)
-                                continue;
-
-                            bonepos = bone->get_position();
-                            if (!c_globals->is_bone_visible(camera_pos, bonepos))
-                                continue;
-
-                            float dist = (bonepos - camera_pos).length();
-                            if (dist < best_dist)
-                            {
-                                best_dist = dist;
-                                target_t.pos = bonepos;
-                                target_t.b_found = true;
-                            }
-                        }
-                    }
+                    best_dist = dist;
+                    target_t.pos = bonepos;
+                    target_t.b_found = true;
                 }
             }
         }

@@ -658,12 +658,7 @@ void C_UserInterface::rage()
         checkbox(oxorany("Distance"), &g.b_distance);
         ImGui::SameLine();
         ImGui::ColorEdit4(oxorany("Distance Color"), g.m_distance, color_flags);
-        checkbox(oxorany("Fov Check"), &g.b_fov_check);
-        if (g.b_fov_check)
-        {
-            slider_float(oxorany("Fov"), &g.f_fov_check, 10.f, 180.f);
-            ImGui::ColorEdit4(oxorany("Fov Color"), g.m_fov_color, color_flags);
-        }
+        // Fov Check lives under Rage (##rage_left) — Halalium menu_body
     }
     this->endChild();
     ImGui::SameLine();

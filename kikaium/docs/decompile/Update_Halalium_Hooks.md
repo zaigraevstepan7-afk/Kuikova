@@ -9,6 +9,7 @@
 
 | Offset | Meaning | Count |
 |---|---|---|
+| `0x8` | unknown | 7 |
 | `0xc` | unknown | 1 |
 | `0x10` | unknown | 2 |
 | `0x21` | unknown | 1 |

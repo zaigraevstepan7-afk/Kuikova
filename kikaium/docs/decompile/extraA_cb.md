@@ -9,6 +9,7 @@
 
 | Offset | Meaning | Count |
 |---|---|---|
+| `0x8` | unknown | 1 |
 | `0x10` | unknown | 4 |
 | `0x70` | unknown | 1 |
 | `0x79` | Player.team (byte) | 2 |

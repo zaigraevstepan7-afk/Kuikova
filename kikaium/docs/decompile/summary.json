@@ -54,7 +54,7 @@
   {
     "name": "Update_Halalium_Hooks",
     "va": "0x1d7a10",
-    "fields": 21,
+    "fields": 22,
     "rvas": [
       {
         "reg": "w9",
@@ -80,7 +80,7 @@
   {
     "name": "LateUpdate_cb",
     "va": "0x1d7ec4",
-    "fields": 14,
+    "fields": 15,
     "rvas": [
       {
         "reg": "w24",
@@ -105,7 +105,7 @@
   {
     "name": "secondary_hook_cb",
     "va": "0x1d81fc",
-    "fields": 8,
+    "fields": 9,
     "rvas": [
       {
         "reg": "w8",
@@ -123,7 +123,7 @@
   {
     "name": "tertiary_hook_cb",
     "va": "0x1d8404",
-    "fields": 3,
+    "fields": 4,
     "rvas": [],
     "strings": [
       "libEGL.so",
@@ -133,7 +133,7 @@
   {
     "name": "extraA_cb",
     "va": "0x1d82a0",
-    "fields": 4,
+    "fields": 5,
     "rvas": [],
     "strings": []
   },
@@ -158,7 +158,7 @@
   {
     "name": "libunity_base_resolve",
     "va": "0x1d6afc",
-    "fields": 15,
+    "fields": 16,
     "rvas": [],
     "strings": [
       "libunity.so"
@@ -167,7 +167,7 @@
   {
     "name": "menu_body",
     "va": "0x1db874",
-    "fields": 15,
+    "fields": 16,
     "rvas": [],
     "strings": [
       "##settings_left",

@@ -135,6 +135,8 @@ namespace Camera {
 
 namespace Photon {
     constexpr uintptr_t name             = 0x20;
+    // Halalium Update ldrb [photon,#0x30] — isLocal (pack layout)
+    constexpr uintptr_t is_local         = 0x30;
     constexpr uintptr_t properties       = 0x38;
     constexpr uintptr_t properties_count = 0x20;
     constexpr uintptr_t properties_list  = 0x18;

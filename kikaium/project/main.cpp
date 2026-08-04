@@ -220,13 +220,17 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
         handle_touch();
     gui::render();
 
-    // Overlays after SDK ready. Hitmarkers are Melodium-only (flags default off).
+    // Overlays after SDK ready. No Melodium hitmarkers.
     if (sdk)
     {
-        if ((g.b_marker || g.b_dmarker || g.b_tracer) && c_visual)
+        if (g.b_fov_check && c_egl && c_egl->width > 0 && c_egl->heigth > 0)
         {
-            c_visual->draw_hits();
-            c_visual->hitmarker();
+            ImDrawList *dl = ImGui::GetForegroundDrawList();
+            const ImVec2 c(c_egl->width * 0.5f, c_egl->heigth * 0.5f);
+            const float r = (g.f_fov_check / 180.f) * (c_egl->heigth * 0.5f);
+            const ImU32 col = ImGui::ColorConvertFloat4ToU32(
+                ImVec4(g.m_fov_color[0], g.m_fov_color[1], g.m_fov_color[2], g.m_fov_color[3]));
+            dl->AddCircle(c, r, col, 64, 1.5f);
         }
         if (c_esp)
             c_esp->render();
