@@ -151,7 +151,7 @@ void new_game_update(c_game_controller *game)
 
     c_player->game = game;
     auto *ctrl = *(c_player_controls **)((uintptr_t)game + Offsets::GameController::player_controls);
-    if (ctrl && g.is_allocated(ctrl))
+    if (ctrl && c_globals->is_allocated(ctrl))
         c_player->controls = ctrl;
 
     old_game_update(game);
@@ -510,7 +510,7 @@ void update::init()
         return;
     }
 
-    globals::init();
+    c_globals->init();
 
     const uintptr_t update_rva = Offsets::Method::PlayerController_Update;
     const uintptr_t late_rva = Offsets::Method::PlayerController_LateUpdate;
@@ -538,7 +538,7 @@ void update::init()
         LOGI("unity_base missing - RVA hooks skipped (VMT only)");
     }
 
-    LOGI("kikaium: unity RVA Update=%d Late=%d", (int)hooked_pc, (int)hooked_late);
+    LOGI("kikaium: Halalium RVA Update=%d Late=%d", (int)hooked_pc, (int)hooked_late);
 
     Il2CppClass *game_controller = nullptr;
     Il2CppClass *player_controller = nullptr;
@@ -571,7 +571,7 @@ void update::init()
         vmt(gun_controller, oxorany("FEEBGAGHGGCGACA"), (void *)hook_executecommands, (void **)&old_executecommands);
 
     void *ray_delegate = (void *)(base + c_offsets->ray);
-    if (!ray_delegate || !g.is_allocated(ray_delegate))
+    if (!ray_delegate || !c_globals->is_allocated(ray_delegate))
     {
         LOGD("ray icall slot addr invalid - silent/AutoWall limited");
         ray_delegate = nullptr;
@@ -594,6 +594,7 @@ void update::init()
     }
 
     g_sdk_ready.store(true, std::memory_order_release);
+    LOGI("Halalium reconstruct done; Halalium-style VMT ready");
     LOGI("kikaium update::init done pc=%d late=%d il2cpp=%p unity=%p",
          (int)hooked_pc, (int)hooked_late, (void *)base, (void *)unity_base);
 }
