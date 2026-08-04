@@ -1,0 +1,77 @@
+{
+  "name": "SkinChanger",
+  "va": "0x1d9e00",
+  "size": "0x1b4",
+  "insn": 109,
+  "fields": {
+    "0x8": 1,
+    "0x10": 2,
+    "0x14": 1,
+    "0x18": 2,
+    "0x28": 2,
+    "0x30": 2,
+    "0x88": 2,
+    "0xa0": 1,
+    "0xa8": 1,
+    "0xe0": 1,
+    "0x158": 1
+  },
+  "rvas": [
+    {
+      "reg": "w9",
+      "rva": "0x8e8fe50",
+      "at": "0x1d9ef8"
+    },
+    {
+      "reg": "w9",
+      "rva": "0x8e852d4",
+      "at": "0x1d9f28"
+    },
+    {
+      "reg": "w9",
+      "rva": "0x8e7f7f4",
+      "at": "0x1d9f4c"
+    }
+  ],
+  "strings": [
+    "SkinChanger",
+    "Skin Changer: Swapped to weapon %d (skin %d)"
+  ],
+  "calls": [
+    {
+      "at": "0x1d9e7c",
+      "kind": "bl",
+      "target": "0x1d9fb8"
+    },
+    {
+      "at": "0x1d9eac",
+      "kind": "bl",
+      "target": "0x1da06c"
+    },
+    {
+      "at": "0x1d9ecc",
+      "kind": "bl",
+      "target": "0x1da06c"
+    },
+    {
+      "at": "0x1d9f14",
+      "kind": "blr",
+      "target": "x8"
+    },
+    {
+      "at": "0x1d9f3c",
+      "kind": "blr",
+      "target": "x8"
+    },
+    {
+      "at": "0x1d9f60",
+      "kind": "blr",
+      "target": "x8"
+    },
+    {
+      "at": "0x1d9f80",
+      "kind": "bl",
+      "target": "0x26c540"
+    }
+  ]
+}

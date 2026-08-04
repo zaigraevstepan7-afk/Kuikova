@@ -5,3 +5,7 @@ okak/
 **/.vscode/
 **/cmake-build-*/
 **/build/
+dumps/
+**/build/
+android-ndk/
+*.zip

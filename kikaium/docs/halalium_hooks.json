@@ -1,0 +1,19 @@
+{
+  "render": {
+    "strategy": "dlsym(libEGL.so, eglSwapBuffers) + DobbyHook",
+    "melodium_strategy": "dlsym + GOT pointer-swap (same symbol)",
+    "egl_string_va": "0x3575b",
+    "install_xrefs": [
+      "0x1d84e8"
+    ],
+    "install_pc": "0x1d84e8",
+    "note": "At install_pc: load libEGL.so + eglSwapBuffers, dlsym, then DobbyHook(callback, &orig)"
+  },
+  "menu_open": {
+    "method": "InvisibleButton ##wm_click on ##watermark toggles open flag",
+    "wm_click_va": "0x2f52d",
+    "xrefs": [
+      "0x1db464"
+    ]
+  }
+}

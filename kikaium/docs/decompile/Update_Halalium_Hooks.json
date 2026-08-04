@@ -1,0 +1,163 @@
+{
+  "name": "Update_Halalium_Hooks",
+  "va": "0x1d7a10",
+  "size": "0x4b0",
+  "insn": 300,
+  "fields": {
+    "0x8": 7,
+    "0xc": 1,
+    "0x10": 2,
+    "0x21": 1,
+    "0x28": 1,
+    "0x2c": 1,
+    "0x30": 2,
+    "0x50": 1,
+    "0x60": 1,
+    "0x68": 1,
+    "0x70": 1,
+    "0x79": 2,
+    "0x88": 2,
+    "0x98": 1,
+    "0xa0": 2,
+    "0xa8": 1,
+    "0xb0": 1,
+    "0xd8": 1,
+    "0xe8": 1,
+    "0x160": 3,
+    "0x168": 2,
+    "0x1a4": 2
+  },
+  "rvas": [
+    {
+      "reg": "w9",
+      "rva": "0x8c69cb0",
+      "at": "0x1d7acc"
+    },
+    {
+      "reg": "w9",
+      "rva": "0x8e8ae24",
+      "at": "0x1d7b0c"
+    },
+    {
+      "reg": "w9",
+      "rva": "0x5fb7bc0",
+      "at": "0x1d7da8"
+    }
+  ],
+  "strings": [
+    "Halalium_Hooks",
+    "[ping] photon_raw=%d prop_raw=%d published=%d attempts=%llu"
+  ],
+  "calls": [
+    {
+      "at": "0x1d7a34",
+      "kind": "blr",
+      "target": "x8"
+    },
+    {
+      "at": "0x1d7a4c",
+      "kind": "bl",
+      "target": "0x1d8968"
+    },
+    {
+      "at": "0x1d7a54",
+      "kind": "bl",
+      "target": "0x1d8a80"
+    },
+    {
+      "at": "0x1d7a6c",
+      "kind": "bl",
+      "target": "0x26c530"
+    },
+    {
+      "at": "0x1d7ab0",
+      "kind": "bl",
+      "target": "0x268190"
+    },
+    {
+      "at": "0x1d7ad4",
+      "kind": "blr",
+      "target": "x8"
+    },
+    {
+      "at": "0x1d7b1c",
+      "kind": "blr",
+      "target": "x8"
+    },
+    {
+      "at": "0x1d7b68",
+      "kind": "bl",
+      "target": "0x1d8928"
+    },
+    {
+      "at": "0x1d7bb0",
+      "kind": "bl",
+      "target": "0x26c530"
+    },
+    {
+      "at": "0x1d7c10",
+      "kind": "bl",
+      "target": "0x26c540"
+    },
+    {
+      "at": "0x1d7c18",
+      "kind": "bl",
+      "target": "0x1d9b94"
+    },
+    {
+      "at": "0x1d7c64",
+      "kind": "bl",
+      "target": "0x1d93dc"
+    },
+    {
+      "at": "0x1d7c78",
+      "kind": "bl",
+      "target": "0x1d9b94"
+    },
+    {
+      "at": "0x1d7ca4",
+      "kind": "bl",
+      "target": "0x1d9c30"
+    },
+    {
+      "at": "0x1d7cb0",
+      "kind": "bl",
+      "target": "0x1d9c30"
+    },
+    {
+      "at": "0x1d7cd0",
+      "kind": "bl",
+      "target": "0x1d9c54"
+    },
+    {
+      "at": "0x1d7d04",
+      "kind": "bl",
+      "target": "0x1d9c00"
+    },
+    {
+      "at": "0x1d7d14",
+      "kind": "bl",
+      "target": "0x1d9bd4"
+    },
+    {
+      "at": "0x1d7d20",
+      "kind": "bl",
+      "target": "0x1d9c00"
+    },
+    {
+      "at": "0x1d7db8",
+      "kind": "blr",
+      "target": "x8"
+    },
+    {
+      "at": "0x1d7dc0",
+      "kind": "bl",
+      "target": "0x1d9e00"
+    },
+    {
+      "at": "0x1d7e80",
+      "kind": "bl",
+      "target": "0x1df078"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "name": "extraA_cb",
+  "va": "0x1d82a0",
+  "size": "0x130",
+  "insn": 76,
+  "fields": {
+    "0x8": 1,
+    "0x10": 4,
+    "0x70": 1,
+    "0x79": 2,
+    "0xa8": 1
+  },
+  "rvas": [],
+  "strings": [],
+  "calls": [
+    {
+      "at": "0x1d8328",
+      "kind": "bl",
+      "target": "0x1d833c"
+    },
+    {
+      "at": "0x1d8334",
+      "kind": "bl",
+      "target": "0x1eb09c"
+    },
+    {
+      "at": "0x1d8374",
+      "kind": "bl",
+      "target": "0x26c300"
+    },
+    {
+      "at": "0x1d8384",
+      "kind": "bl",
+      "target": "0x1ea9f4"
+    },
+    {
+      "at": "0x1d83a0",
+      "kind": "bl",
+      "target": "0x26c2e0"
+    },
+    {
+      "at": "0x1d83ac",
+      "kind": "bl",
+      "target": "0x26c310"
+    },
+    {
+      "at": "0x1d83c0",
+      "kind": "bl",
+      "target": "0x26c480"
+    },
+    {
+      "at": "0x1d83c8",
+      "kind": "bl",
+      "target": "0x26841c"
+    }
+  ]
+}
