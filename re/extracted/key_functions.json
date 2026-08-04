@@ -1,0 +1,824 @@
+{
+  "JNI_OnLoad": {
+    "addr": "0x1d69e4",
+    "size_analyzed": 280,
+    "insn_count": 70,
+    "field_offsets": {
+      "40": 4,
+      "32": 2,
+      "48": 2,
+      "64": 2,
+      "16": 2
+    },
+    "bl_targets": [
+      {
+        "from": "0x1d6a08",
+        "to": "0x26c330"
+      },
+      {
+        "from": "0x1d6a10",
+        "to": "0x26c340"
+      },
+      {
+        "from": "0x1d6a18",
+        "to": "0x26c330"
+      },
+      {
+        "from": "0x1d6a38",
+        "to": "0x26c350"
+      },
+      {
+        "from": "0x1d6a48",
+        "to": "0x1d6d04"
+      },
+      {
+        "from": "0x1d6a50",
+        "to": "0x26c360"
+      },
+      {
+        "from": "0x1d6a58",
+        "to": "0x26c370"
+      },
+      {
+        "from": "0x1d6aa0",
+        "to": "0x26c380"
+      },
+      {
+        "from": "0x1d6aac",
+        "to": "0x26c370"
+      },
+      {
+        "from": "0x1d6abc",
+        "to": "0x26c390"
+      },
+      {
+        "from": "0x1d6acc",
+        "to": "0x26c3a0"
+      },
+      {
+        "from": "0x1d6adc",
+        "to": "0x1d6d04"
+      },
+      {
+        "from": "0x1d6af4",
+        "to": "0x26841c"
+      },
+      {
+        "from": "0x1d6af8",
+        "to": "0x26c3b0"
+      }
+    ],
+    "abs_refs": [],
+    "strings": [],
+    "callers": []
+  },
+  "egl_callback": {
+    "addr": "0x1d76f0",
+    "size_analyzed": 752,
+    "insn_count": 188,
+    "field_offsets": {
+      "16": 6,
+      "32": 4,
+      "8": 3,
+      "1432": 3,
+      "1436": 3,
+      "48": 2,
+      "64": 2,
+      "80": 2,
+      "96": 2,
+      "112": 2,
+      "40": 2,
+      "3928": 1,
+      "3744": 1,
+      "24": 1,
+      "1616": 1,
+      "1620": 1,
+      "1624": 1,
+      "1296": 1,
+      "1440": 1,
+      "1441": 1,
+      "1442": 1,
+      "1444": 1,
+      "1352": 1,
+      "1400": 1
+    },
+    "bl_targets": [
+      {
+        "from": "0x1d7730",
+        "to": "0x26c4f0"
+      },
+      {
+        "from": "0x1d773c",
+        "to": "0x1ef77c"
+      },
+      {
+        "from": "0x1d7748",
+        "to": "0x22e93c"
+      },
+      {
+        "from": "0x1d774c",
+        "to": "0x1f2744"
+      },
+      {
+        "from": "0x1d7754",
+        "to": "0x1daaec"
+      },
+      {
+        "from": "0x1d7768",
+        "to": "0x1f2744"
+      },
+      {
+        "from": "0x1d7780",
+        "to": "0x26c500"
+      },
+      {
+        "from": "0x1d7794",
+        "to": "0x26c500"
+      },
+      {
+        "from": "0x1d77b8",
+        "to": "0x26c510"
+      },
+      {
+        "from": "0x1d781c",
+        "to": "0x26c4b0"
+      },
+      {
+        "from": "0x1d7834",
+        "to": "0x1ebd9c"
+      },
+      {
+        "from": "0x1d7848",
+        "to": "0x1ebf60"
+      },
+      {
+        "from": "0x1d7854",
+        "to": "0x26c4e0"
+      },
+      {
+        "from": "0x1d7858",
+        "to": "0x22eaf8"
+      },
+      {
+        "from": "0x1d785c",
+        "to": "0x1f3570"
+      },
+      {
+        "from": "0x1d7880",
+        "to": "0x1da768"
+      },
+      {
+        "from": "0x1d7890",
+        "to": "0x1e955c"
+      },
+      {
+        "from": "0x1d78d4",
+        "to": "0x1ed030"
+      },
+      {
+        "from": "0x1d78dc",
+        "to": "0x1f288c"
+      },
+      {
+        "from": "0x1d78f8",
+        "to": "0x208f88"
+      },
+      {
+        "from": "0x1d7908",
+        "to": "0x1f288c"
+      },
+      {
+        "from": "0x1d794c",
+        "to": "0x208758"
+      },
+      {
+        "from": "0x1d7974",
+        "to": "0x208758"
+      },
+      {
+        "from": "0x1d7978",
+        "to": "0x1dac28"
+      },
+      {
+        "from": "0x1d797c",
+        "to": "0x1db864"
+      },
+      {
+        "from": "0x1d7980",
+        "to": "0x1fba6c"
+      },
+      {
+        "from": "0x1d7994",
+        "to": "0x26c520"
+      },
+      {
+        "from": "0x1d7998",
+        "to": "0x1f2764"
+      },
+      {
+        "from": "0x1d799c",
+        "to": "0x22ef18"
+      }
+    ],
+    "abs_refs": [],
+    "strings": [],
+    "callers": []
+  },
+  "input_callback": {
+    "addr": "0x1d760c",
+    "size_analyzed": 204,
+    "insn_count": 51,
+    "field_offsets": {
+      "16": 2,
+      "32": 2,
+      "1408": 1,
+      "1616": 1,
+      "1620": 1,
+      "1624": 1,
+      "48": 1
+    },
+    "bl_targets": [
+      {
+        "from": "0x1d7644",
+        "to": "0x26c490"
+      },
+      {
+        "from": "0x1d7654",
+        "to": "0x26c4a0"
+      },
+      {
+        "from": "0x1d7664",
+        "to": "0x26c4b0"
+      },
+      {
+        "from": "0x1d7670",
+        "to": "0x26c4c0"
+      },
+      {
+        "from": "0x1d7684",
+        "to": "0x26c4d0"
+      },
+      {
+        "from": "0x1d76c0",
+        "to": "0x26c4e0"
+      }
+    ],
+    "abs_refs": [],
+    "strings": [],
+    "callers": []
+  },
+  "Halalium_Hooks_Update": {
+    "addr": "0x1d7a0c",
+    "size_analyzed": 1032,
+    "insn_count": 258,
+    "field_offsets": {
+      "16": 6,
+      "48": 6,
+      "80": 5,
+      "1272": 5,
+      "8": 5,
+      "32": 4,
+      "64": 4,
+      "96": 4,
+      "352": 3,
+      "1264": 3,
+      "1464": 2,
+      "121": 2,
+      "1336": 2,
+      "1472": 2,
+      "136": 2,
+      "160": 2,
+      "360": 2,
+      "420": 2,
+      "1480": 2,
+      "1448": 1,
+      "1456": 1,
+      "216": 1,
+      "12": 1,
+      "1640": 1,
+      "1632": 1,
+      "1441": 1,
+      "1484": 1,
+      "1485": 1,
+      "1486": 1,
+      "3916": 1,
+      "1487": 1,
+      "3920": 1,
+      "1488": 1,
+      "152": 1,
+      "176": 1,
+      "168": 1,
+      "104": 1,
+      "112": 1,
+      "1490": 1,
+      "232": 1,
+      "40": 1,
+      "3728": 1,
+      "1492": 1
+    },
+    "bl_targets": [
+      {
+        "from": "0x1d7a4c",
+        "to": "0x1d8968"
+      },
+      {
+        "from": "0x1d7a54",
+        "to": "0x1d8a80"
+      },
+      {
+        "from": "0x1d7a6c",
+        "to": "0x26c530"
+      },
+      {
+        "from": "0x1d7ab0",
+        "to": "0x268190"
+      },
+      {
+        "from": "0x1d7b68",
+        "to": "0x1d8928"
+      },
+      {
+        "from": "0x1d7bb0",
+        "to": "0x26c530"
+      },
+      {
+        "from": "0x1d7c10",
+        "to": "0x26c540"
+      },
+      {
+        "from": "0x1d7c18",
+        "to": "0x1d9b94"
+      },
+      {
+        "from": "0x1d7c64",
+        "to": "0x1d93dc"
+      },
+      {
+        "from": "0x1d7c78",
+        "to": "0x1d9b94"
+      },
+      {
+        "from": "0x1d7ca4",
+        "to": "0x1d9c30"
+      },
+      {
+        "from": "0x1d7cb0",
+        "to": "0x1d9c30"
+      },
+      {
+        "from": "0x1d7cd0",
+        "to": "0x1d9c54"
+      },
+      {
+        "from": "0x1d7d04",
+        "to": "0x1d9c00"
+      },
+      {
+        "from": "0x1d7d14",
+        "to": "0x1d9bd4"
+      },
+      {
+        "from": "0x1d7d20",
+        "to": "0x1d9c00"
+      },
+      {
+        "from": "0x1d7dc0",
+        "to": "0x1d9e00"
+      }
+    ],
+    "abs_refs": [],
+    "strings": [],
+    "callers": []
+  },
+  "Halalium_LateUpdate": {
+    "addr": "0x1d7ec4",
+    "size_analyzed": 144,
+    "insn_count": 36,
+    "field_offsets": {
+      "48": 2,
+      "64": 2,
+      "80": 2,
+      "96": 2,
+      "112": 2,
+      "128": 2,
+      "144": 2,
+      "40": 2,
+      "1520": 1,
+      "1272": 1,
+      "8": 1
+    },
+    "bl_targets": [],
+    "abs_refs": [],
+    "strings": [],
+    "callers": []
+  },
+  "egl_install": {
+    "addr": "0x1d84cc",
+    "size_analyzed": 296,
+    "insn_count": 74,
+    "field_offsets": {
+      "1264": 3,
+      "16": 2,
+      "32": 2,
+      "48": 2,
+      "64": 1
+    },
+    "bl_targets": [
+      {
+        "from": "0x1d84f0",
+        "to": "0x26c550"
+      },
+      {
+        "from": "0x1d8508",
+        "to": "0x26c560"
+      },
+      {
+        "from": "0x1d851c",
+        "to": "0x26c550"
+      },
+      {
+        "from": "0x1d8534",
+        "to": "0x26c560"
+      },
+      {
+        "from": "0x1d8568",
+        "to": "0x26c560"
+      },
+      {
+        "from": "0x1d8578",
+        "to": "0x1d917c"
+      },
+      {
+        "from": "0x1d85ac",
+        "to": "0x26c560"
+      },
+      {
+        "from": "0x1d85bc",
+        "to": "0x1d917c"
+      }
+    ],
+    "abs_refs": [],
+    "strings": [],
+    "callers": [
+      "0x1d6c40"
+    ]
+  },
+  "Halalium_Bypass": {
+    "addr": "0x1d90b8",
+    "size_analyzed": 196,
+    "insn_count": 49,
+    "field_offsets": {
+      "16": 2,
+      "32": 2,
+      "48": 2,
+      "24": 1,
+      "1776": 1,
+      "64": 1
+    },
+    "bl_targets": [
+      {
+        "from": "0x1d90e4",
+        "to": "0x26c540"
+      },
+      {
+        "from": "0x1d9100",
+        "to": "0x26c590"
+      },
+      {
+        "from": "0x1d9140",
+        "to": "0x26c560"
+      },
+      {
+        "from": "0x1d9154",
+        "to": "0x26c540"
+      }
+    ],
+    "abs_refs": [],
+    "strings": [],
+    "callers": []
+  },
+  "secondary_hook_cb": {
+    "addr": "0x1d81fc",
+    "size_analyzed": 164,
+    "insn_count": 41,
+    "field_offsets": {
+      "16": 3,
+      "32": 2,
+      "1489": 1,
+      "688": 1,
+      "184": 1,
+      "48": 1,
+      "80": 1,
+      "1264": 1,
+      "1496": 1
+    },
+    "bl_targets": [
+      {
+        "from": "0x1d820c",
+        "to": "0x1d81bc"
+      }
+    ],
+    "abs_refs": [],
+    "strings": [],
+    "callers": []
+  },
+  "tertiary_hook_cb": {
+    "addr": "0x1d8404",
+    "size_analyzed": 496,
+    "insn_count": 124,
+    "field_offsets": {
+      "1264": 3,
+      "8": 2,
+      "16": 2,
+      "32": 2,
+      "48": 2,
+      "1441": 1,
+      "1484": 1,
+      "1512": 1,
+      "3860": 1,
+      "3900": 1,
+      "20": 1,
+      "1312": 1,
+      "64": 1
+    },
+    "bl_targets": [
+      {
+        "from": "0x1d84f0",
+        "to": "0x26c550"
+      },
+      {
+        "from": "0x1d8508",
+        "to": "0x26c560"
+      },
+      {
+        "from": "0x1d851c",
+        "to": "0x26c550"
+      },
+      {
+        "from": "0x1d8534",
+        "to": "0x26c560"
+      },
+      {
+        "from": "0x1d8568",
+        "to": "0x26c560"
+      },
+      {
+        "from": "0x1d8578",
+        "to": "0x1d917c"
+      },
+      {
+        "from": "0x1d85ac",
+        "to": "0x26c560"
+      },
+      {
+        "from": "0x1d85bc",
+        "to": "0x1d917c"
+      }
+    ],
+    "abs_refs": [],
+    "strings": [],
+    "callers": []
+  },
+  "extra_hook_A": {
+    "addr": "0x1d82a0",
+    "size_analyzed": 156,
+    "insn_count": 39,
+    "field_offsets": {
+      "16": 2,
+      "32": 2,
+      "121": 2,
+      "1272": 1,
+      "8": 1,
+      "168": 1,
+      "1536": 1,
+      "48": 1,
+      "112": 1,
+      "1544": 1,
+      "1548": 1
+    },
+    "bl_targets": [
+      {
+        "from": "0x1d8328",
+        "to": "0x1d833c"
+      },
+      {
+        "from": "0x1d8334",
+        "to": "0x1eb09c"
+      }
+    ],
+    "abs_refs": [],
+    "strings": [],
+    "callers": []
+  },
+  "extra_hook_B": {
+    "addr": "0x1d83cc",
+    "size_analyzed": 64,
+    "insn_count": 16,
+    "field_offsets": {
+      "16": 2,
+      "1552": 1,
+      "1560": 1,
+      "32": 1,
+      "1441": 1
+    },
+    "bl_targets": [],
+    "abs_refs": [],
+    "strings": [],
+    "callers": []
+  },
+  "DobbyHook": {
+    "addr": "0x2389d0",
+    "size_analyzed": 252,
+    "insn_count": 63,
+    "field_offsets": {
+      "16": 4,
+      "32": 4,
+      "48": 3,
+      "1264": 1,
+      "8": 1,
+      "24": 1
+    },
+    "bl_targets": [
+      {
+        "from": "0x2389ec",
+        "to": "0x23bc80"
+      },
+      {
+        "from": "0x2389f8",
+        "to": "0x23bc80"
+      },
+      {
+        "from": "0x238a08",
+        "to": "0x23bccc"
+      },
+      {
+        "from": "0x238a10",
+        "to": "0x23b6cc"
+      },
+      {
+        "from": "0x238a18",
+        "to": "0x23b700"
+      },
+      {
+        "from": "0x238a40",
+        "to": "0x26c330"
+      },
+      {
+        "from": "0x238a50",
+        "to": "0x23bc5c"
+      },
+      {
+        "from": "0x238a58",
+        "to": "0x26c330"
+      },
+      {
+        "from": "0x238aa8",
+        "to": "0x238db8"
+      },
+      {
+        "from": "0x238aac",
+        "to": "0x23b6cc"
+      },
+      {
+        "from": "0x238ab4",
+        "to": "0x23b730"
+      }
+    ],
+    "abs_refs": [],
+    "strings": [],
+    "callers": []
+  },
+  "DobbyDestroy": {
+    "addr": "0x23b680",
+    "size_analyzed": 76,
+    "insn_count": 19,
+    "field_offsets": {
+      "16": 2,
+      "300": 1
+    },
+    "bl_targets": [
+      {
+        "from": "0x23b688",
+        "to": "0x23b6cc"
+      },
+      {
+        "from": "0x23b690",
+        "to": "0x23b700"
+      },
+      {
+        "from": "0x23b6a4",
+        "to": "0x26cd60"
+      },
+      {
+        "from": "0x23b6a8",
+        "to": "0x23b6cc"
+      },
+      {
+        "from": "0x23b6b0",
+        "to": "0x23bbd8"
+      }
+    ],
+    "abs_refs": [],
+    "strings": [],
+    "callers": []
+  },
+  "DobbyGetVersion": {
+    "addr": "0x23b674",
+    "size_analyzed": 64,
+    "insn_count": 16,
+    "field_offsets": {
+      "300": 1
+    },
+    "bl_targets": [
+      {
+        "from": "0x23b688",
+        "to": "0x23b6cc"
+      },
+      {
+        "from": "0x23b690",
+        "to": "0x23b700"
+      },
+      {
+        "from": "0x23b6a4",
+        "to": "0x26cd60"
+      },
+      {
+        "from": "0x23b6a8",
+        "to": "0x23b6cc"
+      },
+      {
+        "from": "0x23b6b0",
+        "to": "0x23bbd8"
+      }
+    ],
+    "abs_refs": [],
+    "strings": [],
+    "callers": []
+  },
+  "DobbyCodePatch": {
+    "addr": "0x23bcf0",
+    "size_analyzed": 208,
+    "insn_count": 52,
+    "field_offsets": {
+      "16": 2,
+      "32": 2,
+      "48": 2,
+      "64": 1
+    },
+    "bl_targets": [
+      {
+        "from": "0x23bd10",
+        "to": "0x26cc10"
+      },
+      {
+        "from": "0x23bd38",
+        "to": "0x26cc20"
+      },
+      {
+        "from": "0x23bd50",
+        "to": "0x26c420"
+      },
+      {
+        "from": "0x23bd68",
+        "to": "0x26cc20"
+      },
+      {
+        "from": "0x23bd78",
+        "to": "0x26c420"
+      },
+      {
+        "from": "0x23bd88",
+        "to": "0x26cc20"
+      },
+      {
+        "from": "0x23bd98",
+        "to": "0x26cc20"
+      },
+      {
+        "from": "0x23bda4",
+        "to": "0x23bdc0"
+      }
+    ],
+    "abs_refs": [],
+    "strings": [],
+    "callers": []
+  },
+  "DobbySymbolResolver": {
+    "addr": "0x23c5d8",
+    "size_analyzed": 64,
+    "insn_count": 16,
+    "field_offsets": {
+      "16": 3,
+      "32": 2
+    },
+    "bl_targets": [
+      {
+        "from": "0x23c5ec",
+        "to": "0x26ccf0"
+      }
+    ],
+    "abs_refs": [],
+    "strings": [],
+    "callers": []
+  }
+}

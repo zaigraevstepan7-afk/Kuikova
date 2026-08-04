@@ -1,0 +1,822 @@
+{
+  "top_called": [
+    {
+      "addr": "0x1ec684",
+      "callers": 362
+    },
+    {
+      "addr": "0x26c420",
+      "callers": 353
+    },
+    {
+      "addr": "0x26cde0",
+      "callers": 341
+    },
+    {
+      "addr": "0x26ce20",
+      "callers": 299
+    },
+    {
+      "addr": "0x26c3a0",
+      "callers": 290
+    },
+    {
+      "addr": "0x26c3b0",
+      "callers": 282
+    },
+    {
+      "addr": "0x1ec574",
+      "callers": 222
+    },
+    {
+      "addr": "0x26841c",
+      "callers": 211
+    },
+    {
+      "addr": "0x1da64c",
+      "callers": 205
+    },
+    {
+      "addr": "0x26c7f0",
+      "callers": 203
+    },
+    {
+      "addr": "0x26c330",
+      "callers": 168
+    },
+    {
+      "addr": "0x26c410",
+      "callers": 113
+    },
+    {
+      "addr": "0x26c5e0",
+      "callers": 110
+    },
+    {
+      "addr": "0x26cfd0",
+      "callers": 70
+    },
+    {
+      "addr": "0x26c400",
+      "callers": 64
+    },
+    {
+      "addr": "0x26c3e0",
+      "callers": 55
+    },
+    {
+      "addr": "0x1edccc",
+      "callers": 55
+    },
+    {
+      "addr": "0x1ec208",
+      "callers": 51
+    },
+    {
+      "addr": "0x1daa04",
+      "callers": 45
+    },
+    {
+      "addr": "0x1daa10",
+      "callers": 45
+    },
+    {
+      "addr": "0x253b34",
+      "callers": 45
+    },
+    {
+      "addr": "0x1ed030",
+      "callers": 41
+    },
+    {
+      "addr": "0x24e8e8",
+      "callers": 41
+    },
+    {
+      "addr": "0x1dd198",
+      "callers": 37
+    },
+    {
+      "addr": "0x2089a0",
+      "callers": 36
+    },
+    {
+      "addr": "0x1eda58",
+      "callers": 36
+    },
+    {
+      "addr": "0x217e14",
+      "callers": 35
+    },
+    {
+      "addr": "0x1fca54",
+      "callers": 35
+    },
+    {
+      "addr": "0x208758",
+      "callers": 33
+    },
+    {
+      "addr": "0x1d906c",
+      "callers": 33
+    },
+    {
+      "addr": "0x24b954",
+      "callers": 32
+    },
+    {
+      "addr": "0x1d6d44",
+      "callers": 31
+    },
+    {
+      "addr": "0x1edacc",
+      "callers": 30
+    },
+    {
+      "addr": "0x1ede94",
+      "callers": 30
+    },
+    {
+      "addr": "0x2583f4",
+      "callers": 30
+    },
+    {
+      "addr": "0x1f17e0",
+      "callers": 29
+    },
+    {
+      "addr": "0x1eeb24",
+      "callers": 29
+    },
+    {
+      "addr": "0x1d7144",
+      "callers": 28
+    },
+    {
+      "addr": "0x26cbd0",
+      "callers": 28
+    },
+    {
+      "addr": "0x1fc938",
+      "callers": 27
+    },
+    {
+      "addr": "0x26c5c0",
+      "callers": 27
+    },
+    {
+      "addr": "0x2003dc",
+      "callers": 27
+    },
+    {
+      "addr": "0x1f7328",
+      "callers": 26
+    },
+    {
+      "addr": "0x26c7c0",
+      "callers": 26
+    },
+    {
+      "addr": "0x26c380",
+      "callers": 25
+    },
+    {
+      "addr": "0x26c4e0",
+      "callers": 25
+    },
+    {
+      "addr": "0x26c300",
+      "callers": 24
+    },
+    {
+      "addr": "0x2088d0",
+      "callers": 24
+    },
+    {
+      "addr": "0x1ebb18",
+      "callers": 24
+    },
+    {
+      "addr": "0x26c8c0",
+      "callers": 24
+    },
+    {
+      "addr": "0x1e94c8",
+      "callers": 23
+    },
+    {
+      "addr": "0x209124",
+      "callers": 22
+    },
+    {
+      "addr": "0x250a50",
+      "callers": 22
+    },
+    {
+      "addr": "0x26c5d0",
+      "callers": 21
+    },
+    {
+      "addr": "0x21544c",
+      "callers": 21
+    },
+    {
+      "addr": "0x1e94dc",
+      "callers": 21
+    },
+    {
+      "addr": "0x1f1b54",
+      "callers": 21
+    },
+    {
+      "addr": "0x26c840",
+      "callers": 21
+    },
+    {
+      "addr": "0x26d200",
+      "callers": 21
+    },
+    {
+      "addr": "0x26c800",
+      "callers": 21
+    },
+    {
+      "addr": "0x21500c",
+      "callers": 20
+    },
+    {
+      "addr": "0x26c760",
+      "callers": 20
+    },
+    {
+      "addr": "0x247a44",
+      "callers": 20
+    },
+    {
+      "addr": "0x1d700c",
+      "callers": 19
+    },
+    {
+      "addr": "0x1ff434",
+      "callers": 19
+    },
+    {
+      "addr": "0x1ee07c",
+      "callers": 19
+    },
+    {
+      "addr": "0x1ee3ac",
+      "callers": 19
+    },
+    {
+      "addr": "0x1dd6e0",
+      "callers": 19
+    },
+    {
+      "addr": "0x1ec7c8",
+      "callers": 19
+    },
+    {
+      "addr": "0x1f2964",
+      "callers": 19
+    },
+    {
+      "addr": "0x238e44",
+      "callers": 19
+    },
+    {
+      "addr": "0x241c8c",
+      "callers": 19
+    },
+    {
+      "addr": "0x2681c0",
+      "callers": 19
+    },
+    {
+      "addr": "0x26c6d0",
+      "callers": 18
+    },
+    {
+      "addr": "0x26c870",
+      "callers": 18
+    },
+    {
+      "addr": "0x26c890",
+      "callers": 18
+    },
+    {
+      "addr": "0x26c660",
+      "callers": 17
+    },
+    {
+      "addr": "0x1ecb8c",
+      "callers": 17
+    },
+    {
+      "addr": "0x1ed668",
+      "callers": 17
+    },
+    {
+      "addr": "0x220bb4",
+      "callers": 17
+    },
+    {
+      "addr": "0x1da65c",
+      "callers": 17
+    },
+    {
+      "addr": "0x26ce60",
+      "callers": 17
+    },
+    {
+      "addr": "0x1ede0c",
+      "callers": 16
+    },
+    {
+      "addr": "0x237868",
+      "callers": 16
+    },
+    {
+      "addr": "0x241998",
+      "callers": 16
+    },
+    {
+      "addr": "0x26d510",
+      "callers": 16
+    },
+    {
+      "addr": "0x1d7158",
+      "callers": 15
+    },
+    {
+      "addr": "0x1f2744",
+      "callers": 15
+    },
+    {
+      "addr": "0x200d64",
+      "callers": 15
+    },
+    {
+      "addr": "0x218df4",
+      "callers": 15
+    },
+    {
+      "addr": "0x1ef1cc",
+      "callers": 15
+    },
+    {
+      "addr": "0x26d1e0",
+      "callers": 15
+    },
+    {
+      "addr": "0x26c430",
+      "callers": 14
+    },
+    {
+      "addr": "0x26c450",
+      "callers": 14
+    },
+    {
+      "addr": "0x1ee294",
+      "callers": 14
+    },
+    {
+      "addr": "0x1fb7b4",
+      "callers": 14
+    },
+    {
+      "addr": "0x1ebd5c",
+      "callers": 14
+    },
+    {
+      "addr": "0x231c58",
+      "callers": 14
+    },
+    {
+      "addr": "0x24776c",
+      "callers": 14
+    },
+    {
+      "addr": "0x24fe20",
+      "callers": 14
+    },
+    {
+      "addr": "0x250ca0",
+      "callers": 14
+    },
+    {
+      "addr": "0x1d6f40",
+      "callers": 13
+    },
+    {
+      "addr": "0x26c4b0",
+      "callers": 13
+    },
+    {
+      "addr": "0x1fc534",
+      "callers": 13
+    },
+    {
+      "addr": "0x1e4dc8",
+      "callers": 13
+    },
+    {
+      "addr": "0x200284",
+      "callers": 13
+    },
+    {
+      "addr": "0x206af0",
+      "callers": 13
+    },
+    {
+      "addr": "0x1ee4b0",
+      "callers": 13
+    },
+    {
+      "addr": "0x2003d0",
+      "callers": 13
+    },
+    {
+      "addr": "0x26c310",
+      "callers": 12
+    },
+    {
+      "addr": "0x2113cc",
+      "callers": 12
+    },
+    {
+      "addr": "0x1db6e8",
+      "callers": 12
+    },
+    {
+      "addr": "0x217e84",
+      "callers": 12
+    },
+    {
+      "addr": "0x1dda38",
+      "callers": 12
+    },
+    {
+      "addr": "0x26c670",
+      "callers": 12
+    },
+    {
+      "addr": "0x21c4f8",
+      "callers": 12
+    },
+    {
+      "addr": "0x20027c",
+      "callers": 12
+    },
+    {
+      "addr": "0x21f72c",
+      "callers": 12
+    },
+    {
+      "addr": "0x26cca0",
+      "callers": 12
+    },
+    {
+      "addr": "0x26d090",
+      "callers": 12
+    },
+    {
+      "addr": "0x249ce0",
+      "callers": 12
+    },
+    {
+      "addr": "0x24b2ec",
+      "callers": 12
+    },
+    {
+      "addr": "0x1f7534",
+      "callers": 11
+    },
+    {
+      "addr": "0x1ed13c",
+      "callers": 11
+    },
+    {
+      "addr": "0x26cd10",
+      "callers": 11
+    },
+    {
+      "addr": "0x25b814",
+      "callers": 11
+    },
+    {
+      "addr": "0x1dd3cc",
+      "callers": 10
+    },
+    {
+      "addr": "0x207f58",
+      "callers": 10
+    },
+    {
+      "addr": "0x2123cc",
+      "callers": 10
+    },
+    {
+      "addr": "0x213ac0",
+      "callers": 10
+    },
+    {
+      "addr": "0x200750",
+      "callers": 10
+    },
+    {
+      "addr": "0x1f1ce4",
+      "callers": 10
+    },
+    {
+      "addr": "0x26cc10",
+      "callers": 10
+    },
+    {
+      "addr": "0x26d460",
+      "callers": 10
+    },
+    {
+      "addr": "0x251c40",
+      "callers": 10
+    },
+    {
+      "addr": "0x26c480",
+      "callers": 9
+    },
+    {
+      "addr": "0x26c540",
+      "callers": 9
+    },
+    {
+      "addr": "0x26c560",
+      "callers": 9
+    },
+    {
+      "addr": "0x1db7e8",
+      "callers": 9
+    },
+    {
+      "addr": "0x1ee5fc",
+      "callers": 9
+    },
+    {
+      "addr": "0x1f0528",
+      "callers": 9
+    },
+    {
+      "addr": "0x207e7c",
+      "callers": 9
+    },
+    {
+      "addr": "0x201ef8",
+      "callers": 9
+    },
+    {
+      "addr": "0x1ffba8",
+      "callers": 9
+    },
+    {
+      "addr": "0x26c8a0",
+      "callers": 9
+    },
+    {
+      "addr": "0x26cbf0",
+      "callers": 9
+    },
+    {
+      "addr": "0x23d778",
+      "callers": 9
+    },
+    {
+      "addr": "0x26cfb0",
+      "callers": 9
+    },
+    {
+      "addr": "0x2521f4",
+      "callers": 9
+    },
+    {
+      "addr": "0x26c2e0",
+      "callers": 8
+    },
+    {
+      "addr": "0x26c460",
+      "callers": 8
+    },
+    {
+      "addr": "0x26c5a0",
+      "callers": 8
+    },
+    {
+      "addr": "0x21512c",
+      "callers": 8
+    },
+    {
+      "addr": "0x2011c8",
+      "callers": 8
+    },
+    {
+      "addr": "0x200978",
+      "callers": 8
+    },
+    {
+      "addr": "0x26c700",
+      "callers": 8
+    },
+    {
+      "addr": "0x2067f4",
+      "callers": 8
+    },
+    {
+      "addr": "0x206e08",
+      "callers": 8
+    },
+    {
+      "addr": "0x1feb0c",
+      "callers": 8
+    },
+    {
+      "addr": "0x218178",
+      "callers": 8
+    },
+    {
+      "addr": "0x1ff04c",
+      "callers": 8
+    },
+    {
+      "addr": "0x1fe5e0",
+      "callers": 8
+    },
+    {
+      "addr": "0x209a94",
+      "callers": 8
+    },
+    {
+      "addr": "0x2011ac",
+      "callers": 8
+    },
+    {
+      "addr": "0x1f1d20",
+      "callers": 8
+    },
+    {
+      "addr": "0x21c3dc",
+      "callers": 8
+    },
+    {
+      "addr": "0x2006d0",
+      "callers": 8
+    },
+    {
+      "addr": "0x1ecedc",
+      "callers": 8
+    },
+    {
+      "addr": "0x226a20",
+      "callers": 8
+    },
+    {
+      "addr": "0x26caf0",
+      "callers": 8
+    },
+    {
+      "addr": "0x237b10",
+      "callers": 8
+    },
+    {
+      "addr": "0x23181c",
+      "callers": 8
+    },
+    {
+      "addr": "0x238e38",
+      "callers": 8
+    },
+    {
+      "addr": "0x268160",
+      "callers": 8
+    },
+    {
+      "addr": "0x26d3a0",
+      "callers": 8
+    },
+    {
+      "addr": "0x250564",
+      "callers": 8
+    },
+    {
+      "addr": "0x24dc48",
+      "callers": 8
+    },
+    {
+      "addr": "0x208f88",
+      "callers": 7
+    },
+    {
+      "addr": "0x268190",
+      "callers": 7
+    },
+    {
+      "addr": "0x209068",
+      "callers": 7
+    },
+    {
+      "addr": "0x1f2794",
+      "callers": 7
+    },
+    {
+      "addr": "0x20c314",
+      "callers": 7
+    },
+    {
+      "addr": "0x206960",
+      "callers": 7
+    },
+    {
+      "addr": "0x1f1de0",
+      "callers": 7
+    },
+    {
+      "addr": "0x2025d8",
+      "callers": 7
+    },
+    {
+      "addr": "0x2002d8",
+      "callers": 7
+    },
+    {
+      "addr": "0x1fd464",
+      "callers": 7
+    },
+    {
+      "addr": "0x1eef0c",
+      "callers": 7
+    },
+    {
+      "addr": "0x2064a8",
+      "callers": 7
+    },
+    {
+      "addr": "0x1eda00",
+      "callers": 7
+    },
+    {
+      "addr": "0x210bc4",
+      "callers": 7
+    },
+    {
+      "addr": "0x212444",
+      "callers": 7
+    },
+    {
+      "addr": "0x21497c",
+      "callers": 7
+    },
+    {
+      "addr": "0x2026c8",
+      "callers": 7
+    },
+    {
+      "addr": "0x1ed0c4",
+      "callers": 7
+    },
+    {
+      "addr": "0x1fe51c",
+      "callers": 7
+    },
+    {
+      "addr": "0x1ec7a8",
+      "callers": 7
+    },
+    {
+      "addr": "0x26cae0",
+      "callers": 7
+    },
+    {
+      "addr": "0x22f9fc",
+      "callers": 7
+    },
+    {
+      "addr": "0x233fec",
+      "callers": 7
+    }
+  ],
+  "key": {
+    "JNI_OnLoad": 1927652,
+    "egl_callback": 1930992,
+    "input_callback": 1930764,
+    "Halalium_Hooks_Update": 1931788,
+    "Halalium_LateUpdate": 1932996,
+    "egl_install": 1934540,
+    "Halalium_Bypass": 1937592,
+    "secondary_hook_cb": 1933820,
+    "tertiary_hook_cb": 1934340,
+    "extra_hook_A": 1933984,
+    "extra_hook_B": 1934284,
+    "DobbyHook": 2329040,
+    "DobbyDestroy": 2340480,
+    "DobbyGetVersion": 2340468,
+    "DobbyCodePatch": 2342128,
+    "DobbySymbolResolver": 2344408
+  }
+}

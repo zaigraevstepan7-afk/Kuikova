@@ -1,0 +1,590 @@
+[
+  {
+    "name": "__cxa_finalize"
+  },
+  {
+    "name": "__cxa_atexit"
+  },
+  {
+    "name": "__register_atfork"
+  },
+  {
+    "name": "pthread_create"
+  },
+  {
+    "name": "__stack_chk_fail"
+  },
+  {
+    "name": "pthread_setspecific"
+  },
+  {
+    "name": "memset"
+  },
+  {
+    "name": "strlen"
+  },
+  {
+    "name": "memmove"
+  },
+  {
+    "name": "memcpy"
+  },
+  {
+    "name": "AInputEvent_getType"
+  },
+  {
+    "name": "AMotionEvent_getAction"
+  },
+  {
+    "name": "AMotionEvent_getX"
+  },
+  {
+    "name": "AMotionEvent_getY"
+  },
+  {
+    "name": "eglGetCurrentContext"
+  },
+  {
+    "name": "eglQuerySurface"
+  },
+  {
+    "name": "clock_gettime"
+  },
+  {
+    "name": "glViewport"
+  },
+  {
+    "name": "__android_log_print"
+  },
+  {
+    "name": "__strlen_chk"
+  },
+  {
+    "name": "memcmp"
+  },
+  {
+    "name": "time"
+  },
+  {
+    "name": "localtime_r"
+  },
+  {
+    "name": "__vsnprintf_chk"
+  },
+  {
+    "name": "fmodf"
+  },
+  {
+    "name": "sincosf"
+  },
+  {
+    "name": "atan2f"
+  },
+  {
+    "name": "sinf"
+  },
+  {
+    "name": "slCreateEngine"
+  },
+  {
+    "name": "SL_IID_ENGINE"
+  },
+  {
+    "name": "SL_IID_BUFFERQUEUE"
+  },
+  {
+    "name": "SL_IID_PLAY"
+  },
+  {
+    "name": "strncpy"
+  },
+  {
+    "name": "memchr"
+  },
+  {
+    "name": "vsnprintf"
+  },
+  {
+    "name": "fopen"
+  },
+  {
+    "name": "fclose"
+  },
+  {
+    "name": "ftell"
+  },
+  {
+    "name": "fseek"
+  },
+  {
+    "name": "fread"
+  },
+  {
+    "name": "fwrite"
+  },
+  {
+    "name": "qsort"
+  },
+  {
+    "name": "sscanf"
+  },
+  {
+    "name": "fork"
+  },
+  {
+    "name": "waitpid"
+  },
+  {
+    "name": "execvp"
+  },
+  {
+    "name": "exit"
+  },
+  {
+    "name": "cosf"
+  },
+  {
+    "name": "strcmp"
+  },
+  {
+    "name": "fflush"
+  },
+  {
+    "name": "printf"
+  },
+  {
+    "name": "malloc"
+  },
+  {
+    "name": "free"
+  },
+  {
+    "name": "acosf"
+  },
+  {
+    "name": "__memset_chk"
+  },
+  {
+    "name": "__memcpy_chk"
+  },
+  {
+    "name": "powf"
+  },
+  {
+    "name": "strncmp"
+  },
+  {
+    "name": "strchr"
+  },
+  {
+    "name": "logf"
+  },
+  {
+    "name": "atof"
+  },
+  {
+    "name": "log"
+  },
+  {
+    "name": "pow"
+  },
+  {
+    "name": "glGetString"
+  },
+  {
+    "name": "glGetIntegerv"
+  },
+  {
+    "name": "__strcpy_chk"
+  },
+  {
+    "name": "__strcat_chk"
+  },
+  {
+    "name": "glDeleteTextures"
+  },
+  {
+    "name": "glBindBuffer"
+  },
+  {
+    "name": "glCreateShader"
+  },
+  {
+    "name": "glShaderSource"
+  },
+  {
+    "name": "glCompileShader"
+  },
+  {
+    "name": "glCreateProgram"
+  },
+  {
+    "name": "glAttachShader"
+  },
+  {
+    "name": "glLinkProgram"
+  },
+  {
+    "name": "glGetProgramiv"
+  },
+  {
+    "name": "glDetachShader"
+  },
+  {
+    "name": "glDeleteShader"
+  },
+  {
+    "name": "glGetUniformLocation"
+  },
+  {
+    "name": "glGetAttribLocation"
+  },
+  {
+    "name": "glGenBuffers"
+  },
+  {
+    "name": "glBindTexture"
+  },
+  {
+    "name": "glBindVertexArray"
+  },
+  {
+    "name": "stderr"
+  },
+  {
+    "name": "fprintf"
+  },
+  {
+    "name": "glGetProgramInfoLog"
+  },
+  {
+    "name": "glActiveTexture"
+  },
+  {
+    "name": "glIsEnabled"
+  },
+  {
+    "name": "glGenVertexArrays"
+  },
+  {
+    "name": "glBufferData"
+  },
+  {
+    "name": "glBufferSubData"
+  },
+  {
+    "name": "glScissor"
+  },
+  {
+    "name": "glDrawElements"
+  },
+  {
+    "name": "glDeleteVertexArrays"
+  },
+  {
+    "name": "glIsProgram"
+  },
+  {
+    "name": "glUseProgram"
+  },
+  {
+    "name": "glBindSampler"
+  },
+  {
+    "name": "glBlendEquationSeparate"
+  },
+  {
+    "name": "glBlendFuncSeparate"
+  },
+  {
+    "name": "glEnable"
+  },
+  {
+    "name": "glDisable"
+  },
+  {
+    "name": "glPixelStorei"
+  },
+  {
+    "name": "glGenTextures"
+  },
+  {
+    "name": "glTexParameteri"
+  },
+  {
+    "name": "glTexImage2D"
+  },
+  {
+    "name": "glTexSubImage2D"
+  },
+  {
+    "name": "glBlendEquation"
+  },
+  {
+    "name": "glUniform1i"
+  },
+  {
+    "name": "glUniformMatrix4fv"
+  },
+  {
+    "name": "glEnableVertexAttribArray"
+  },
+  {
+    "name": "glVertexAttribPointer"
+  },
+  {
+    "name": "glGetShaderiv"
+  },
+  {
+    "name": "glGetShaderInfoLog"
+  },
+  {
+    "name": "open"
+  },
+  {
+    "name": "__errno"
+  },
+  {
+    "name": "__open_2"
+  },
+  {
+    "name": "close"
+  },
+  {
+    "name": "sysconf"
+  },
+  {
+    "name": "mprotect"
+  },
+  {
+    "name": "fgets"
+  },
+  {
+    "name": "regcomp"
+  },
+  {
+    "name": "regexec"
+  },
+  {
+    "name": "regfree"
+  },
+  {
+    "name": "syscall"
+  },
+  {
+    "name": "getpid"
+  },
+  {
+    "name": "strtoull"
+  },
+  {
+    "name": "mmap"
+  },
+  {
+    "name": "munmap"
+  },
+  {
+    "name": "readlink"
+  },
+  {
+    "name": "strerror"
+  },
+  {
+    "name": "dlsym"
+  },
+  {
+    "name": "__system_property_get"
+  },
+  {
+    "name": "strtoll"
+  },
+  {
+    "name": "fstat"
+  },
+  {
+    "name": "stat"
+  },
+  {
+    "name": "feof"
+  },
+  {
+    "name": "getc"
+  },
+  {
+    "name": "strstr"
+  },
+  {
+    "name": "abort"
+  },
+  {
+    "name": "snprintf"
+  },
+  {
+    "name": "read"
+  },
+  {
+    "name": "realloc"
+  },
+  {
+    "name": "wcslen"
+  },
+  {
+    "name": "wmemchr"
+  },
+  {
+    "name": "wmemcmp"
+  },
+  {
+    "name": "strtoul"
+  },
+  {
+    "name": "strtof"
+  },
+  {
+    "name": "strtod"
+  },
+  {
+    "name": "strtold"
+  },
+  {
+    "name": "wcstoul"
+  },
+  {
+    "name": "wcstoll"
+  },
+  {
+    "name": "wcstoull"
+  },
+  {
+    "name": "wcstof"
+  },
+  {
+    "name": "wcstod"
+  },
+  {
+    "name": "wcstold"
+  },
+  {
+    "name": "swprintf"
+  },
+  {
+    "name": "strtol"
+  },
+  {
+    "name": "wcstol"
+  },
+  {
+    "name": "strerror_r"
+  },
+  {
+    "name": "pthread_mutex_destroy"
+  },
+  {
+    "name": "pthread_mutex_lock"
+  },
+  {
+    "name": "pthread_mutex_trylock"
+  },
+  {
+    "name": "pthread_mutex_unlock"
+  },
+  {
+    "name": "pthread_mutexattr_init"
+  },
+  {
+    "name": "pthread_mutexattr_settype"
+  },
+  {
+    "name": "pthread_mutex_init"
+  },
+  {
+    "name": "pthread_mutexattr_destroy"
+  },
+  {
+    "name": "pthread_self"
+  },
+  {
+    "name": "pthread_cond_destroy"
+  },
+  {
+    "name": "pthread_cond_signal"
+  },
+  {
+    "name": "pthread_cond_broadcast"
+  },
+  {
+    "name": "pthread_cond_wait"
+  },
+  {
+    "name": "pthread_cond_timedwait"
+  },
+  {
+    "name": "pthread_getspecific"
+  },
+  {
+    "name": "pthread_join"
+  },
+  {
+    "name": "pthread_detach"
+  },
+  {
+    "name": "nanosleep"
+  },
+  {
+    "name": "pthread_key_create"
+  },
+  {
+    "name": "ioctl"
+  },
+  {
+    "name": "__sF"
+  },
+  {
+    "name": "vfprintf"
+  },
+  {
+    "name": "fputc"
+  },
+  {
+    "name": "vasprintf"
+  },
+  {
+    "name": "android_set_abort_message"
+  },
+  {
+    "name": "openlog"
+  },
+  {
+    "name": "syslog"
+  },
+  {
+    "name": "closelog"
+  },
+  {
+    "name": "posix_memalign"
+  },
+  {
+    "name": "__assert2"
+  },
+  {
+    "name": "pthread_once"
+  },
+  {
+    "name": "pthread_key_delete"
+  },
+  {
+    "name": "getauxval"
+  },
+  {
+    "name": "pthread_rwlock_wrlock"
+  },
+  {
+    "name": "pthread_rwlock_unlock"
+  },
+  {
+    "name": "dl_iterate_phdr"
+  },
+  {
+    "name": "pthread_rwlock_rdlock"
+  }
+]

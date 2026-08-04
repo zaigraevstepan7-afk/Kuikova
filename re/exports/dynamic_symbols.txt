@@ -1,0 +1,893 @@
+
+/workspace/re/bin/libhalalium.so:     file format elf64-little
+
+DYNAMIC SYMBOL TABLE:
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       __cxa_finalize
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       __cxa_atexit
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       __register_atfork
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_create
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       __stack_chk_fail
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_setspecific
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       memset
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       strlen
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       memmove
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       memcpy
+0000000000000000      DF *UND*	0000000000000000  Base        AInputEvent_getType
+0000000000000000      DF *UND*	0000000000000000  Base        AMotionEvent_getAction
+0000000000000000      DF *UND*	0000000000000000  Base        AMotionEvent_getX
+0000000000000000      DF *UND*	0000000000000000  Base        AMotionEvent_getY
+0000000000000000      DF *UND*	0000000000000000  Base        eglGetCurrentContext
+0000000000000000      DF *UND*	0000000000000000  Base        eglQuerySurface
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       clock_gettime
+0000000000000000      DF *UND*	0000000000000000  Base        glViewport
+0000000000000000      DF *UND*	0000000000000000  Base        __android_log_print
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       __strlen_chk
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       memcmp
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       time
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       localtime_r
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       __vsnprintf_chk
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       fmodf
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       sincosf
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       atan2f
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       sinf
+0000000000000000      DF *UND*	0000000000000000  Base        slCreateEngine
+0000000000000000      DO *UND*	0000000000000000  Base        SL_IID_ENGINE
+0000000000000000      DO *UND*	0000000000000000  Base        SL_IID_BUFFERQUEUE
+0000000000000000      DO *UND*	0000000000000000  Base        SL_IID_PLAY
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       strncpy
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       memchr
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       vsnprintf
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       fopen
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       fclose
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       ftell
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       fseek
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       fread
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       fwrite
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       qsort
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       sscanf
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       fork
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       waitpid
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       execvp
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       exit
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       cosf
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       strcmp
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       fflush
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       printf
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       malloc
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       free
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       acosf
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       __memset_chk
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       __memcpy_chk
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       powf
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       strncmp
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       strchr
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       logf
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       atof
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       log
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pow
+0000000000000000      DF *UND*	0000000000000000  Base        glGetString
+0000000000000000      DF *UND*	0000000000000000  Base        glGetIntegerv
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       __strcpy_chk
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       __strcat_chk
+0000000000000000      DF *UND*	0000000000000000  Base        glDeleteTextures
+0000000000000000      DF *UND*	0000000000000000  Base        glBindBuffer
+0000000000000000      DF *UND*	0000000000000000  Base        glCreateShader
+0000000000000000      DF *UND*	0000000000000000  Base        glShaderSource
+0000000000000000      DF *UND*	0000000000000000  Base        glCompileShader
+0000000000000000      DF *UND*	0000000000000000  Base        glCreateProgram
+0000000000000000      DF *UND*	0000000000000000  Base        glAttachShader
+0000000000000000      DF *UND*	0000000000000000  Base        glLinkProgram
+0000000000000000      DF *UND*	0000000000000000  Base        glGetProgramiv
+0000000000000000      DF *UND*	0000000000000000  Base        glDetachShader
+0000000000000000      DF *UND*	0000000000000000  Base        glDeleteShader
+0000000000000000      DF *UND*	0000000000000000  Base        glGetUniformLocation
+0000000000000000      DF *UND*	0000000000000000  Base        glGetAttribLocation
+0000000000000000      DF *UND*	0000000000000000  Base        glGenBuffers
+0000000000000000      DF *UND*	0000000000000000  Base        glBindTexture
+0000000000000000      DF *UND*	0000000000000000  Base        glBindVertexArray
+0000000000000000      DO *UND*	0000000000000000 (LIBC)       stderr
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       fprintf
+0000000000000000      DF *UND*	0000000000000000  Base        glGetProgramInfoLog
+0000000000000000      DF *UND*	0000000000000000  Base        glActiveTexture
+0000000000000000      DF *UND*	0000000000000000  Base        glIsEnabled
+0000000000000000      DF *UND*	0000000000000000  Base        glGenVertexArrays
+0000000000000000      DF *UND*	0000000000000000  Base        glBufferData
+0000000000000000      DF *UND*	0000000000000000  Base        glBufferSubData
+0000000000000000      DF *UND*	0000000000000000  Base        glScissor
+0000000000000000      DF *UND*	0000000000000000  Base        glDrawElements
+0000000000000000      DF *UND*	0000000000000000  Base        glDeleteVertexArrays
+0000000000000000      DF *UND*	0000000000000000  Base        glIsProgram
+0000000000000000      DF *UND*	0000000000000000  Base        glUseProgram
+0000000000000000      DF *UND*	0000000000000000  Base        glBindSampler
+0000000000000000      DF *UND*	0000000000000000  Base        glBlendEquationSeparate
+0000000000000000      DF *UND*	0000000000000000  Base        glBlendFuncSeparate
+0000000000000000      DF *UND*	0000000000000000  Base        glEnable
+0000000000000000      DF *UND*	0000000000000000  Base        glDisable
+0000000000000000      DF *UND*	0000000000000000  Base        glPixelStorei
+0000000000000000      DF *UND*	0000000000000000  Base        glGenTextures
+0000000000000000      DF *UND*	0000000000000000  Base        glTexParameteri
+0000000000000000      DF *UND*	0000000000000000  Base        glTexImage2D
+0000000000000000      DF *UND*	0000000000000000  Base        glTexSubImage2D
+0000000000000000      DF *UND*	0000000000000000  Base        glBlendEquation
+0000000000000000      DF *UND*	0000000000000000  Base        glUniform1i
+0000000000000000      DF *UND*	0000000000000000  Base        glUniformMatrix4fv
+0000000000000000      DF *UND*	0000000000000000  Base        glEnableVertexAttribArray
+0000000000000000      DF *UND*	0000000000000000  Base        glVertexAttribPointer
+0000000000000000      DF *UND*	0000000000000000  Base        glGetShaderiv
+0000000000000000      DF *UND*	0000000000000000  Base        glGetShaderInfoLog
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       open
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       __errno
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       __open_2
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       close
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       sysconf
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       mprotect
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       fgets
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       regcomp
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       regexec
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       regfree
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       syscall
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       getpid
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       strtoull
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       mmap
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       munmap
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       readlink
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       strerror
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       dlsym
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       __system_property_get
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       strtoll
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       fstat
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       stat
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       feof
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       getc
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       strstr
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       abort
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       snprintf
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       read
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       realloc
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       wcslen
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       wmemchr
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       wmemcmp
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       strtoul
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       strtof
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       strtod
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       strtold
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       wcstoul
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       wcstoll
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       wcstoull
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       wcstof
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       wcstod
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       wcstold
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       swprintf
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       strtol
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       wcstol
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       strerror_r
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_mutex_destroy
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_mutex_lock
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_mutex_trylock
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_mutex_unlock
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_mutexattr_init
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_mutexattr_settype
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_mutex_init
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_mutexattr_destroy
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_self
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_cond_destroy
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_cond_signal
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_cond_broadcast
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_cond_wait
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_cond_timedwait
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_getspecific
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_join
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_detach
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       nanosleep
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_key_create
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       ioctl
+0000000000000000      DO *UND*	0000000000000000 (LIBC)       __sF
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       vfprintf
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       fputc
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       vasprintf
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       android_set_abort_message
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       openlog
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       syslog
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       closelog
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       posix_memalign
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       __assert2
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_once
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_key_delete
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       getauxval
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_rwlock_wrlock
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_rwlock_unlock
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       dl_iterate_phdr
+0000000000000000      DF *UND*	0000000000000000 (LIBC)       pthread_rwlock_rdlock
+0000000000273950 g    DO .data.rel.ro	0000000000000018  Base        _ZTISt12length_error
+000000000024b5b0 g    DF .text	0000000000000008  Base        _ZNSt9exceptionD2Ev
+0000000000273840 g    DO .data.rel.ro	0000000000000028  Base        _ZTVSt11logic_error
+00000000001b85ea g    DO .rodata	0000000000000002  Base        _ZTSs
+00000000002741d8 g    DO .data.rel.ro	0000000000000010  Base        _ZTIe
+0000000000249ea8 g    DF .text	00000000000000a4  Base        _ZNSt6__ndk117__assoc_sub_state28set_exception_at_thread_exitESt13exception_ptr
+00000000001b82f5 g    DO .rodata	000000000000001f  Base        _ZTSNSt6__ndk117__assoc_sub_stateE
+000000000024b8a4 g    DF .text	000000000000002c  Base        _ZNSt12out_of_rangeD0Ev
+00000000001b85f3 g    DO .rodata	0000000000000002  Base        _ZTSt
+0000000000274138 g    DO .data.rel.ro	0000000000000010  Base        _ZTIf
+0000000000241f58  w   DF .text	0000000000000154  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6insertEmmw
+000000000024d494 g    DF .text	0000000000000008  Base        _ZNSt9type_infoD2Ev
+0000000000274228 g    DO .data.rel.ro	0000000000000010  Base        _ZTIg
+00000000001b8698 g    DO .rodata	0000000000000022  Base        _ZTSN10__cxxabiv117__array_type_infoE
+00000000002492d4 g    DF .text	0000000000000020  Base        _ZNSt6__ndk16threadD1Ev
+000000000023ed98 g    DF .text	0000000000000720  Base        _ZNSt6__ndk112__next_primeEm
+0000000000243994  w   DF .text	00000000000000c8  Base        _ZNKSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE7compareEmmRKS5_mm
+00000000001b85a8 g    DO .rodata	0000000000000002  Base        _ZTSv
+0000000000273d28 g    DO .data.rel.ro	0000000000000010  Base        _ZTIh
+0000000000248eb0 g    DF .text	0000000000000054  Base        _ZNSt6__ndk121recursive_timed_mutexD1Ev
+00000000001b85c6 g    DO .rodata	0000000000000002  Base        _ZTSw
+0000000000273e68 g    DO .data.rel.ro	0000000000000010  Base        _ZTIi
+000000000024b5e4 g    DF .text	0000000000000010  Base        _ZNKSt9exception4whatEv
+0000000000248b48 g    DF .text	00000000000000c8  Base        _ZNSt6__ndk115recursive_mutexC2Ev
+0000000000274630 g    DO .data.rel.ro	0000000000000028  Base        _ZTVSt10bad_typeid
+0000000000273eb8 g    DO .data.rel.ro	0000000000000010  Base        _ZTIj
+00000000001b8620 g    DO .rodata	0000000000000002  Base        _ZTSx
+000000000024b6c8 g    DF .text	0000000000000010  Base        _ZNKSt20bad_array_new_length4whatEv
+00000000001b8629 g    DO .rodata	0000000000000002  Base        _ZTSy
+0000000000265f08  w   DF .text	0000000000000008  Base        _ZdlPvSt11align_val_tRKSt9nothrow_t
+000000000024b6d8 g    DF .text	000000000000006c  Base        _ZNSt16invalid_argumentD1Ev
+00000000002481e4 g    DF .text	00000000000000f8  Base        _ZNSt6__ndk112system_errorC1ENS_10error_codeERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE
+000000000024b744 g    DF .text	000000000000002c  Base        _ZNSt11logic_errorD0Ev
+0000000000273a68 g    DO .data.rel.ro	0000000000000018  Base        _ZTISt15underflow_error
+0000000000273a98 g    DO .data.rel.ro	0000000000000018  Base        _ZTIN10__cxxabiv117__class_type_infoE
+0000000000273f08 g    DO .data.rel.ro	0000000000000010  Base        _ZTIl
+0000000000241770  w   DF .text	0000000000000050  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6insertEmRKS5_mm
+00000000002483d0 g    DF .text	0000000000000150  Base        _ZNSt6__ndk112system_errorC2ENS_10error_codeEPKc
+0000000000279440 g    DO .data	0000000000000008  Base        __cxa_terminate_handler
+0000000000273f58 g    DO .data.rel.ro	0000000000000010  Base        _ZTIm
+00000000001b864b g    DO .rodata	0000000000000005  Base        _ZTSPKDh
+0000000000248ad4 g    DF .text	000000000000002c  Base        _ZNSt6__ndk15mutex4lockEv
+0000000000240f18  w   DF .text	0000000000000080  Base        _ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE7compareEPKc
+00000000002448b4 g    DF .text	00000000000000d4  Base        _ZNSt6__ndk14stoiERKNS_12basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEEPmi
+0000000000241e90  w   DF .text	0000000000000018  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEED1Ev
+000000000024a634 g    DF .text	0000000000000060  Base        _ZNSt6__ndk17promiseIvE13set_exceptionESt13exception_ptr
+00000000002495c8 g    DF .text	000000000000003c  Base        _ZNSt6__ndk115__thread_structC2Ev
+00000000001b8733 g    DO .rodata	000000000000000c  Base        _ZTSSt8bad_cast
+0000000000274048 g    DO .data.rel.ro	0000000000000010  Base        _ZTIn
+00000000001b8693 g    DO .rodata	0000000000000005  Base        _ZTSPKDi
+0000000000248b28 g    DF .text	0000000000000020  Base        _ZNSt6__ndk15mutex6unlockEv
+00000000002488f4 g    DF .text	0000000000000008  Base        _ZNSt6__ndk112system_errorD1Ev
+00000000001b8240 g    DO .rodata	000000000000001a  Base        _ZTSNSt6__ndk112system_errorE
+0000000000274098 g    DO .data.rel.ro	0000000000000010  Base        _ZTIo
+0000000000249434 g    DF .text	0000000000000094  Base        _ZNSt6__ndk119__thread_local_dataEv
+000000000024aea4 g    DF .text	0000000000000094  Base        _ZNSt6__ndk113random_deviceclEv
+000000000024a22c g    DF .text	0000000000000054  Base        _ZNSt6__ndk16futureIvED2Ev
+000000000024b7e8 g    DF .text	000000000000002c  Base        _ZNSt13runtime_errorD0Ev
+000000000024b5b0 g    DF .text	0000000000000008  Base        _ZNSt20bad_array_new_lengthD1Ev
+000000000024814c g    DF .text	0000000000000060  Base        _ZNSt6__ndk115system_categoryEv
+00000000002491a4 g    DF .text	00000000000000a0  Base        _ZNSt6__ndk118condition_variable15__do_timed_waitERNS_11unique_lockINS_5mutexEEENS_6chrono10time_pointINS5_12system_clockENS5_8durationIxNS_5ratioILl1ELl1000000000EEEEEEE
+000000000024a280 g    DF .text	000000000000008c  Base        _ZNSt6__ndk16futureIvE3getEv
+00000000002743a0 g    DO .data.rel.ro	0000000000000018  Base        _ZTIN10__cxxabiv117__array_type_infoE
+000000000023f544 g    DF .text	0000000000000038  Base        _ZSt17__throw_bad_allocv
+0000000000240c14  w   DF .text	0000000000000050  Base        _ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE5rfindEcm
+0000000000244a00 g    DF .text	0000000000000188  Base        _ZNSt6__ndk15stoulERKNS_12basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEEPmi
+00000000001b85b8 g    DO .rodata	0000000000000005  Base        _ZTSPKDn
+0000000000273dc8 g    DO .data.rel.ro	0000000000000010  Base        _ZTIs
+0000000000248a40 g    DF .text	0000000000000014  Base        _ZNKSt6__ndk114error_category23default_error_conditionEi
+000000000024acec g    DF .text	0000000000000024  Base        _ZNSt6__ndk18__sp_mut4lockEv
+00000000001b834e g    DO .rodata	000000000000001a  Base        _ZTSNSt6__ndk112bad_weak_ptrE
+0000000000240770  w   DF .text	0000000000000050  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6assignERKS5_mm
+0000000000249e04 g    DF .text	00000000000000a4  Base        _ZNSt6__ndk117__assoc_sub_state13set_exceptionESt13exception_ptr
+0000000000248e94 g    DF .text	000000000000001c  Base        _ZNSt6__ndk121recursive_timed_mutexC1Ev
+0000000000273e18 g    DO .data.rel.ro	0000000000000010  Base        _ZTIt
+000000000024a99c g    DF .text	000000000000002c  Base        _ZSt17current_exceptionv
+000000000024a9c8 g    DF .text	0000000000000018  Base        _ZNSt16nested_exceptionD2Ev
+00000000002481e4 g    DF .text	00000000000000f8  Base        _ZNSt6__ndk112system_errorC2ENS_10error_codeERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE
+00000000002734a0 g    DO .data.rel.ro	0000000000000018  Base        _ZTINSt6__ndk112system_errorE
+000000000024d544 g    DF .text	000000000000002c  Base        _ZNSt10bad_typeidD0Ev
+0000000000241520  w   DF .text	0000000000000050  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE7replaceEmmRKS5_mm
+00000000002431f0  w   DF .text	0000000000000058  Base        _ZNKSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE5rfindEwm
+0000000000273b98 g    DO .data.rel.ro	0000000000000010  Base        _ZTIv
+0000000000265f00  w   DF .text	0000000000000008  Base        _ZdlPvSt11align_val_t
+000000000024a078 g    DF .text	0000000000000090  Base        _ZNSt6__ndk117__assoc_sub_state10__sub_waitERNS_11unique_lockINS_5mutexEEE
+000000000024d514 g    DF .text	0000000000000010  Base        _ZNKSt8bad_cast4whatEv
+0000000000273c88 g    DO .data.rel.ro	0000000000000010  Base        _ZTIw
+0000000000265de4  w   DF .text	0000000000000008  Base        _ZdaPvRKSt9nothrow_t
+00000000002490f8 g    DF .text	0000000000000020  Base        _ZNSt6__ndk118condition_variableD2Ev
+000000000024b598 g    DF .text	0000000000000018  Base        __cxa_deleted_virtual
+0000000000273fa8 g    DO .data.rel.ro	0000000000000010  Base        _ZTIx
+00000000001b8687 g    DO .rodata	0000000000000005  Base        _ZTSPKDs
+0000000000248a38 g    DF .text	0000000000000008  Base        _ZNSt6__ndk114error_categoryD0Ev
+0000000000273a28 g    DO .data.rel.ro	0000000000000018  Base        _ZTISt14overflow_error
+000000000023f894 g    DF .text	0000000000000070  Base        _ZNSt13runtime_erroraSERKS_
+0000000000274678 g    DO .data.rel.ro	0000000000000010  Base        _ZTISt9type_info
+0000000000273ff8 g    DO .data.rel.ro	0000000000000010  Base        _ZTIy
+0000000000273990 g    DO .data.rel.ro	0000000000000018  Base        _ZTISt12out_of_range
+000000000024ab88 g    DF .text	0000000000000024  Base        _ZNSt6__ndk119__shared_weak_count10__add_weakEv
+0000000000273698 g    DO .data.rel.ro	0000000000000018  Base        _ZTINSt6__ndk112bad_weak_ptrE
+000000000024a108 g    DF .text	00000000000000a4  Base        _ZNSt6__ndk117__assoc_sub_state4waitEv
+00000000001b867b g    DO .rodata	0000000000000005  Base        _ZTSPKDu
+00000000002389d0 g    DF .text	00000000000000fc  Base        DobbyHook
+0000000000243e60  w   DF .text	000000000000004c  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6resizeEmw
+000000000024b684 g    DF .text	0000000000000018  Base        _ZNSt20bad_array_new_lengthC1Ev
+0000000000241018  w   DF .text	00000000000000a4  Base        _ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE7compareEmmPKc
+000000000024d580 g    DF .text	00000000000005f8  Base        __cxa_demangle
+000000000024d570 g    DF .text	0000000000000010  Base        _ZNKSt10bad_typeid4whatEv
+0000000000273da8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKa
+0000000000265d8c  w   DF .text	0000000000000038  Base        _ZnamRKSt9nothrow_t
+0000000000265dc4  w   DF .text	0000000000000008  Base        _ZdlPv
+000000000024ad10 g    DF .text	0000000000000024  Base        _ZNSt6__ndk18__sp_mut6unlockEv
+000000000024b77c g    DF .text	000000000000006c  Base        _ZNSt11range_errorD2Ev
+0000000000273c68 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKb
+0000000000248ab4 g    DF .text	0000000000000020  Base        _ZNSt6__ndk15mutexD1Ev
+000000000024b77c g    DF .text	000000000000006c  Base        _ZNSt14overflow_errorD1Ev
+000000000023f85c g    DF .text	0000000000000038  Base        _ZNSt13runtime_errorC2ERKS_
+00000000002407c0  w   DF .text	0000000000000070  Base        _ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE4copyEPcmm
+0000000000244b88 g    DF .text	0000000000000188  Base        _ZNSt6__ndk15stollERKNS_12basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEEPmi
+0000000000273d08 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKc
+00000000002414e4  w   DF .text	000000000000003c  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6appendEPKc
+0000000000273910 g    DO .data.rel.ro	0000000000000018  Base        _ZTISt16invalid_argument
+0000000000248dd0 g    DF .text	0000000000000070  Base        _ZNSt6__ndk111timed_mutex8try_lockEv
+0000000000274118 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKDh
+00000000002741b8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKd
+0000000000265dec  w   DF .text	0000000000000008  Base        _ZdaPvm
+000000000024a960 g    DF .text	000000000000003c  Base        _ZNSt16nested_exceptionC2Ev
+0000000000243870  w   DF .text	0000000000000008  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6assignEPKw
+0000000000274208 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKe
+0000000000274348 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKDi
+000000000023f610 g    DF .text	0000000000000088  Base        _ZNSt11logic_errorC2EPKc
+000000000023f698 g    DF .text	0000000000000038  Base        _ZNSt11logic_errorC1ERKS_
+0000000000249760 g    DF .text	0000000000000180  Base        _ZNSt6__ndk115__thread_struct27__make_ready_at_thread_exitEPNS_17__assoc_sub_stateE
+00000000002662ec g    DF .text	000000000000005c  Base        __cxa_decrement_exception_refcount
+000000000024b24c g    DF .text	0000000000000014  Base        _ZSt14get_unexpectedv
+000000000024b77c g    DF .text	000000000000006c  Base        _ZNSt15underflow_errorD1Ev
+0000000000274168 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKf
+00000000002403b8  w   DF .text	000000000000007c  Base        _ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE13find_first_ofEPKcmm
+0000000000244e9c g    DF .text	0000000000000164  Base        _ZNSt6__ndk14stofERKNS_12basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEEPm
+0000000000274258 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKg
+00000000001b7f18  w   DO .rodata	0000000000000001  Base        _ZNSt6__ndk16chrono12system_clock9is_steadyE
+000000000024aad0 g    DF .text	0000000000000008  Base        _ZNSt6__ndk119__shared_weak_countD0Ev
+00000000002417c0  w   DF .text	00000000000001d8  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE7replaceEmmPKwm
+0000000000242bf4  w   DF .text	00000000000000f0  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6__initEmw
+00000000001b80a0  w   DO .rodata	0000000000000008  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE4nposE
+000000000024b620 g    DF .text	0000000000000010  Base        _ZNKSt13bad_exception4whatEv
+0000000000273d58 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKh
+0000000000273e98 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKi
+00000000002740e8 g    DO .data.rel.ro	0000000000000010  Base        _ZTIDh
+000000000024b580 g    DF .text	0000000000000018  Base        __cxa_pure_virtual
+0000000000273c18 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKDn
+0000000000273ee8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKj
+0000000000274318 g    DO .data.rel.ro	0000000000000010  Base        _ZTIDi
+000000000024add8 g    DF .text	00000000000000a8  Base        _ZNSt6__ndk113random_deviceC2ERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE
+0000000000265d4c  w   DF .text	0000000000000038  Base        _ZnwmRKSt9nothrow_t
+000000000023fef0  w   DF .text	0000000000000054  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE7replaceEmmPKc
+00000000002402d4  w   DF .text	00000000000000a0  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6__initEPKcm
+0000000000240374  w   DF .text	0000000000000044  Base        _ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE2atEm
+000000000024d4e0 g    DF .text	0000000000000008  Base        _ZNSt8bad_castD2Ev
+00000000001b8647 g    DO .rodata	0000000000000004  Base        _ZTSPDh
+0000000000274560 g    DO .data.rel.ro	0000000000000038  Base        _ZTVN10__cxxabiv117__pbase_type_infoE
+000000000024ab64 g    DF .text	0000000000000024  Base        _ZNSt6__ndk119__shared_weak_count12__add_sharedEv
+0000000000266710 g    DF .text	0000000000000028  Base        __cxa_uncaught_exceptions
+0000000000273f38 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKl
+00000000001b868f g    DO .rodata	0000000000000004  Base        _ZTSPDi
+00000000002743b8 g    DO .data.rel.ro	0000000000000038  Base        _ZTVN10__cxxabiv120__function_type_infoE
+0000000000273640 g    DO .data.rel.ro	0000000000000020  Base        _ZTVSt16nested_exception
+0000000000244350 g    DF .text	0000000000000170  Base        _ZNSt6__ndk16stoullERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPmi
+0000000000273f88 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKm
+00000000002486dc g    DF .text	0000000000000164  Base        _ZNSt6__ndk112system_errorC1EiRKNS_14error_categoryEPKc
+0000000000274078 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKn
+0000000000265f68 g    DF .text	0000000000000050  Base        __cxa_allocate_exception
+0000000000248a54 g    DF .text	0000000000000044  Base        _ZNKSt6__ndk114error_category10equivalentEiRKNS_15error_conditionE
+0000000000242a28  w   DF .text	0000000000000074  Base        _ZNKSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE4copyEPwmm
+00000000002433bc  w   DF .text	0000000000000094  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE5eraseEmm
+0000000000241db4  w   DF .text	000000000000002c  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEC1ERKS5_RKS4_
+00000000001b8452 g    DO .rodata	0000000000000012  Base        _ZTSSt13runtime_error
+0000000000273be8 g    DO .data.rel.ro	0000000000000010  Base        _ZTIDn
+00000000002740c8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKo
+00000000002742f8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKDs
+0000000000274428 g    DO .data.rel.ro	0000000000000018  Base        _ZTIN10__cxxabiv116__enum_type_infoE
+00000000002408f8  w   DF .text	0000000000000070  Base        _ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE4findEcm
+0000000000243c2c  w   DF .text	00000000000000e8  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6appendEPKw
+00000000001b8464 g    DO .rodata	0000000000000013  Base        _ZTSSt14overflow_error
+0000000000273b10 g    DO .data.rel.ro	0000000000000038  Base        _ZTVN10__cxxabiv116__shim_type_infoE
+0000000000273b48 g    DO .data.rel.ro	0000000000000038  Base        _ZTVN10__cxxabiv123__fundamental_type_infoE
+0000000000247178 g    DF .text	00000000000001dc  Base        _ZNSt6__ndk110to_wstringEd
+0000000000249138 g    DF .text	0000000000000020  Base        _ZNSt6__ndk118condition_variable10notify_allEv
+0000000000248c7c g    DF .text	0000000000000028  Base        _ZNSt6__ndk115recursive_mutex8try_lockEv
+0000000000273890 g    DO .data.rel.ro	0000000000000028  Base        _ZTVSt12domain_error
+0000000000274688 g    DO .data.rel.ro	0000000000000018  Base        _ZTISt8bad_cast
+00000000001b85b4 g    DO .rodata	0000000000000004  Base        _ZTSPDn
+00000000002742a8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKDu
+0000000000248a98 g    DF .text	000000000000001c  Base        _ZNKSt6__ndk114error_category10equivalentERKNS_10error_codeEi
+00000000001b8339 g    DO .rodata	0000000000000015  Base        _ZTSSt16nested_exception
+0000000000246c30 g    DF .text	00000000000001b8  Base        _ZNSt6__ndk19to_stringEd
+0000000000247354 g    DF .text	00000000000001d4  Base        _ZNSt6__ndk110to_wstringEe
+0000000000249118 g    DF .text	0000000000000020  Base        _ZNSt6__ndk118condition_variable10notify_oneEv
+000000000024add8 g    DF .text	00000000000000a8  Base        _ZNSt6__ndk113random_deviceC1ERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE
+0000000000265ec8  w   DF .text	0000000000000038  Base        _ZnamSt11align_val_tRKSt9nothrow_t
+0000000000246de8 g    DF .text	00000000000001b0  Base        _ZNSt6__ndk19to_stringEe
+0000000000246f98 g    DF .text	00000000000001e0  Base        _ZNSt6__ndk110to_wstringEf
+0000000000273df8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKs
+0000000000240ec8  w   DF .text	0000000000000050  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6appendERKS5_mm
+00000000002438b4  w   DF .text	00000000000000e0  Base        _ZNKSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE4findEPKwmm
+0000000000246a74 g    DF .text	00000000000001bc  Base        _ZNSt6__ndk19to_stringEf
+0000000000273e48 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKt
+00000000002742c8 g    DO .data.rel.ro	0000000000000010  Base        _ZTIDs
+00000000002661e8 g    DF .text	0000000000000104  Base        __cxa_end_catch
+0000000000245000 g    DF .text	0000000000000164  Base        _ZNSt6__ndk14stodERKNS_12basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEEPm
+000000000024a594 g    DF .text	00000000000000a0  Base        _ZNSt6__ndk17promiseIvE9set_valueEv
+000000000024a360 g    DF .text	0000000000000138  Base        _ZNSt6__ndk17promiseIvED1Ev
+000000000024b5f4 g    DF .text	000000000000002c  Base        _ZNSt13bad_exceptionD0Ev
+000000000024a8ec g    DF .text	000000000000000c  Base        _ZNSt13exception_ptrD2Ev
+000000000024aac0 g    DF .text	0000000000000008  Base        _ZNSt6__ndk114__shared_countD2Ev
+00000000002436bc  w   DF .text	000000000000009c  Base        _ZNKSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE7compareEmmPKwm
+0000000000245c98 g    DF .text	00000000000001e0  Base        _ZNSt6__ndk110to_wstringEi
+000000000024b648 g    DF .text	000000000000002c  Base        _ZNSt9bad_allocD0Ev
+000000000024d4c8 g    DF .text	0000000000000018  Base        _ZNSt8bad_castC2Ev
+0000000000274608 g    DO .data.rel.ro	0000000000000028  Base        _ZTVSt8bad_cast
+00000000002746a0 g    DO .data.rel.ro	0000000000000018  Base        _ZTISt10bad_typeid
+0000000000273bc8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKv
+0000000000274278 g    DO .data.rel.ro	0000000000000010  Base        _ZTIDu
+00000000001b8683 g    DO .rodata	0000000000000004  Base        _ZTSPDs
+000000000024b0c0 g    DF .text	00000000000000a8  Base        __cxa_guard_release
+00000000002452dc g    DF .text	0000000000000130  Base        _ZNSt6__ndk19to_stringEi
+000000000024aa64 g    DF .text	0000000000000018  Base        _ZSt17rethrow_exceptionSt13exception_ptr
+0000000000273a00 g    DO .data.rel.ro	0000000000000028  Base        _ZTVSt14overflow_error
+0000000000240c64  w   DF .text	000000000000013c  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6assignEmc
+0000000000246420 g    DF .text	000000000000016c  Base        _ZNSt6__ndk110to_wstringEj
+0000000000273cb8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKw
+0000000000245854 g    DF .text	00000000000000bc  Base        _ZNSt6__ndk19to_stringEj
+0000000000265d84  w   DF .text	0000000000000008  Base        _Znam
+0000000000241ca4  w   DF .text	000000000000002c  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEC1ERKS5_
+0000000000273fd8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKx
+00000000001b8677 g    DO .rodata	0000000000000004  Base        _ZTSPDu
+000000000023f610 g    DF .text	0000000000000088  Base        _ZNSt11logic_errorC1EPKc
+0000000000245e78 g    DF .text	00000000000002d4  Base        _ZNSt6__ndk110to_wstringEl
+0000000000240830  w   DF .text	00000000000000c8  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC1ERKS5_mmRKS4_
+0000000000274028 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPKy
+00000000001b86ba g    DO .rodata	0000000000000021  Base        _ZTSN10__cxxabiv116__enum_type_infoE
+00000000002666e0 g    DF .text	0000000000000030  Base        __cxa_uncaught_exception
+000000000023bcf0 g    DF .text	00000000000000d0  Base        DobbyCodePatch
+000000000024540c g    DF .text	0000000000000224  Base        _ZNSt6__ndk19to_stringEl
+000000000024658c g    DF .text	0000000000000274  Base        _ZNSt6__ndk110to_wstringEm
+0000000000248cc0 g    DF .text	0000000000000054  Base        _ZNSt6__ndk111timed_mutexD1Ev
+000000000024b878 g    DF .text	000000000000002c  Base        _ZNSt12length_errorD0Ev
+00000000002660c4 g    DF .text	0000000000000008  Base        __cxa_free_dependent_exception
+000000000024a8c0 g    DF .text	0000000000000024  Base        _ZSt18uncaught_exceptionv
+000000000024ac28 g    DF .text	0000000000000058  Base        _ZNSt6__ndk119__shared_weak_count14__release_weakEv
+0000000000245910 g    DF .text	00000000000001c4  Base        _ZNSt6__ndk19to_stringEm
+000000000023ff44  w   DF .text	000000000000002c  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC1ERKS5_RKS4_
+000000000024aa84 g    DF .text	000000000000002c  Base        _ZNSt6__ndk112bad_weak_ptrD0Ev
+00000000002492f4 g    DF .text	000000000000004c  Base        _ZNSt6__ndk16thread4joinEv
+000000000024af38 g    DF .text	0000000000000058  Base        _ZNKSt6__ndk113random_device7entropyEv
+0000000000242ddc  w   DF .text	0000000000000128  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE9__grow_byEmmmmmm
+0000000000243f2c g    DF .text	00000000000000d4  Base        _ZNSt6__ndk14stoiERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPmi
+0000000000247f84 g    DF .text	0000000000000060  Base        _ZNSt6__ndk116generic_categoryEv
+0000000000240028  w   DF .text	0000000000000018  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEED1Ev
+00000000002481ac g    DF .text	000000000000001c  Base        _ZNKSt6__ndk115error_condition7messageEv
+00000000002744f8 g    DO .data.rel.ro	0000000000000050  Base        _ZTVN10__cxxabiv121__vmi_class_type_infoE
+000000000024a30c g    DF .text	0000000000000054  Base        _ZNSt6__ndk17promiseIvEC1Ev
+000000000024bd38 g    DF .text	00000000000001e8  Base        __dynamic_cast
+0000000000243758  w   DF .text	00000000000000d0  Base        _ZNKSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE7compareEmmPKw
+0000000000249c18 g    DF .text	000000000000002c  Base        _ZNSt6__ndk112future_errorD0Ev
+000000000024a718 g    DF .text	0000000000000054  Base        _ZNSt6__ndk113shared_futureIvED2Ev
+000000000024b6d8 g    DF .text	000000000000006c  Base        _ZNSt12domain_errorD1Ev
+0000000000273500 g    DO .data.rel.ro	0000000000000048  Base        _ZTVNSt6__ndk114error_categoryE
+0000000000243d14  w   DF .text	0000000000000050  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE7replaceEmmRKS5_mm
+0000000000273ae0 g    DO .data.rel.ro	0000000000000018  Base        _ZTIN10__cxxabiv120__function_type_infoE
+0000000000248928 g    DF .text	0000000000000030  Base        _ZNSt6__ndk120__throw_system_errorEiPKc
+000000000024b6d8 g    DF .text	000000000000006c  Base        _ZNSt12out_of_rangeD1Ev
+0000000000244078 g    DF .text	000000000000016c  Base        _ZNSt6__ndk15stoulERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPmi
+000000000024b814 g    DF .text	000000000000000c  Base        _ZNKSt13runtime_error4whatEv
+000000000024b5b8 g    DF .text	000000000000002c  Base        _ZNSt9exceptionD0Ev
+0000000000273548 g    DO .data.rel.ro	0000000000000010  Base        _ZTINSt6__ndk114error_categoryE
+000000000024ace0 g    DF .text	000000000000000c  Base        _ZNKSt6__ndk119__shared_weak_count13__get_deleterERKSt9type_info
+00000000002428e4  w   DF .text	00000000000000f0  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6appendEPKwm
+000000000024614c g    DF .text	00000000000002d4  Base        _ZNSt6__ndk110to_wstringEx
+0000000000248ca4 g    DF .text	000000000000001c  Base        _ZNSt6__ndk111timed_mutexC1Ev
+0000000000240a54  w   DF .text	000000000000009c  Base        _ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE12find_last_ofEPKcmm
+0000000000242a9c  w   DF .text	00000000000000e4  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEC2ERKS5_mmRKS4_
+0000000000242ce4  w   DF .text	000000000000004c  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6insertEmPKw
+0000000000245630 g    DF .text	0000000000000224  Base        _ZNSt6__ndk19to_stringEx
+0000000000246800 g    DF .text	0000000000000274  Base        _ZNSt6__ndk110to_wstringEy
+00000000002492d4 g    DF .text	0000000000000020  Base        _ZNSt6__ndk16threadD2Ev
+000000000024d49c g    DF .text	000000000000002c  Base        _ZNSt9type_infoD0Ev
+000000000023f904 g    DF .text	0000000000000054  Base        _ZNSt6__ndk121__throw_runtime_errorEPKc
+0000000000245ad4 g    DF .text	00000000000001c4  Base        _ZNSt6__ndk19to_stringEy
+0000000000249c54 g    DF .text	000000000000008c  Base        _ZNSt6__ndk117__assoc_sub_state9set_valueEv
+0000000000248eb0 g    DF .text	0000000000000054  Base        _ZNSt6__ndk121recursive_timed_mutexD2Ev
+00000000002732d8  w   DO .data.rel.ro	0000000000000028  Base        _ZTVNSt6__ndk117bad_function_callE
+0000000000249158 g    DF .text	000000000000004c  Base        _ZNSt6__ndk118condition_variable4waitERNS_11unique_lockINS_5mutexEEE
+0000000000266a58 g    DF .text	0000000000000228  Base        __gxx_personality_v0
+0000000000248d14 g    DF .text	0000000000000090  Base        _ZNSt6__ndk111timed_mutex4lockEv
+000000000024b6d8 g    DF .text	000000000000006c  Base        _ZNSt11logic_errorD1Ev
+000000000024b6d8 g    DF .text	000000000000006c  Base        _ZNSt16invalid_argumentD2Ev
+0000000000241d60  w   DF .text	0000000000000054  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE7replaceEmmPKw
+0000000000241e90  w   DF .text	0000000000000018  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEED2Ev
+0000000000248fe0 g    DF .text	000000000000009c  Base        _ZNSt6__ndk121recursive_timed_mutex8try_lockEv
+000000000023fec4  w   DF .text	000000000000002c  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC2ERKS5_
+00000000002738e8 g    DO .data.rel.ro	0000000000000028  Base        _ZTVSt16invalid_argument
+00000000002488f4 g    DF .text	0000000000000008  Base        _ZNSt6__ndk112system_errorD2Ev
+000000000024b77c g    DF .text	000000000000006c  Base        _ZNSt13runtime_errorD1Ev
+000000000024263c  w   DF .text	0000000000000008  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6assignEPKwm
+000000000024302c  w   DF .text	00000000000001c4  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6appendEmw
+00000000002441e4 g    DF .text	000000000000016c  Base        _ZNSt6__ndk15stollERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPmi
+000000000027b0e8 g    DO .bss	0000000000000008  Base        __cxa_new_handler
+00000000001b83b2 g    DO .rodata	0000000000000012  Base        _ZTSSt13bad_exception
+000000000024b5b0 g    DF .text	0000000000000008  Base        _ZNSt20bad_array_new_lengthD2Ev
+00000000002661dc g    DF .text	000000000000000c  Base        __cxa_get_exception_ptr
+00000000002412c4  w   DF .text	0000000000000054  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEaSERKS5_
+0000000000243d64  w   DF .text	00000000000000fc  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6insertENS_11__wrap_iterIPKwEEw
+0000000000273af8 g    DO .data.rel.ro	0000000000000018  Base        _ZTIN10__cxxabiv129__pointer_to_member_type_infoE
+0000000000265f1c  w   DF .text	0000000000000008  Base        _ZdaPvSt11align_val_t
+00000000002735a0 g    DO .data.rel.ro	0000000000000028  Base        _ZTVNSt6__ndk112future_errorE
+00000000002738b8 g    DO .data.rel.ro	0000000000000018  Base        _ZTISt11logic_error
+0000000000244988 g    DF .text	0000000000000078  Base        _ZNSt6__ndk14stolERKNS_12basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEEPmi
+0000000000248e94 g    DF .text	000000000000001c  Base        _ZNSt6__ndk121recursive_timed_mutexC2Ev
+00000000001b840b g    DO .rodata	0000000000000015  Base        _ZTSSt16invalid_argument
+00000000001b8442 g    DO .rodata	0000000000000010  Base        _ZTSSt11range_error
+000000000024d53c g    DF .text	0000000000000008  Base        _ZNSt10bad_typeidD1Ev
+000000000024a9e0 g    DF .text	000000000000002c  Base        _ZNSt16nested_exceptionD0Ev
+0000000000241570  w   DF .text	00000000000001b4  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6insertENS_11__wrap_iterIPKcEEc
+0000000000241be4  w   DF .text	00000000000000a8  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6__initEPKwmm
+0000000000242720  w   DF .text	0000000000000080  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE7reserveEm
+0000000000248b00 g    DF .text	0000000000000028  Base        _ZNSt6__ndk15mutex8try_lockEv
+00000000001b8700 g    DO .rodata	0000000000000026  Base        _ZTSN10__cxxabiv121__vmi_class_type_infoE
+000000000023f7d4 g    DF .text	0000000000000088  Base        _ZNSt13runtime_errorC2EPKc
+000000000024a694 g    DF .text	0000000000000024  Base        _ZNSt6__ndk17promiseIvE24set_value_at_thread_exitEv
+0000000000248f04 g    DF .text	00000000000000dc  Base        _ZNSt6__ndk121recursive_timed_mutex4lockEv
+0000000000273d88 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPa
+0000000000248a30 g    DF .text	0000000000000008  Base        _ZNSt6__ndk114error_categoryD1Ev
+00000000001b82bf g    DO .rodata	000000000000001c  Base        _ZTSNSt6__ndk114error_categoryE
+0000000000248c30 g    DF .text	000000000000002c  Base        _ZNSt6__ndk115recursive_mutex4lockEv
+0000000000273748 g    DO .data.rel.ro	0000000000000028  Base        _ZTVSt9bad_alloc
+0000000000273c48 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPb
+0000000000274548 g    DO .data.rel.ro	0000000000000018  Base        _ZTIN10__cxxabiv121__vmi_class_type_infoE
+0000000000265dd4  w   DF .text	0000000000000008  Base        _ZdlPvm
+00000000002736e8 g    DO .data.rel.ro	0000000000000038  Base        _ZTVNSt6__ndk119__shared_weak_countE
+0000000000273ce8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPc
+0000000000273798 g    DO .data.rel.ro	0000000000000028  Base        _ZTVSt9exception
+0000000000274198 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPd
+0000000000265f2c  w   DF .text	000000000000000c  Base        _ZdaPvmSt11align_val_t
+000000000024b684 g    DF .text	0000000000000018  Base        _ZNSt20bad_array_new_lengthC2Ev
+00000000002741e8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPe
+00000000002421dc  w   DF .text	0000000000000034  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEaSEw
+0000000000248520 g    DF .text	00000000000000b0  Base        _ZNSt6__ndk112system_errorC1ENS_10error_codeE
+000000000024907c g    DF .text	000000000000007c  Base        _ZNSt6__ndk121recursive_timed_mutex6unlockEv
+0000000000267738  w   DF .text	00000000000001ec  Base        __emutls_get_address
+0000000000274148 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPf
+0000000000266064 g    DF .text	0000000000000024  Base        __cxa_free_exception
+000000000024a1ac g    DF .text	0000000000000014  Base        _ZNSt6__ndk117__assoc_sub_state9__executeEv
+0000000000248ab4 g    DF .text	0000000000000020  Base        _ZNSt6__ndk15mutexD2Ev
+000000000024b8d0 g    DF .text	000000000000002c  Base        _ZNSt11range_errorD0Ev
+000000000024b77c g    DF .text	000000000000006c  Base        _ZNSt14overflow_errorD2Ev
+0000000000274238 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPg
+0000000000273828 g    DO .data.rel.ro	0000000000000018  Base        _ZTISt20bad_array_new_length
+000000000024ac80 g    DF .text	0000000000000060  Base        _ZNSt6__ndk119__shared_weak_count4lockEv
+0000000000273d38 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPh
+0000000000265cdc  w   DF .text	0000000000000070  Base        _Znwm
+000000000023f6d0 g    DF .text	0000000000000070  Base        _ZNSt11logic_erroraSERKS_
+000000000024d524 g    DF .text	0000000000000018  Base        _ZNSt10bad_typeidC1Ev
+0000000000273e78 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPi
+0000000000274490 g    DO .data.rel.ro	0000000000000050  Base        _ZTVN10__cxxabiv120__si_class_type_infoE
+000000000024ae80 g    DF .text	0000000000000024  Base        _ZNSt6__ndk113random_deviceD1Ev
+0000000000265ddc  w   DF .text	0000000000000008  Base        _ZdaPv
+000000000024b77c g    DF .text	000000000000006c  Base        _ZNSt15underflow_errorD2Ev
+00000000001b85e6 g    DO .rodata	0000000000000004  Base        _ZTSPKa
+0000000000273ec8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPj
+00000000001b8644 g    DO .rodata	0000000000000003  Base        _ZTSDh
+00000000001b83dd g    DO .rodata	000000000000000d  Base        _ZTSSt9bad_alloc
+00000000001b85c2 g    DO .rodata	0000000000000004  Base        _ZTSPKb
+00000000001b868c g    DO .rodata	0000000000000003  Base        _ZTSDi
+000000000024ad34 g    DF .text	0000000000000054  Base        _ZNSt6__ndk112__get_sp_mutEPKv
+000000000024aac0 g    DF .text	0000000000000008  Base        _ZNSt6__ndk119__shared_weak_countD1Ev
+00000000001b85d4 g    DO .rodata	0000000000000004  Base        _ZTSPKc
+0000000000273f18 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPl
+00000000001b83a5 g    DO .rodata	000000000000000d  Base        _ZTSSt9exception
+00000000001b83ea g    DO .rodata	0000000000000011  Base        _ZTSSt12domain_error
+0000000000273f68 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPm
+00000000001b865e g    DO .rodata	0000000000000004  Base        _ZTSPKd
+0000000000265dcc  w   DF .text	0000000000000008  Base        _ZdlPvRKSt9nothrow_t
+000000000023f698 g    DF .text	0000000000000038  Base        _ZNSt11logic_errorC2ERKS_
+0000000000242210  w   DF .text	00000000000000b8  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6__initEPKwm
+0000000000273a80 g    DO .data.rel.ro	0000000000000018  Base        _ZTIN10__cxxabiv116__shim_type_infoE
+0000000000274058 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPn
+00000000001b8667 g    DO .rodata	0000000000000004  Base        _ZTSPKe
+000000000024abac g    DF .text	000000000000007c  Base        _ZNSt6__ndk119__shared_weak_count16__release_sharedEv
+00000000002740a8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPo
+00000000001b8655 g    DO .rodata	0000000000000004  Base        _ZTSPKf
+000000000024d4e8 g    DF .text	000000000000002c  Base        _ZNSt8bad_castD0Ev
+00000000001b85b1 g    DO .rodata	0000000000000003  Base        _ZTSDn
+00000000001b8514 g    DO .rodata	0000000000000025  Base        _ZTSN10__cxxabiv120__function_type_infoE
+00000000001b8670 g    DO .rodata	0000000000000004  Base        _ZTSPKg
+0000000000241de0  w   DF .text	00000000000000b0  Base        _ZNKSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE16find_last_not_ofEPKwmm
+00000000001b85dd g    DO .rodata	0000000000000004  Base        _ZTSPKh
+000000000023ed04 g    DF .text	0000000000000028  Base        _ZNSt6__ndk16chrono12system_clock9to_time_tERKNS0_10time_pointIS1_NS0_8durationIxNS_5ratioILl1ELl1000000EEEEEEE
+000000000024a56c g    DF .text	0000000000000028  Base        _ZNSt6__ndk17promiseIvE10get_futureEv
+00000000001b8601 g    DO .rodata	0000000000000004  Base        _ZTSPKi
+000000000023ed40 g    DF .text	0000000000000058  Base        _ZNSt6__ndk16chrono12steady_clock3nowEv
+00000000001b84ce g    DO .rodata	0000000000000022  Base        _ZTSN10__cxxabiv117__pbase_type_infoE
+0000000000273dd8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPs
+00000000001b860a g    DO .rodata	0000000000000004  Base        _ZTSPKj
+0000000000265f10  w   DF .text	000000000000000c  Base        _ZdlPvmSt11align_val_t
+000000000023f7d4 g    DF .text	0000000000000088  Base        _ZNSt13runtime_errorC1EPKc
+0000000000273e28 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPt
+00000000001b8613 g    DO .rodata	0000000000000004  Base        _ZTSPKl
+00000000001b8680 g    DO .rodata	0000000000000003  Base        _ZTSDs
+00000000002422c8  w   DF .text	0000000000000048  Base        _ZNKSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE2atEm
+0000000000249648 g    DF .text	0000000000000118  Base        _ZNSt6__ndk115__thread_struct25notify_all_at_thread_exitEPNS_18condition_variableEPNS_5mutexE
+0000000000273ba8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPv
+00000000001b861c g    DO .rodata	0000000000000004  Base        _ZTSPKm
+0000000000241724  w   DF .text	000000000000004c  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6resizeEmc
+0000000000249b24 g    DF .text	0000000000000060  Base        _ZNSt6__ndk115future_categoryEv
+00000000001b84f0 g    DO .rodata	0000000000000024  Base        _ZTSN10__cxxabiv119__pointer_type_infoE
+0000000000273c98 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPw
+00000000001b8637 g    DO .rodata	0000000000000004  Base        _ZTSPKn
+00000000001b8674 g    DO .rodata	0000000000000003  Base        _ZTSDu
+0000000000249244 g    DF .text	0000000000000090  Base        _ZNSt6__ndk125notify_all_at_thread_exitERNS_18condition_variableENS_11unique_lockINS_5mutexEEE
+00000000002739a8 g    DO .data.rel.ro	0000000000000028  Base        _ZTVSt11range_error
+00000000001b848b g    DO .rodata	0000000000000021  Base        _ZTSN10__cxxabiv116__shim_type_infoE
+0000000000273fb8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPx
+00000000001b8640 g    DO .rodata	0000000000000004  Base        _ZTSPKo
+00000000002481c8 g    DF .text	000000000000001c  Base        _ZNKSt6__ndk110error_code7messageEv
+0000000000242d30  w   DF .text	00000000000000ac  Base        _ZNKSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE12find_last_ofEPKwmm
+000000000024a360 g    DF .text	0000000000000138  Base        _ZNSt6__ndk17promiseIvED2Ev
+000000000024b5b0 g    DF .text	0000000000000008  Base        _ZNSt13bad_exceptionD1Ev
+0000000000274008 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPy
+0000000000273928 g    DO .data.rel.ro	0000000000000028  Base        _ZTVSt12length_error
+000000000024aab0 g    DF .text	0000000000000010  Base        _ZNKSt6__ndk112bad_weak_ptr4whatEv
+000000000024b5b0 g    DF .text	0000000000000008  Base        _ZNSt9bad_allocD1Ev
+000000000024b2bc g    DF .text	000000000000001c  Base        _ZSt10unexpectedv
+0000000000274658 g    DO .data.rel.ro	0000000000000020  Base        _ZTVSt9type_info
+00000000002732c0  w   DO .data.rel.ro	0000000000000018  Base        _ZTINSt6__ndk117bad_function_callE
+000000000024aac8 g    DF .text	0000000000000008  Base        _ZNSt6__ndk114__shared_countD0Ev
+000000000023ed2c g    DF .text	0000000000000014  Base        _ZNSt6__ndk16chrono12system_clock11from_time_tEl
+000000000024a8f8 g    DF .text	0000000000000018  Base        _ZNSt13exception_ptrC1ERKS_
+0000000000249f4c g    DF .text	0000000000000044  Base        _ZNSt6__ndk117__assoc_sub_state12__make_readyEv
+00000000001b85ef g    DO .rodata	0000000000000004  Base        _ZTSPKs
+0000000000265f24  w   DF .text	0000000000000008  Base        _ZdaPvSt11align_val_tRKSt9nothrow_t
+000000000023ff70  w   DF .text	00000000000000b8  Base        _ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE16find_last_not_ofEPKcmm
+0000000000273ab0 g    DO .data.rel.ro	0000000000000018  Base        _ZTIN10__cxxabiv117__pbase_type_infoE
+0000000000273ac8 g    DO .data.rel.ro	0000000000000018  Base        _ZTIN10__cxxabiv119__pointer_type_infoE
+00000000001b85f8 g    DO .rodata	0000000000000004  Base        _ZTSPKt
+000000000024b6d8 g    DF .text	000000000000006c  Base        _ZNSt12length_errorD1Ev
+0000000000240298  w   DF .text	000000000000003c  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEaSEc
+0000000000248cc0 g    DF .text	0000000000000054  Base        _ZNSt6__ndk111timed_mutexD2Ev
+0000000000273968 g    DO .data.rel.ro	0000000000000028  Base        _ZTVSt12out_of_range
+0000000000240968  w   DF .text	00000000000000a0  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6__initEmc
+0000000000241db4  w   DF .text	000000000000002c  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEC2ERKS5_RKS4_
+0000000000248520 g    DF .text	00000000000000b0  Base        _ZNSt6__ndk112system_errorC2ENS_10error_codeE
+00000000001b85ad g    DO .rodata	0000000000000004  Base        _ZTSPKv
+000000000024aa7c g    DF .text	0000000000000008  Base        _ZNSt6__ndk112bad_weak_ptrD1Ev
+00000000001b85cb g    DO .rodata	0000000000000004  Base        _ZTSPKw
+000000000024b168 g    DF .text	000000000000009c  Base        __cxa_guard_abort
+0000000000274440 g    DO .data.rel.ro	0000000000000050  Base        _ZTVN10__cxxabiv117__class_type_infoE
+00000000001b8625 g    DO .rodata	0000000000000004  Base        _ZTSPKx
+00000000002744e0 g    DO .data.rel.ro	0000000000000018  Base        _ZTIN10__cxxabiv120__si_class_type_infoE
+0000000000266348 g    DF .text	0000000000000058  Base        __cxa_current_exception_type
+0000000000248c10 g    DF .text	0000000000000020  Base        _ZNSt6__ndk115recursive_mutexD1Ev
+00000000001b862e g    DO .rodata	0000000000000004  Base        _ZTSPKy
+0000000000273670 g    DO .data.rel.ro	0000000000000028  Base        _ZTVNSt6__ndk112bad_weak_ptrE
+0000000000242b80  w   DF .text	0000000000000074  Base        _ZNKSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE4findEwm
+0000000000242f04  w   DF .text	0000000000000128  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE9push_backEw
+00000000002738d0 g    DO .data.rel.ro	0000000000000018  Base        _ZTISt12domain_error
+00000000001b8726 g    DO .rodata	000000000000000d  Base        _ZTSSt9type_info
+000000000023b674 g    DF .text	000000000000000c  Base        DobbyGetVersion
+00000000001b7f19  w   DO .rodata	0000000000000001  Base        _ZNSt6__ndk16chrono12steady_clock9is_steadyE
+00000000002429d4  w   DF .text	0000000000000054  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6assignERKS5_mm
+000000000024a30c g    DF .text	0000000000000054  Base        _ZNSt6__ndk17promiseIvEC2Ev
+000000000024b630 g    DF .text	0000000000000018  Base        _ZNSt9bad_allocC1Ev
+0000000000249c10 g    DF .text	0000000000000008  Base        _ZNSt6__ndk112future_errorD1Ev
+000000000024b6d8 g    DF .text	000000000000006c  Base        _ZNSt12domain_errorD2Ev
+0000000000249604 g    DF .text	0000000000000044  Base        _ZNSt6__ndk115__thread_structD1Ev
+0000000000242310  w   DF .text	0000000000000124  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6insertEmPKwm
+0000000000243610  w   DF .text	00000000000000ac  Base        _ZNKSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE7compareEPKw
+000000000024b538 g    DF .text	0000000000000024  Base        __cxa_get_globals
+0000000000274368 g    DO .data.rel.ro	0000000000000038  Base        _ZTVN10__cxxabiv117__array_type_infoE
+00000000002410bc  w   DF .text	0000000000000044  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE2atEm
+0000000000241144  w   DF .text	00000000000000d0  Base        _ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE4findEPKcmm
+000000000024b55c g    DF .text	0000000000000024  Base        __cxa_get_globals_fast
+00000000002493b4 g    DF .text	0000000000000080  Base        _ZNSt6__ndk111this_thread9sleep_forERKNS_6chrono8durationIxNS_5ratioILl1ELl1000000000EEEEE
+000000000024b5b0 g    DF .text	0000000000000008  Base        _ZNSt9exceptionD1Ev
+000000000024b6d8 g    DF .text	000000000000006c  Base        _ZNSt12out_of_rangeD2Ev
+00000000002735e0 g    DO .data.rel.ro	0000000000000030  Base        _ZTVNSt6__ndk117__assoc_sub_stateE
+0000000000248ca4 g    DF .text	000000000000001c  Base        _ZNSt6__ndk111timed_mutexC2Ev
+000000000024d494 g    DF .text	0000000000000008  Base        _ZNSt9type_infoD1Ev
+000000000023ff44  w   DF .text	000000000000002c  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC2ERKS5_RKS4_
+000000000023fec4  w   DF .text	000000000000002c  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC1ERKS5_
+000000000023b680 g    DF .text	000000000000004c  Base        DobbyDestroy
+000000000024ad88 g    DF .text	0000000000000050  Base        _ZNSt6__ndk15alignEmmRPvRm
+0000000000249c44 g    DF .text	0000000000000010  Base        _ZNSt6__ndk117__assoc_sub_state16__on_zero_sharedEv
+0000000000249f90 g    DF .text	00000000000000e8  Base        _ZNSt6__ndk117__assoc_sub_state4copyEv
+000000000024b2d8 g    DF .text	0000000000000014  Base        _ZSt13get_terminatev
+00000000001b7e1c  w   DO .rodata	000000000000001f  Base        _ZTSNSt6__ndk117bad_function_callE
+0000000000244750 g    DF .text	0000000000000164  Base        _ZNSt6__ndk15stoldERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPm
+0000000000248b48 g    DF .text	00000000000000c8  Base        _ZNSt6__ndk115recursive_mutexC1Ev
+00000000001b8539 g    DO .rodata	000000000000002e  Base        _ZTSN10__cxxabiv129__pointer_to_member_type_infoE
+0000000000273478 g    DO .data.rel.ro	0000000000000028  Base        _ZTVNSt6__ndk112system_errorE
+000000000024b6d8 g    DF .text	000000000000006c  Base        _ZNSt11logic_errorD2Ev
+0000000000265df4  w   DF .text	0000000000000094  Base        _ZnwmSt11align_val_t
+000000000024aad8 g    DF .text	0000000000000024  Base        _ZNSt6__ndk114__shared_count12__add_sharedEv
+000000000024b84c g    DF .text	000000000000002c  Base        _ZNSt16invalid_argumentD0Ev
+00000000002495c8 g    DF .text	000000000000003c  Base        _ZNSt6__ndk115__thread_structC1Ev
+000000000024b77c g    DF .text	000000000000006c  Base        _ZNSt13runtime_errorD2Ev
+00000000002488fc g    DF .text	000000000000002c  Base        _ZNSt6__ndk112system_errorD0Ev
+000000000024a22c g    DF .text	0000000000000054  Base        _ZNSt6__ndk16futureIvED1Ev
+000000000026653c g    DF .text	0000000000000130  Base        __cxa_rethrow_primary_exception
+000000000024a6b8 g    DF .text	0000000000000060  Base        _ZNSt6__ndk17promiseIvE28set_exception_at_thread_exitESt13exception_ptr
+000000000024b69c g    DF .text	000000000000002c  Base        _ZNSt20bad_array_new_lengthD0Ev
+00000000001b8580 g    DO .rodata	0000000000000028  Base        _ZTSN10__cxxabiv123__fundamental_type_infoE
+0000000000240a08  w   DF .text	000000000000004c  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6insertEmPKc
+0000000000273868 g    DO .data.rel.ro	0000000000000028  Base        _ZTVSt13runtime_error
+0000000000279448 g    DO .data	0000000000000008  Base        __cxa_unexpected_handler
+000000000023c5d8 g    DF .text	000000000000003c  Base        DobbySymbolResolver
+000000000023ec8c g    DF .text	0000000000000078  Base        _ZNSt6__ndk16chrono12system_clock3nowEv
+0000000000273720 g    DO .data.rel.ro	0000000000000028  Base        _ZTINSt6__ndk119__shared_weak_countE
+000000000024d53c g    DF .text	0000000000000008  Base        _ZNSt10bad_typeidD2Ev
+00000000001b85e3 g    DO .rodata	0000000000000003  Base        _ZTSPa
+000000000024a9c8 g    DF .text	0000000000000018  Base        _ZNSt16nested_exceptionD1Ev
+00000000002739d0 g    DO .data.rel.ro	0000000000000018  Base        _ZTISt13runtime_error
+0000000000240434  w   DF .text	000000000000020c  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE7replaceEmmmc
+0000000000249b84 g    DF .text	000000000000008c  Base        _ZNSt6__ndk112future_errorC1ENS_10error_codeE
+00000000001b85bf g    DO .rodata	0000000000000003  Base        _ZTSPb
+0000000000266088 g    DF .text	000000000000003c  Base        __cxa_allocate_dependent_exception
+0000000000244000 g    DF .text	0000000000000078  Base        _ZNSt6__ndk14stolERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPmi
+000000000024a1c0 g    DF .text	000000000000006c  Base        _ZNSt6__ndk16futureIvEC1EPNS_17__assoc_sub_stateE
+00000000001b82db g    DO .rodata	000000000000001a  Base        _ZTSNSt6__ndk112future_errorE
+00000000001b85d1 g    DO .rodata	0000000000000003  Base        _ZTSPc
+00000000002663a0 g    DF .text	00000000000000e4  Base        __cxa_rethrow
+00000000002486dc g    DF .text	0000000000000164  Base        _ZNSt6__ndk112system_errorC2EiRKNS_14error_categoryEPKc
+00000000001b8477 g    DO .rodata	0000000000000014  Base        _ZTSSt15underflow_error
+00000000001b865b g    DO .rodata	0000000000000003  Base        _ZTSPd
+0000000000248a30 g    DF .text	0000000000000008  Base        _ZNSt6__ndk114error_categoryD2Ev
+00000000002736b0 g    DO .data.rel.ro	0000000000000028  Base        _ZTVNSt6__ndk114__shared_countE
+000000000023f958  w   DF .text	00000000000002d8  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE7replaceEmmPKcm
+00000000002490f8 g    DF .text	0000000000000020  Base        _ZNSt6__ndk118condition_variableD1Ev
+00000000001b8420 g    DO .rodata	0000000000000011  Base        _ZTSSt12length_error
+00000000001b8664 g    DO .rodata	0000000000000003  Base        _ZTSPe
+0000000000241214  w   DF .text	00000000000000b0  Base        _ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE7compareEmmRKS5_mm
+00000000002483d0 g    DF .text	0000000000000150  Base        _ZNSt6__ndk112system_errorC1ENS_10error_codeEPKc
+000000000024a76c g    DF .text	0000000000000078  Base        _ZNSt6__ndk113shared_futureIvEaSERKS1_
+00000000001b8652 g    DO .rodata	0000000000000003  Base        _ZTSPf
+0000000000240830  w   DF .text	00000000000000c8  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC2ERKS5_mmRKS4_
+000000000023f85c g    DF .text	0000000000000038  Base        _ZNSt13runtime_errorC1ERKS_
+00000000001b866d g    DO .rodata	0000000000000003  Base        _ZTSPg
+0000000000249340 g    DF .text	0000000000000048  Base        _ZNSt6__ndk16thread6detachEv
+000000000024b260 g    DF .text	0000000000000040  Base        _ZSt9terminatev
+00000000001b809c g    DO .rodata	0000000000000001  Base        _ZSt7nothrow
+000000000023fc30  w   DF .text	000000000000014c  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE21__grow_by_and_replaceEmmmmmmPKc
+000000000023fd7c  w   DF .text	00000000000000b8  Base        _ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE5rfindEPKcmm
+0000000000242434  w   DF .text	0000000000000088  Base        _ZNKSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE13find_first_ofEPKwmm
+0000000000273b80 g    DO .data.rel.ro	0000000000000018  Base        _ZTIN10__cxxabiv123__fundamental_type_infoE
+00000000001b85da g    DO .rodata	0000000000000003  Base        _ZTSPh
+00000000002434ec  w   DF .text	0000000000000124  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6appendERKS5_mm
+00000000002735c8 g    DO .data.rel.ro	0000000000000018  Base        _ZTINSt6__ndk112future_errorE
+00000000001b85fe g    DO .rodata	0000000000000003  Base        _ZTSPi
+00000000001b8384 g    DO .rodata	0000000000000021  Base        _ZTSNSt6__ndk119__shared_weak_countE
+00000000002424bc  w   DF .text	0000000000000180  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE7replaceEmmmw
+000000000024b31c g    DF .text	0000000000000014  Base        _ZSt15get_new_handlerv
+000000000024b77c g    DF .text	000000000000006c  Base        _ZNSt11range_errorD1Ev
+00000000001b8607 g    DO .rodata	0000000000000003  Base        _ZTSPj
+0000000000240af0  w   DF .text	0000000000000124  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9__grow_byEmmmmmm
+000000000024b8fc g    DF .text	000000000000002c  Base        _ZNSt14overflow_errorD0Ev
+00000000002419b0  w   DF .text	0000000000000170  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE21__grow_by_and_replaceEmmmmmmPKw
+00000000002485d0 g    DF .text	000000000000010c  Base        _ZNSt6__ndk112system_errorC2EiRKNS_14error_categoryERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE
+00000000001b83c4 g    DO .rodata	0000000000000019  Base        _ZTSSt20bad_array_new_length
+000000000024d524 g    DF .text	0000000000000018  Base        _ZNSt10bad_typeidC2Ev
+00000000001b8610 g    DO .rodata	0000000000000003  Base        _ZTSPl
+00000000001d69e4 g    DF .text	0000000000000118  Base        JNI_OnLoad
+000000000024a960 g    DF .text	000000000000003c  Base        _ZNSt16nested_exceptionC1Ev
+000000000023f740 g    DF .text	0000000000000094  Base        _ZNSt13runtime_errorC1ERKNSt6__ndk112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE
+0000000000249d70 g    DF .text	0000000000000094  Base        _ZNSt6__ndk117__assoc_sub_state24set_value_at_thread_exitEv
+00000000002664b0 g    DF .text	000000000000008c  Base        __cxa_current_primary_exception
+000000000024ae80 g    DF .text	0000000000000024  Base        _ZNSt6__ndk113random_deviceD2Ev
+00000000001b8619 g    DO .rodata	0000000000000003  Base        _ZTSPm
+00000000001b86db g    DO .rodata	0000000000000025  Base        _ZTSN10__cxxabiv120__si_class_type_infoE
+0000000000265e88  w   DF .text	0000000000000038  Base        _ZnwmSt11align_val_tRKSt9nothrow_t
+000000000024a910 g    DF .text	0000000000000050  Base        _ZNSt13exception_ptraSERKS_
+0000000000242a9c  w   DF .text	00000000000000e4  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEC1ERKS5_mmRKS4_
+000000000024b928 g    DF .text	000000000000002c  Base        _ZNSt15underflow_errorD0Ev
+00000000001b8634 g    DO .rodata	0000000000000003  Base        _ZTSPn
+00000000002740f8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPDh
+00000000002745d0 g    DO .data.rel.ro	0000000000000038  Base        _ZTVN10__cxxabiv129__pointer_to_member_type_infoE
+000000000024aac0 g    DF .text	0000000000000008  Base        _ZNSt6__ndk119__shared_weak_countD2Ev
+0000000000243eac  w   DF .text	0000000000000050  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6insertEmRKS5_mm
+00000000002737d0 g    DO .data.rel.ro	0000000000000028  Base        _ZTVSt13bad_exception
+00000000001b863d g    DO .rodata	0000000000000003  Base        _ZTSPo
+0000000000274328 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPDi
+0000000000248a18 g    DF .text	0000000000000018  Base        _ZNSt6__ndk114error_categoryC2Ev
+000000000024a8e4 g    DF .text	0000000000000008  Base        _ZSt19uncaught_exceptionsv
+00000000001b83fb g    DO .rodata	0000000000000010  Base        _ZTSSt11logic_error
+000000000024b770 g    DF .text	000000000000000c  Base        _ZNKSt11logic_error4whatEv
+00000000002737f8 g    DO .data.rel.ro	0000000000000018  Base        _ZTISt13bad_exception
+0000000000240f98  w   DF .text	0000000000000080  Base        _ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE7compareEmmPKcm
+00000000002485d0 g    DF .text	000000000000010c  Base        _ZNSt6__ndk112system_errorC1EiRKNS_14error_categoryERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE
+000000000024d4e0 g    DF .text	0000000000000008  Base        _ZNSt8bad_castD1Ev
+00000000001b85ec g    DO .rodata	0000000000000003  Base        _ZTSPs
+000000000024b49c g    DF .text	0000000000000034  Base        _ZSt14set_unexpectedPFvvE
+0000000000273bf8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPDn
+00000000001b85f5 g    DO .rodata	0000000000000003  Base        _ZTSPt
+000000000023fe34  w   DF .text	0000000000000090  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6__initEPKcmm
+000000000023f740 g    DF .text	0000000000000094  Base        _ZNSt13runtime_errorC2ERKNSt6__ndk112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE
+000000000024b674 g    DF .text	0000000000000010  Base        _ZNKSt9bad_alloc4whatEv
+00000000001b85aa g    DO .rodata	0000000000000003  Base        _ZTSPv
+0000000000265ec0  w   DF .text	0000000000000008  Base        _ZnamSt11align_val_t
+000000000024b4d0 g    DF .text	0000000000000034  Base        _ZSt13set_terminatePFvvE
+00000000001b85c8 g    DO .rodata	0000000000000003  Base        _ZTSPw
+0000000000265fb8 g    DF .text	00000000000000ac  Base        __cxa_begin_catch
+00000000002736d8 g    DO .data.rel.ro	0000000000000010  Base        _ZTINSt6__ndk114__shared_countE
+0000000000240040  w   DF .text	00000000000000a0  Base        _ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE17find_first_not_ofEPKcmm
+00000000001b84ac g    DO .rodata	0000000000000022  Base        _ZTSN10__cxxabiv117__class_type_infoE
+00000000001b8622 g    DO .rodata	0000000000000003  Base        _ZTSPx
+00000000001b80a8  w   DO .rodata	0000000000000008  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE4nposE
+00000000001b85e1 g    DO .rodata	0000000000000002  Base        _ZTSa
+00000000001b862b g    DO .rodata	0000000000000003  Base        _ZTSPy
+00000000002742d8 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPDs
+0000000000273610 g    DO .data.rel.ro	0000000000000018  Base        _ZTINSt6__ndk117__assoc_sub_stateE
+00000000001b8431 g    DO .rodata	0000000000000011  Base        _ZTSSt12out_of_range
+00000000001b85bd g    DO .rodata	0000000000000002  Base        _ZTSb
+0000000000245164 g    DF .text	0000000000000178  Base        _ZNSt6__ndk15stoldERKNS_12basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEEPm
+0000000000249b84 g    DF .text	000000000000008c  Base        _ZNSt6__ndk112future_errorC2ENS_10error_codeE
+000000000024b504 g    DF .text	0000000000000024  Base        _ZSt15set_new_handlerPFvvE
+00000000001b85cf g    DO .rodata	0000000000000002  Base        _ZTSc
+0000000000274288 g    DO .data.rel.ro	0000000000000020  Base        _ZTIPDu
+0000000000241b20  w   DF .text	00000000000000c4  Base        _ZNKSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE5rfindEPKwmm
+0000000000241ea8  w   DF .text	00000000000000b0  Base        _ZNKSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE17find_first_not_ofEPKwmm
+0000000000243248  w   DF .text	0000000000000174  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6assignEmw
+000000000024b5b0 g    DF .text	0000000000000008  Base        _ZNSt13bad_exceptionD2Ev
+00000000001b8659 g    DO .rodata	0000000000000002  Base        _ZTSd
+00000000002660cc g    DF .text	0000000000000084  Base        __cxa_throw
+0000000000248840 g    DF .text	00000000000000b4  Base        _ZNSt6__ndk112system_errorC1EiRKNS_14error_categoryE
+000000000024b5b0 g    DF .text	0000000000000008  Base        _ZNSt9bad_allocD2Ev
+00000000001b8662 g    DO .rodata	0000000000000002  Base        _ZTSe
+00000000002743f0 g    DO .data.rel.ro	0000000000000038  Base        _ZTVN10__cxxabiv116__enum_type_infoE
+000000000024a8ec g    DF .text	000000000000000c  Base        _ZNSt13exception_ptrD1Ev
+000000000024aac0 g    DF .text	0000000000000008  Base        _ZNSt6__ndk114__shared_countD1Ev
+0000000000248840 g    DF .text	00000000000000b4  Base        _ZNSt6__ndk112system_errorC2EiRKNS_14error_categoryE
+000000000024d4c8 g    DF .text	0000000000000018  Base        _ZNSt8bad_castC1Ev
+00000000001b8650 g    DO .rodata	0000000000000002  Base        _ZTSf
+0000000000273770 g    DO .data.rel.ro	0000000000000028  Base        _ZTVSt20bad_array_new_length
+0000000000273a40 g    DO .data.rel.ro	0000000000000028  Base        _ZTVSt15underflow_error
+00000000001b866b g    DO .rodata	0000000000000002  Base        _ZTSg
+0000000000240da0  w   DF .text	0000000000000094  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE5eraseEmm
+00000000001b85d8 g    DO .rodata	0000000000000002  Base        _ZTSh
+000000000024af90 g    DF .text	0000000000000130  Base        __cxa_guard_acquire
+00000000002400e0  w   DF .text	00000000000001b8  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6insertEmmc
+0000000000243828  w   DF .text	0000000000000048  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE2atEm
+0000000000266484 g    DF .text	000000000000002c  Base        __cxa_increment_exception_refcount
+000000000024b6d8 g    DF .text	000000000000006c  Base        _ZNSt12length_errorD2Ev
+00000000001b873f g    DO .rodata	000000000000000f  Base        _ZTSSt10bad_typeid
+00000000001b85fc g    DO .rodata	0000000000000002  Base        _ZTSi
+000000000023f57c g    DF .text	0000000000000094  Base        _ZNSt11logic_errorC2ERKNSt6__ndk112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE
+0000000000244608 g    DF .text	0000000000000148  Base        _ZNSt6__ndk14stodERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPm
+0000000000244d10 g    DF .text	000000000000018c  Base        _ZNSt6__ndk16stoullERKNS_12basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEEPmi
+00000000001b8605 g    DO .rodata	0000000000000002  Base        _ZTSj
+000000000024a8f8 g    DF .text	0000000000000018  Base        _ZNSt13exception_ptrC2ERKS_
+000000000024aa7c g    DF .text	0000000000000008  Base        _ZNSt6__ndk112bad_weak_ptrD2Ev
+00000000002444c0 g    DF .text	0000000000000148  Base        _ZNSt6__ndk14stofERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPm
+0000000000248e40 g    DF .text	0000000000000054  Base        _ZNSt6__ndk111timed_mutex6unlockEv
+0000000000274598 g    DO .data.rel.ro	0000000000000038  Base        _ZTVN10__cxxabiv119__pointer_type_infoE
+00000000001b860e g    DO .rodata	0000000000000002  Base        _ZTSl
+0000000000273660 g    DO .data.rel.ro	0000000000000010  Base        _ZTISt16nested_exception
+000000000024aafc g    DF .text	0000000000000068  Base        _ZNSt6__ndk114__shared_count16__release_sharedEv
+0000000000248c10 g    DF .text	0000000000000020  Base        _ZNSt6__ndk115recursive_mutexD2Ev
+0000000000248c5c g    DF .text	0000000000000020  Base        _ZNSt6__ndk115recursive_mutex6unlockEv
+00000000001b8617 g    DO .rodata	0000000000000002  Base        _ZTSm
+000000000026720c g    DF .text	0000000000000220  Base        __cxa_call_unexpected
+0000000000241ca4  w   DF .text	000000000000002c  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEC2ERKS5_
+00000000001b8632 g    DO .rodata	0000000000000002  Base        _ZTSn
+0000000000273810 g    DO .data.rel.ro	0000000000000018  Base        _ZTISt9bad_alloc
+0000000000249388 g    DF .text	000000000000002c  Base        _ZNSt6__ndk16thread20hardware_concurrencyEv
+0000000000273d78 g    DO .data.rel.ro	0000000000000010  Base        _ZTIa
+00000000001b863b g    DO .rodata	0000000000000002  Base        _ZTSo
+0000000000249c10 g    DF .text	0000000000000008  Base        _ZNSt6__ndk112future_errorD2Ev
+000000000024a1c0 g    DF .text	000000000000006c  Base        _ZNSt6__ndk16futureIvEC2EPNS_17__assoc_sub_stateE
+000000000024b630 g    DF .text	0000000000000018  Base        _ZNSt9bad_allocC2Ev
+0000000000273c38 g    DO .data.rel.ro	0000000000000010  Base        _ZTIb
+00000000002737c0 g    DO .data.rel.ro	0000000000000010  Base        _ZTISt9exception
+000000000023f57c g    DF .text	0000000000000094  Base        _ZNSt11logic_errorC1ERKNSt6__ndk112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE
+0000000000243a5c  w   DF .text	0000000000000058  Base        _ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEaSERKS5_
+000000000024a718 g    DF .text	0000000000000054  Base        _ZNSt6__ndk113shared_futureIvED1Ev
+0000000000249604 g    DF .text	0000000000000044  Base        _ZNSt6__ndk115__thread_structD2Ev
+000000000024b820 g    DF .text	000000000000002c  Base        _ZNSt12domain_errorD0Ev
+00000000002739e8 g    DO .data.rel.ro	0000000000000018  Base        _ZTISt11range_error
+0000000000273cd8 g    DO .data.rel.ro	0000000000000010  Base        _ZTIc
+0000000000241100  w   DF .text	0000000000000008  Base        _ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6assignEPKc
+000000000024aa0c g    DF .text	0000000000000058  Base        _ZNKSt16nested_exception14rethrow_nestedEv
+00000000001b8368 g    DO .rodata	000000000000001c  Base        _ZTSNSt6__ndk114__shared_countE
+0000000000274188 g    DO .data.rel.ro	0000000000000010  Base        _ZTId
+
+

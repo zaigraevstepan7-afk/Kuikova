@@ -1,0 +1,1065 @@
+{
+  "plt_wrappers_used": {
+    "0x26c550": "DobbySymbolResolver",
+    "0x26c560": "DobbyHook",
+    "0x26c540": "__android_log_print",
+    "0x26c590": "DobbyDestroy",
+    "0x26c530": "_ZNSt6__ndk16chrono12steady_clock3nowEv",
+    "0x26c330": "_Znwm",
+    "0x26c340": "_ZNSt6__ndk115__thread_structC1Ev",
+    "0x26c350": "pthread_create"
+  },
+  "plt_map_sample": {
+    "0x26c2d0": "__cxa_finalize",
+    "0x26c2e0": "__cxa_atexit",
+    "0x26c2f0": "__register_atfork",
+    "0x26c300": "__cxa_guard_acquire",
+    "0x26c310": "__cxa_guard_release",
+    "0x26c320": "_ZNSt6__ndk15mutexD1Ev",
+    "0x26c330": "_Znwm",
+    "0x26c340": "_ZNSt6__ndk115__thread_structC1Ev",
+    "0x26c350": "pthread_create",
+    "0x26c360": "_ZNSt6__ndk16thread6detachEv",
+    "0x26c370": "_ZNSt6__ndk16threadD1Ev",
+    "0x26c380": "_ZNSt6__ndk120__throw_system_errorEiPKc",
+    "0x26c390": "_ZNSt6__ndk115__thread_structD1Ev",
+    "0x26c3a0": "_ZdlPv",
+    "0x26c3b0": "__stack_chk_fail",
+    "0x26c3c0": "_ZNSt6__ndk119__thread_local_dataEv",
+    "0x26c3d0": "pthread_setspecific",
+    "0x26c3e0": "memset",
+    "0x26c3f0": "_ZNSt6__ndk111this_thread9sleep_forERKNS_6chrono8durationIxNS_5ratioILl1ELl1000000000EEEEE",
+    "0x26c400": "strlen",
+    "0x26c410": "memmove",
+    "0x26c420": "memcpy",
+    "0x26c430": "__cxa_allocate_exception",
+    "0x26c440": "_ZNSt12length_errorD1Ev",
+    "0x26c450": "__cxa_throw",
+    "0x26c460": "__cxa_free_exception",
+    "0x26c470": "_ZNSt11logic_errorC2EPKc",
+    "0x26c480": "__cxa_guard_abort",
+    "0x26c490": "AInputEvent_getType",
+    "0x26c4a0": "AMotionEvent_getAction"
+  },
+  "import_call_freq": {
+    "memcpy": 353,
+    "abort": 341,
+    "realloc": 299,
+    "_ZdlPv": 290,
+    "__stack_chk_fail": 282,
+    "malloc": 203,
+    "_Znwm": 168,
+    "memmove": 113,
+    "_ZSt9terminatev": 110,
+    "_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEED1Ev": 70,
+    "strlen": 64,
+    "memset": 55,
+    "__errno": 28,
+    "memcmp": 27,
+    "strcmp": 26,
+    "_ZNSt6__ndk120__throw_system_errorEiPKc": 25,
+    "_ZNSt6__ndk15mutex6unlockEv": 25,
+    "__cxa_guard_acquire": 24,
+    "glGetIntegerv": 24,
+    "__cxa_begin_catch": 21,
+    "powf": 21,
+    "pthread_mutex_unlock": 21,
+    "free": 21,
+    "sscanf": 20,
+    "memchr": 18,
+    "logf": 18,
+    "log": 18,
+    "fmodf": 17,
+    "_ZNSt13exception_ptrD1Ev": 17,
+    "__dynamic_cast": 16,
+    "pthread_mutex_lock": 15,
+    "__cxa_allocate_exception": 14,
+    "__cxa_throw": 14,
+    "_ZNSt6__ndk15mutex4lockEv": 13,
+    "__cxa_guard_release": 12,
+    "sincosf": 12,
+    "_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEaSERKS5_": 12,
+    "_ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEED1Ev": 12,
+    "__cxa_end_catch": 11,
+    "sysconf": 10,
+    "_ZNSt9type_infoD2Ev": 10,
+    "__cxa_guard_abort": 9,
+    "__android_log_print": 9,
+    "DobbyHook": 9,
+    "pow": 9,
+    "close": 9,
+    "_ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6appendEmw": 9,
+    "__cxa_atexit": 8,
+    "__cxa_free_exception": 8,
+    "_ZNSt6__ndk112__next_primeEm": 8,
+    "fclose": 8,
+    "glDisable": 8,
+    "__cxa_get_globals_fast": 8,
+    "glEnable": 7,
+    "munmap": 7,
+    "_ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE21__grow_by_and_replaceEmmmmmmPKw": 7,
+    "snprintf": 7,
+    "__assert2": 7,
+    "_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6appendEPKc": 6,
+    "__strlen_chk": 6,
+    "acosf": 6,
+    "atof": 6,
+    "glBindBuffer": 6,
+    "glBindTexture": 6,
+    "wcslen": 6,
+    "_ZNSt13runtime_errorC2ERKNSt6__ndk112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE": 6,
+    "pthread_getspecific": 6,
+    "__cxa_get_globals": 6,
+    "_ZNSt6__ndk119__thread_local_dataEv": 5,
+    "__memcpy_chk": 5,
+    "glIsEnabled": 5,
+    "_ZNSt9exceptionD2Ev": 5,
+    "mprotect": 5,
+    "wmemchr": 5,
+    "wmemcmp": 5,
+    "_ZNSt6__ndk118condition_variable4waitERNS_11unique_lockINS_5mutexEEE": 5,
+    "_ZNSt6__ndk118condition_variable10notify_allEv": 5,
+    "_ZNSt11logic_errorC2EPKc": 4,
+    "atan2f": 4,
+    "_ZNSt6__ndk15mutexD1Ev": 4,
+    "vsnprintf": 4,
+    "fopen": 4,
+    "fprintf": 4,
+    "glBufferData": 4,
+    "glPixelStorei": 4,
+    "glTexParameteri": 4,
+    "mmap": 4,
+    "pthread_mutex_trylock": 4,
+    "_ZNSt6__ndk118condition_variableD1Ev": 4,
+    "_ZNSt13exception_ptrC1ERKS_": 4,
+    "_ZNSt6__ndk115__thread_structD1Ev": 3,
+    "pthread_setspecific": 3,
+    "clock_gettime": 3,
+    "glViewport": 3,
+    "_ZNSt6__ndk16chrono12steady_clock3nowEv": 3,
+    "_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6assignEPKc": 3,
+    "__vsnprintf_chk": 3,
+    "sinf": 3,
+    "strncpy": 3,
+    "fwrite": 3,
+    "qsort": 3,
+    "glGetAttribLocation": 3,
+    "glBindVertexArray": 3,
+    "glEnableVertexAttribArray": 3,
+    "glVertexAttribPointer": 3,
+    "fgets": 3,
+    "open": 3,
+    "_ZNSt9bad_allocC1Ev": 3,
+    "swprintf": 3,
+    "_ZNSt6__ndk114error_categoryD2Ev": 3,
+    "pthread_mutex_destroy": 3,
+    "pthread_cond_broadcast": 3,
+    "_ZNSt13bad_exceptionD1Ev": 3,
+    "_ZSt14get_unexpectedv": 3,
+    "_ZSt13get_terminatev": 3,
+    "_ZNSt6__ndk115__thread_structC1Ev": 2,
+    "_ZNSt6__ndk16threadD1Ev": 2,
+    "_ZNSt6__ndk111this_thread9sleep_forERKNS_6chrono8durationIxNS_5ratioILl1ELl1000000000EEEEE": 2,
+    "eglQuerySurface": 2,
+    "DobbySymbolResolver": 2,
+    "ftell": 2,
+    "fseek": 2,
+    "__memset_chk": 2,
+    "glCreateShader": 2,
+    "glShaderSource": 2,
+    "glCompileShader": 2,
+    "glAttachShader": 2,
+    "glGetProgramiv": 2,
+    "glDetachShader": 2,
+    "glDeleteShader": 2,
+    "glGetUniformLocation": 2,
+    "glGenBuffers": 2,
+    "glActiveTexture": 2,
+    "glBufferSubData": 2,
+    "glScissor": 2,
+    "glUseProgram": 2,
+    "glBindSampler": 2,
+    "glBlendFuncSeparate": 2,
+    "glGetShaderiv": 2,
+    "__cxa_rethrow": 2,
+    "_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC2ERKS5_mmRKS4_": 2,
+    "DobbyCodePatch": 2,
+    "stat": 2,
+    "feof": 2,
+    "pthread_mutexattr_destroy": 2,
+    "pthread_self": 2,
+    "pthread_cond_wait": 2,
+    "pthread_key_create": 2,
+    "_ZNKSt6__ndk110error_code7messageEv": 2,
+    "_ZNSt11logic_errorC2ERKNSt6__ndk112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE": 2,
+    "_ZNSt6__ndk112future_errorD1Ev": 2,
+    "_ZNSt6__ndk115__thread_struct27__make_ready_at_thread_exitEPNS_17__assoc_sub_stateE": 2,
+    "_ZNSt13exception_ptraSERKS_": 2,
+    "_ZSt17rethrow_exceptionSt13exception_ptr": 2,
+    "_ZNSt6__ndk117__assoc_sub_state13set_exceptionESt13exception_ptr": 2,
+    "__cxa_current_primary_exception": 2,
+    "syscall": 2,
+    "__emutls_get_address": 2,
+    "_ZSt15get_new_handlerv": 2,
+    "posix_memalign": 2,
+    "pthread_create": 1,
+    "_ZNSt6__ndk16thread6detachEv": 1,
+    "AInputEvent_getType": 1,
+    "AMotionEvent_getAction": 1,
+    "AMotionEvent_getX": 1,
+    "AMotionEvent_getY": 1,
+    "eglGetCurrentContext": 1,
+    "_ZNSt20bad_array_new_lengthC1Ev": 1,
+    "DobbyDestroy": 1,
+    "time": 1,
+    "localtime_r": 1,
+    "_ZNSt6__ndk19to_stringEi": 1,
+    "_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6insertEmPKc": 1,
+    "slCreateEngine": 1,
+    "fread": 1,
+    "fork": 1,
+    "waitpid": 1,
+    "execvp": 1,
+    "exit": 1,
+    "cosf": 1,
+    "fflush": 1,
+    "printf": 1,
+    "strncmp": 1,
+    "strchr": 1,
+    "glGetString": 1,
+    "__strcpy_chk": 1,
+    "__strcat_chk": 1,
+    "glCreateProgram": 1,
+    "glLinkProgram": 1,
+    "glGetProgramInfoLog": 1,
+    "glGenVertexArrays": 1,
+    "glDrawElements": 1,
+    "glDeleteVertexArrays": 1,
+    "glIsProgram": 1,
+    "glBlendEquationSeparate": 1,
+    "glGenTextures": 1,
+    "glTexImage2D": 1,
+    "glTexSubImage2D": 1,
+    "glDeleteTextures": 1,
+    "glBlendEquation": 1,
+    "glUniform1i": 1,
+    "glUniformMatrix4fv": 1,
+    "glGetShaderInfoLog": 1,
+    "regcomp": 1,
+    "regexec": 1,
+    "regfree": 1,
+    "readlink": 1,
+    "strerror": 1,
+    "__open_2": 1,
+    "fstat": 1,
+    "dlsym": 1,
+    "getc": 1,
+    "strstr": 1,
+    "_ZNSt13runtime_errorC2EPKc": 1,
+    "_ZNSt13runtime_errorC1EPKc": 1,
+    "strtoul": 1,
+    "strtoll": 1,
+    "strtoull": 1,
+    "strtof": 1,
+    "strtod": 1,
+    "strtold": 1,
+    "wcstoul": 1,
+    "wcstoll": 1,
+    "wcstoull": 1,
+    "wcstof": 1,
+    "wcstod": 1,
+    "wcstold": 1,
+    "strtol": 1,
+    "wcstol": 1,
+    "strerror_r": 1,
+    "_ZNSt6__ndk112system_errorD1Ev": 1,
+    "_ZNSt6__ndk115system_categoryEv": 1,
+    "_ZNSt6__ndk112system_errorC1ENS_10error_codeEPKc": 1,
+    "pthread_mutexattr_init": 1,
+    "pthread_mutexattr_settype": 1,
+    "pthread_mutex_init": 1,
+    "_ZNSt6__ndk118condition_variable10notify_oneEv": 1,
+    "pthread_cond_destroy": 1,
+    "pthread_cond_signal": 1,
+    "pthread_cond_timedwait": 1,
+    "pthread_join": 1,
+    "pthread_detach": 1,
+    "nanosleep": 1,
+    "_ZNSt6__ndk117__assoc_sub_state12__make_readyEv": 1,
+    "_ZNSt6__ndk112future_errorC1ENS_10error_codeE": 1,
+    "_ZNSt6__ndk117__assoc_sub_state4copyEv": 1,
+    "_ZNSt11logic_errorC2ERKS_": 1,
+    "_ZSt17current_exceptionv": 1,
+    "_ZNSt6__ndk117__assoc_sub_state28set_exception_at_thread_exitESt13exception_ptr": 1,
+    "_ZNSt6__ndk114__shared_countD2Ev": 1,
+    "__cxa_uncaught_exceptions": 1,
+    "__cxa_increment_exception_refcount": 1,
+    "__cxa_decrement_exception_refcount": 1,
+    "_ZNSt16nested_exceptionD1Ev": 1,
+    "__cxa_rethrow_primary_exception": 1,
+    "_ZNSt6__ndk112bad_weak_ptrD1Ev": 1,
+    "read": 1,
+    "ioctl": 1,
+    "__cxa_demangle": 1,
+    "_ZNSt9exceptionD1Ev": 1,
+    "_ZNSt9bad_allocD1Ev": 1,
+    "_ZNSt20bad_array_new_lengthD1Ev": 1,
+    "_ZNSt11logic_errorD1Ev": 1,
+    "_ZNSt13runtime_errorD1Ev": 1,
+    "_ZNSt12domain_errorD1Ev": 1,
+    "_ZNSt16invalid_argumentD1Ev": 1,
+    "_ZNSt12length_errorD1Ev": 1,
+    "_ZNSt12out_of_rangeD1Ev": 1,
+    "_ZNSt11range_errorD1Ev": 1,
+    "_ZNSt14overflow_errorD1Ev": 1,
+    "_ZNSt15underflow_errorD1Ev": 1,
+    "vfprintf": 1,
+    "fputc": 1,
+    "vasprintf": 1,
+    "android_set_abort_message": 1,
+    "openlog": 1,
+    "syslog": 1,
+    "closelog": 1,
+    "_ZNSt9type_infoD1Ev": 1,
+    "_ZNSt8bad_castD1Ev": 1,
+    "_ZNSt10bad_typeidD1Ev": 1,
+    "_Znam": 1,
+    "_ZnwmSt11align_val_t": 1,
+    "_ZnamSt11align_val_t": 1,
+    "pthread_once": 1,
+    "pthread_key_delete": 1
+  },
+  "key_string_xrefs": {
+    "libEGL.so": [],
+    "eglSwapBuffers": [],
+    "Halalium_Hooks": [],
+    "Halalium_Bypass": [],
+    "t.me/lemminghack, 0.39.2": [],
+    "Lemming": [],
+    "##watermark": [],
+    "##wm_click": [],
+    "##settings_watermark": [],
+    "##rage_left": [],
+    "##skins_panel": [],
+    "Enable Esp": [],
+    "Silent Aim": [],
+    "padla": [],
+    "fresnel": [],
+    "shador": [],
+    "/sdcard/Android/data/com.axlebolt.standoff2/files/padla": [],
+    "bypas hok result %d": [],
+    "Skin Changer: Swapped to weapon %d (skin %d)": [],
+    "Dear ImGui 1.92.7 (19270)": [],
+    "Local Chams": [],
+    "Enemy Chams": [],
+    "Inf Ammo": [],
+    "Through Walls": [],
+    "Wallshot": [],
+    "Auto Wall": [],
+    "No spread": [],
+    "Auto Fire": [],
+    "Anti Aim": [],
+    "Third Person": [],
+    "scope fov": [],
+    "Fov Check": [],
+    "Health Bar": []
+  },
+  "globals_0x279xxx": {
+    "0x279014": [
+      "adr@0x1d9d2c",
+      "adr@0x1dca50"
+    ],
+    "0x27904c": [
+      "adr@0x1dbaa4"
+    ],
+    "0x279050": [
+      "adr@0x1db518",
+      "adr@0x1db72c",
+      "adr@0x1db960",
+      "adr@0x1dba4c",
+      "adr@0x1dbb78",
+      "adr@0x1dbed4",
+      "adr@0x1dc028",
+      "adr@0x1dc10c",
+      "adr@0x1dc228",
+      "adr@0x1dc588",
+      "adr@0x1dc764",
+      "adr@0x1dc9ec",
+      "adr@0x1dcbf8",
+      "adr@0x1dceac",
+      "adr@0x1dd2a4",
+      "adr@0x1dd4f8",
+      "adr@0x1dd9d0",
+      "adr@0x1dddf8",
+      "adr@0x1de1c0",
+      "adr@0x1de5e8"
+    ],
+    "0x279088": [
+      "adr@0x1dc604"
+    ],
+    "0x2790a0": [
+      "adr@0x1dc66c"
+    ],
+    "0x2790b0": [
+      "adr@0x1dc6d8"
+    ],
+    "0x2790b8": [
+      "adr@0x1dc7f0"
+    ],
+    "0x2790e0": [
+      "adr@0x1dc810"
+    ],
+    "0x279110": [
+      "adr@0x1dcb4c"
+    ],
+    "0x279114": [
+      "adr@0x1dc88c"
+    ],
+    "0x279118": [
+      "adr@0x1dc8a8",
+      "adr@0x1dccf8"
+    ],
+    "0x27911c": [
+      "adr@0x1dcb84"
+    ],
+    "0x279120": [
+      "adr@0x1dcba4"
+    ],
+    "0x279128": [
+      "adr@0x1dcc70"
+    ],
+    "0x279160": [
+      "adr@0x1dcca8"
+    ],
+    "0x279164": [
+      "adr@0x1dccd8"
+    ],
+    "0x279168": [
+      "adr@0x1db9d8",
+      "adr@0x1dcd08",
+      "adr@0x1dd424",
+      "adr@0x1ddc78"
+    ],
+    "0x279178": [
+      "adr@0x1dbc04"
+    ],
+    "0x279180": [
+      "adr@0x1dbc14"
+    ],
+    "0x279198": [
+      "adr@0x1dbc30",
+      "adr@0x1e9a14"
+    ],
+    "0x2791a8": [
+      "adr@0x1dbc4c"
+    ],
+    "0x2791ac": [
+      "adr@0x1dbc78"
+    ],
+    "0x2791b0": [
+      "adr@0x1dbc8c"
+    ],
+    "0x2791b4": [
+      "adr@0x1dbcc8"
+    ],
+    "0x2791b8": [
+      "adr@0x1dbcfc",
+      "adr@0x1e9aec"
+    ],
+    "0x2791c8": [
+      "adr@0x1dbd10",
+      "adr@0x1e9adc"
+    ],
+    "0x2791d8": [
+      "adr@0x1dbd58",
+      "adr@0x1e9c20"
+    ],
+    "0x2791e8": [
+      "adr@0x1dbd8c",
+      "adr@0x1e9cdc"
+    ],
+    "0x2791f8": [
+      "adr@0x1dbdc8"
+    ],
+    "0x279220": [
+      "adr@0x1dbde0",
+      "adr@0x1e988c"
+    ],
+    "0x279230": [
+      "adr@0x1dbdfc"
+    ],
+    "0x279234": [
+      "adr@0x1dbe10"
+    ],
+    "0x279238": [
+      "adr@0x1dbe44",
+      "adr@0x1e99c4"
+    ],
+    "0x279248": [
+      "adr@0x1dbe60"
+    ],
+    "0x279250": [
+      "adr@0x1dbf54",
+      "adr@0x1dc93c"
+    ],
+    "0x279270": [
+      "adr@0x1dbf70",
+      "adr@0x1ea590"
+    ],
+    "0x279280": [
+      "adr@0x1dbf84"
+    ],
+    "0x279284": [
+      "adr@0x1dc8f0"
+    ],
+    "0x279288": [
+      "adr@0x1dc90c"
+    ],
+    "0x27928c": [
+      "adr@0x1dc954",
+      "adr@0x1ea968"
+    ],
+    "0x27929c": [
+      "adr@0x1dc97c"
+    ],
+    "0x2792a0": [
+      "adr@0x1dc998"
+    ],
+    "0x2792a8": [
+      "adr@0x1dc1d0"
+    ],
+    "0x2792c0": [
+      "adr@0x1dc290"
+    ],
+    "0x2792d0": [
+      "adr@0x1dbacc"
+    ],
+    "0x2792d1": [
+      "adr@0x1dbae0"
+    ],
+    "0x2792d2": [
+      "adr@0x1dbaf4"
+    ],
+    "0x2792d3": [
+      "adr@0x1dbb08"
+    ],
+    "0x2792e0": [
+      "adr@0x1dca70",
+      "adr@0x1dd2b4",
+      "adr@0x1dd478",
+      "adr@0x1dd950",
+      "adr@0x1ddabc",
+      "adr@0x1ddd78",
+      "adr@0x1dddc8"
+    ],
+    "0x2792f0": [
+      "adr@0x1dd380"
+    ],
+    "0x2792f4": [
+      "adr@0x1dd368"
+    ],
+    "0x2792f8": [
+      "adr@0x1dca80",
+      "adr@0x1dd48c",
+      "adr@0x1ddacc",
+      "adr@0x1ddd88",
+      "adr@0x1dddd8",
+      "adr@0x1dde28"
+    ],
+    "0x279308": [
+      "adr@0x1dd4c0",
+      "adr@0x1dddb8"
+    ],
+    "0x279328": [
+      "adr@0x247fa4",
+      "adr@0x247fd4",
+      "adr@0x2480b4",
+      "adr@0x248114"
+    ],
+    "0x279338": [
+      "adr@0x249b44",
+      "adr@0x249b74",
+      "adr@0x249d18",
+      "adr@0x24a4c8"
+    ],
+    "0x279340": [
+      "adr@0x24ad74"
+    ],
+    "0x279458": [
+      "adr@0x24b548",
+      "adr@0x24b56c"
+    ],
+    "0x279490": [
+      "adr@0x1d6920",
+      "adr@0x1d8450",
+      "adr@0x1d9b38",
+      "adr@0x1defe0",
+      "adr@0x1dffbc"
+    ],
+    "0x2794a0": [
+      "adr@0x1d68f4",
+      "adr@0x1d690c",
+      "adr@0x1d6928"
+    ],
+    "0x2794a8": [
+      "adr@0x1d696c"
+    ],
+    "0x2794d0": [
+      "adr@0x1d6948",
+      "adr@0x1d6958",
+      "adr@0x1d6984"
+    ],
+    "0x2794d8": [
+      "adr@0x1d69c8"
+    ],
+    "0x2794e8": [
+      "adr@0x1d699c",
+      "adr@0x1d69b4",
+      "adr@0x1d69d0"
+    ],
+    "0x279508": [
+      "adr@0x1d7428",
+      "adr@0x1d7438",
+      "adr@0x1d7460",
+      "adr@0x1d7488"
+    ],
+    "0x279518": [
+      "adr@0x1d74a8",
+      "adr@0x1d74b8",
+      "adr@0x1d74e0",
+      "adr@0x1d750c"
+    ],
+    "0x279520": [
+      "adr@0x1d8608"
+    ],
+    "0x279530": [
+      "adr@0x1d752c",
+      "adr@0x1d753c",
+      "adr@0x1d755c",
+      "adr@0x1d7584"
+    ],
+    "0x279540": [
+      "adr@0x1d75a4",
+      "adr@0x1d75b4",
+      "adr@0x1d75d4",
+      "adr@0x1d75fc"
+    ],
+    "0x27954c": [
+      "adr@0x1d7660",
+      "adr@0x1d76bc",
+      "adr@0x1d76e0",
+      "adr@0x1d7814",
+      "adr@0x1d7850",
+      "adr@0x1d79e8",
+      "adr@0x1d8844"
+    ],
+    "0x279578": [
+      "adr@0x1d8504"
+    ],
+    "0x279580": [
+      "adr@0x1d8530"
+    ],
+    "0x279588": [
+      "adr@0x1d77c0"
+    ],
+    "0x2795a0": [
+      "adr@0x1dbbd8"
+    ],
+    "0x2795a1": [
+      "adr@0x1dc5e4"
+    ],
+    "0x2795a2": [
+      "adr@0x1dc61c"
+    ],
+    "0x2795a4": [
+      "adr@0x1dc63c"
+    ],
+    "0x2795a8": [
+      "adr@0x1d8558"
+    ],
+    "0x2795cd": [
+      "adr@0x1dc16c"
+    ],
+    "0x2795ce": [
+      "adr@0x1dc180"
+    ],
+    "0x2795cf": [
+      "adr@0x1dc194"
+    ],
+    "0x2795d0": [
+      "adr@0x1dc088"
+    ],
+    "0x2795d1": [
+      "adr@0x1dc288"
+    ],
+    "0x2795d4": [
+      "adr@0x1dc920"
+    ],
+    "0x2795d8": [
+      "adr@0x1d859c"
+    ],
+    "0x2795e8": [
+      "adr@0x1dc664"
+    ],
+    "0x2795ec": [
+      "adr@0x1dc684"
+    ],
+    "0x2795f0": [
+      "adr@0x1d8648"
+    ],
+    "0x2795f8": [
+      "adr@0x1dc09c"
+    ],
+    "0x2795fa": [
+      "adr@0x1dc0b0"
+    ],
+    "0x279600": [
+      "adr@0x1d86a0"
+    ],
+    "0x279608": [
+      "adr@0x1dc1a0"
+    ],
+    "0x27960c": [
+      "adr@0x1dc1c8"
+    ],
+    "0x279610": [
+      "adr@0x1d86e4"
+    ],
+    "0x279618": [
+      "adr@0x1dc6f8"
+    ],
+    "0x279620": [
+      "adr@0x1d87b0",
+      "adr@0x1d9e60",
+      "adr@0x1d9e88",
+      "adr@0x1dc3c8",
+      "adr@0x1dc418",
+      "adr@0x1dc45c"
+    ],
+    "0x279648": [
+      "adr@0x1d878c",
+      "adr@0x1d879c",
+      "adr@0x1d87d8"
+    ],
+    "0x27965c": [
+      "adr@0x1d7714"
+    ],
+    "0x279660": [
+      "adr@0x1d7aa4"
+    ],
+    "0x279670": [
+      "adr@0x1d7bc4",
+      "adr@0x1db0f4"
+    ],
+    "0x279678": [
+      "adr@0x1d835c",
+      "adr@0x1d8380",
+      "adr@0x1d8390"
+    ],
+    "0x2796d0": [
+      "adr@0x1d834c",
+      "adr@0x1d8370",
+      "adr@0x1d83a8",
+      "adr@0x1d83bc"
+    ],
+    "0x2796d8": [
+      "adr@0x1d90ec",
+      "adr@0x1d9238",
+      "adr@0x1d92b0",
+      "adr@0x1d9344"
+    ],
+    "0x2796f0": [
+      "adr@0x1d92d8"
+    ],
+    "0x279700": [
+      "adr@0x1d9374",
+      "adr@0x1d9384",
+      "adr@0x1d93a4",
+      "adr@0x1d93cc"
+    ],
+    "0x279708": [
+      "adr@0x1dc6a4"
+    ],
+    "0x27970c": [
+      "adr@0x1dc5fc"
+    ],
+    "0x279710": [
+      "adr@0x1dc698"
+    ],
+    "0x279711": [
+      "adr@0x1dca64"
+    ],
+    "0x279712": [
+      "adr@0x1dc2bc"
+    ],
+    "0x279720": [
+      "adr@0x1da4d4",
+      "adr@0x1da4e4",
+      "adr@0x1da504",
+      "adr@0x1da52c"
+    ],
+    "0x279728": [
+      "adr@0x1daa08"
+    ],
+    "0x279730": [
+      "adr@0x1daa14"
+    ],
+    "0x279738": [
+      "adr@0x1daa4c",
+      "adr@0x1dc448"
+    ],
+    "0x279750": [
+      "adr@0x1daa2c",
+      "adr@0x1daa3c",
+      "adr@0x1daaa0",
+      "adr@0x1daac4"
+    ],
+    "0x279778": [
+      "adr@0x1dc7c4"
+    ],
+    "0x27977c": [
+      "adr@0x1dc7e8"
+    ],
+    "0x279780": [
+      "adr@0x1dc800"
+    ],
+    "0x279784": [
+      "adr@0x1dc83c"
+    ],
+    "0x279788": [
+      "adr@0x1dcb60"
+    ],
+    "0x27978c": [
+      "adr@0x1dcc60"
+    ],
+    "0x279790": [
+      "adr@0x1dbbe4"
+    ],
+    "0x279791": [
+      "adr@0x1dbc98"
+    ],
+    "0x279792": [
+      "adr@0x1dbcd4"
+    ],
+    "0x279793": [
+      "adr@0x1dbd24"
+    ],
+    "0x279794": [
+      "adr@0x1dbd30"
+    ],
+    "0x279795": [
+      "adr@0x1dbd64"
+    ],
+    "0x279796": [
+      "adr@0x1dbd98"
+    ],
+    "0x279798": [
+      "adr@0x1dbdc0"
+    ],
+    "0x27979c": [
+      "adr@0x1dbe1c"
+    ],
+    "0x27979d": [
+      "adr@0x1dbe74"
+    ],
+    "0x27979e": [
+      "adr@0x1dbf38"
+    ],
+    "0x2797a0": [
+      "adr@0x1dbf44"
+    ],
+    "0x2797a4": [
+      "adr@0x1dc934"
+    ],
+    "0x2797ac": [
+      "adr@0x1db080",
+      "adr@0x1db1d8"
+    ],
+    "0x2797c4": [
+      "adr@0x1db0d8",
+      "adr@0x1db2f0"
+    ],
+    "0x2797d4": [
+      "adr@0x1db140",
+      "adr@0x1db264",
+      "adr@0x1db6c4"
+    ],
+    "0x279800": [
+      "adr@0x1db7f8",
+      "adr@0x20bf1c",
+      "adr@0x20da98",
+      "adr@0x2164c4",
+      "adr@0x216fb0",
+      "adr@0x217270",
+      "adr@0x2176ac",
+      "adr@0x21817c",
+      "adr@0x220690",
+      "adr@0x220714",
+      "adr@0x2242ac",
+      "adr@0x224f80",
+      "adr@0x2253bc",
+      "adr@0x22a5e4",
+      "adr@0x22a600",
+      "adr@0x22c90c",
+      "adr@0x22c978",
+      "adr@0x22c9f0",
+      "adr@0x22ca5c",
+      "adr@0x22dab0"
+    ],
+    "0x279808": [
+      "adr@0x1fe128",
+      "adr@0x203ad8",
+      "adr@0x203ff8",
+      "adr@0x204380"
+    ],
+    "0x279818": [
+      "adr@0x20aee0",
+      "adr@0x20e54c",
+      "adr@0x20e5b0",
+      "adr@0x20e5d8"
+    ],
+    "0x279868": [
+      "adr@0x20e540",
+      "adr@0x20e5a4",
+      "adr@0x20e5c0"
+    ],
+    "0x279870": [
+      "adr@0x20e604",
+      "adr@0x20e64c",
+      "adr@0x210fec"
+    ],
+    "0x279890": [
+      "adr@0x20e690",
+      "adr@0x211004"
+    ],
+    "0x2798c0": [
+      "adr@0x232c88",
+      "adr@0x23301c"
+    ],
+    "0x279a88": [
+      "adr@0x232c98",
+      "adr@0x23303c",
+      "adr@0x2330c0"
+    ],
+    "0x279a90": [
+      "adr@0x233214",
+      "adr@0x233d24",
+      "adr@0x233d8c",
+      "adr@0x233fc4"
+    ],
+    "0x279ab8": [
+      "adr@0x233204",
+      "adr@0x233d78",
+      "adr@0x233da4"
+    ],
+    "0x279ac0": [
+      "adr@0x233364",
+      "adr@0x233598",
+      "adr@0x2335b8",
+      "adr@0x2336c4",
+      "adr@0x233cd4",
+      "adr@0x233dc8"
+    ],
+    "0x279ae8": [
+      "adr@0x233220",
+      "adr@0x233db4",
+      "adr@0x233df0"
+    ],
+    "0x279af8": [
+      "adr@0x23b654"
+    ],
+    "0x279b28": [
+      "adr@0x23cc4c"
+    ],
+    "0x279b48": [
+      "adr@0x23d314"
+    ],
+    "0x27ab60": [
+      "adr@0x247f94",
+      "adr@0x247fb8",
+      "adr@0x247fc8",
+      "adr@0x2480a4",
+      "adr@0x2480fc"
+    ],
+    "0x27ab70": [
+      "adr@0x249480"
+    ],
+    "0x27ab88": [
+      "adr@0x249b34",
+      "adr@0x249b58",
+      "adr@0x249b68",
+      "adr@0x249d00",
+      "adr@0x249d40",
+      "adr@0x249d50",
+      "adr@0x24a4b0",
+      "adr@0x24a528",
+      "adr@0x24a540"
+    ]
+  },
+  "global_guess": {
+    "0x279064": "menu_open_flag (byte) \u2014 toggled by ##wm_click",
+    "0x2794f0": "libunity / game_base pointer",
+    "0x2794f8": "feature/config object pointer",
+    "0x279538": "esp/draw helper / enemy list ctx",
+    "0x279578": "orig eglSwapBuffers",
+    "0x279580": "orig InputConsumer::consume",
+    "0x2795a8": "orig PlayerController.Update",
+    "0x2795b0": "local PlayerController*",
+    "0x2795b8": "last tick timestamp (ms/div)",
+    "0x2795d8": "orig secondary hook",
+    "0x279660": "periodic task / skin? buffer",
+    "0x2796d8": "tracked hooks vector begin",
+    "0x2796e0": "tracked hooks vector end (pair with +0x6d8)",
+    "0x2796f0": "orig OnStart / getrr (bypass)"
+  },
+  "hook_table": [
+    {
+      "rva": "0x8E7C40C",
+      "callback": "0x1d7a0c",
+      "orig_slot": "0x2795a8",
+      "role": "PlayerController.Update / Halalium_Hooks"
+    },
+    {
+      "rva": "0x8E0085C",
+      "callback": "0x1d81fc",
+      "orig_slot": "0x2795d8",
+      "role": "secondary"
+    },
+    {
+      "rva": "0x79FE5E0",
+      "alt_rva": "0x147E970",
+      "callback": "0x1d8404",
+      "role": "tertiary"
+    },
+    {
+      "rva": "0x8E7CF50",
+      "callback": "0x1d7ec4",
+      "orig_slot": "?",
+      "role": "LateUpdate (=Update+0xB44)"
+    },
+    {
+      "rva": "0x8D663EC",
+      "callback": "0x1d82a0",
+      "role": "extra A"
+    },
+    {
+      "rva": "0x8D2B2B0",
+      "callback": "0x1d83cc",
+      "role": "extra B"
+    },
+    {
+      "symbol": "eglSwapBuffers",
+      "callback": "0x1d76f0",
+      "orig_slot": "0x279578",
+      "role": "ImGui render"
+    },
+    {
+      "symbol": "InputConsumer::consume",
+      "callback": "0x1d760c",
+      "orig_slot": "0x279580",
+      "role": "touch/input"
+    }
+  ],
+  "string_count_rodata": 2863,
+  "abs_materializations": 515
+}

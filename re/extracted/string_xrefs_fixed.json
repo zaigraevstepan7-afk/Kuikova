@@ -1,0 +1,537 @@
+{
+  "libEGL.so": {
+    "file_va": "0xdbc3",
+    "code_xrefs": [
+      {
+        "string": "libEGL.so",
+        "refs": [
+          {
+            "pc": "0x1d84e4",
+            "va": "0x36373"
+          }
+        ]
+      }
+    ]
+  },
+  "eglSwapBuffers": {
+    "file_va": "0x3575b",
+    "code_xrefs": [
+      {
+        "string": "eglSwapBuffers",
+        "refs": [
+          {
+            "pc": "0x1d84ec",
+            "va": "0x3575b"
+          }
+        ]
+      }
+    ]
+  },
+  "libinput.so": {
+    "file_va": "0x304a4",
+    "code_xrefs": [
+      {
+        "string": "libinput.so",
+        "refs": [
+          {
+            "pc": "0x1d8510",
+            "va": "0x304a4"
+          }
+        ]
+      }
+    ]
+  },
+  "Halalium_Hooks": {
+    "file_va": "0x351fd",
+    "code_xrefs": [
+      {
+        "string": "Halalium_Hooks",
+        "refs": [
+          {
+            "pc": "0x1d7bf0",
+            "va": "0x351fd"
+          }
+        ]
+      }
+    ]
+  },
+  "Halalium_Bypass": {
+    "file_va": "0x34d18",
+    "code_xrefs": [
+      {
+        "string": "Halalium_Bypass",
+        "refs": [
+          {
+            "pc": "0x1d90d4",
+            "va": "0x34d18"
+          },
+          {
+            "pc": "0x1d912c",
+            "va": "0x34d18"
+          }
+        ]
+      }
+    ]
+  },
+  "t.me/lemminghack, 0.39.2": {
+    "file_va": "0x2d17f",
+    "code_xrefs": [
+      {
+        "string": "t.me/lemminghack, 0.39.2",
+        "refs": [
+          {
+            "pc": "0x1db9e0",
+            "va": "0x2d17f"
+          }
+        ]
+      }
+    ]
+  },
+  "Lemming": {
+    "file_va": "0x2e015",
+    "code_xrefs": [
+      {
+        "string": "Lemming",
+        "refs": [
+          {
+            "pc": "0x1db8ac",
+            "va": "0x2e015"
+          }
+        ]
+      }
+    ]
+  },
+  "##watermark": {
+    "file_va": "0x34fc6",
+    "code_xrefs": [
+      {
+        "string": "##watermark",
+        "refs": [
+          {
+            "pc": "0x1db450",
+            "va": "0x34fc6"
+          }
+        ]
+      }
+    ]
+  },
+  "##wm_click": {
+    "file_va": "0x2f52d",
+    "code_xrefs": [
+      {
+        "string": "##wm_click",
+        "refs": [
+          {
+            "pc": "0x1db468",
+            "va": "0x2f52d"
+          }
+        ]
+      }
+    ]
+  },
+  "##settings_watermark": {
+    "file_va": "0x33443",
+    "code_xrefs": [
+      {
+        "string": "##settings_watermark",
+        "refs": [
+          {
+            "pc": "0x1dba18",
+            "va": "0x33443"
+          }
+        ]
+      }
+    ]
+  },
+  "##rage_left": {
+    "file_va": "0x35a03",
+    "code_xrefs": [
+      {
+        "string": "##rage_left",
+        "refs": [
+          {
+            "pc": "0x1dc53c",
+            "va": "0x35a03"
+          }
+        ]
+      }
+    ]
+  },
+  "##rage_right_top": {
+    "file_va": "0x365fa",
+    "code_xrefs": [
+      {
+        "string": "##rage_right_top",
+        "refs": [
+          {
+            "pc": "0x1dc72c",
+            "va": "0x365fa"
+          }
+        ]
+      }
+    ]
+  },
+  "##rage_right_bottom": {
+    "file_va": "0x37c1a",
+    "code_xrefs": [
+      {
+        "string": "##rage_right_bottom",
+        "refs": [
+          {
+            "pc": "0x1dcbc0",
+            "va": "0x37c1a"
+          }
+        ]
+      }
+    ]
+  },
+  "##skins_panel": {
+    "file_va": "0x2d690",
+    "code_xrefs": [
+      {
+        "string": "##skins_panel",
+        "refs": [
+          {
+            "pc": "0x1dc2b0",
+            "va": "0x2d690"
+          }
+        ]
+      }
+    ]
+  },
+  "##skins_list": {
+    "file_va": "0x30709",
+    "code_xrefs": [
+      {
+        "string": "##skins_list",
+        "refs": [
+          {
+            "pc": "0x1dc3a8",
+            "va": "0x30709"
+          }
+        ]
+      }
+    ]
+  },
+  "Enable Esp": {
+    "file_va": "0x36611",
+    "code_xrefs": [
+      {
+        "string": "Enable Esp",
+        "refs": [
+          {
+            "pc": "0x1dbbd0",
+            "va": "0x36611"
+          }
+        ]
+      }
+    ]
+  },
+  "Silent Aim": {
+    "file_va": "0x323c7",
+    "code_xrefs": [
+      {
+        "string": "Silent Aim",
+        "refs": [
+          {
+            "pc": "0x1dc5a0",
+            "va": "0x323c7"
+          }
+        ]
+      }
+    ]
+  },
+  "Auto Wall": {
+    "file_va": "0x2d676",
+    "code_xrefs": [
+      {
+        "string": "Auto Wall",
+        "refs": [
+          {
+            "pc": "0x1dc6ac",
+            "va": "0x2d676"
+          }
+        ]
+      }
+    ]
+  },
+  "Through Walls": {
+    "file_va": "0x34ad4",
+    "code_xrefs": [
+      {
+        "string": "Through Walls",
+        "refs": [
+          {
+            "pc": "0x1dbf7c",
+            "va": "0x34ad4"
+          }
+        ]
+      }
+    ]
+  },
+  "Wallshot": {
+    "file_va": "0x2f51d",
+    "code_xrefs": [
+      {
+        "string": "Wallshot",
+        "refs": [
+          {
+            "pc": "0x1dc18c",
+            "va": "0x2f51d"
+          }
+        ]
+      }
+    ]
+  },
+  "No spread": {
+    "file_va": "0x3125f",
+    "code_xrefs": [
+      {
+        "string": "No spread",
+        "refs": [
+          {
+            "pc": "0x1dc6f0",
+            "va": "0x3125f"
+          }
+        ]
+      }
+    ]
+  },
+  "Auto Fire": {
+    "file_va": "0x2f50a",
+    "code_xrefs": [
+      {
+        "string": "Auto Fire",
+        "refs": [
+          {
+            "pc": "0x1dc67c",
+            "va": "0x2f50a"
+          }
+        ]
+      }
+    ]
+  },
+  "Inf Ammo": {
+    "file_va": "0x34537",
+    "code_xrefs": [
+      {
+        "string": "Inf Ammo",
+        "refs": [
+          {
+            "pc": "0x1dc164",
+            "va": "0x34537"
+          }
+        ]
+      }
+    ]
+  },
+  "Skin Changer": {
+    "file_va": "0x3313e",
+    "code_xrefs": [
+      {
+        "string": "Skin Changer: Swapped to weapon %d (skin %d)",
+        "refs": [
+          {
+            "pc": "0x1d9f70",
+            "va": "0x3313e"
+          }
+        ]
+      },
+      {
+        "string": "Skin Changer",
+        "refs": [
+          {
+            "pc": "0x1dc2c4",
+            "va": "0x360a3"
+          }
+        ]
+      }
+    ]
+  },
+  "Local Chams": {
+    "file_va": "0x2e03d",
+    "code_xrefs": [
+      {
+        "string": "Local Chams",
+        "refs": [
+          {
+            "pc": "0x1dc918",
+            "va": "0x2e03d"
+          }
+        ]
+      }
+    ]
+  },
+  "Enemy Chams": {
+    "file_va": "0x340d7",
+    "code_xrefs": [
+      {
+        "string": "Enemy Chams",
+        "refs": [
+          {
+            "pc": "0x1dbf30",
+            "va": "0x340d7"
+          }
+        ]
+      }
+    ]
+  },
+  "Anti Aim": {
+    "file_va": "0x2e024",
+    "code_xrefs": [
+      {
+        "string": "Anti Aim",
+        "refs": [
+          {
+            "pc": "0x1dc780",
+            "va": "0x31269"
+          }
+        ]
+      },
+      {
+        "string": "Anti Aim Pitch",
+        "refs": [
+          {
+            "pc": "0x1dcc18",
+            "va": "0x36b6f"
+          }
+        ]
+      },
+      {
+        "string": "Enable Anti Aim first",
+        "refs": [
+          {
+            "pc": "0x1dcd10",
+            "va": "0x2e01d"
+          }
+        ]
+      }
+    ]
+  },
+  "Anti Aim Pitch": {
+    "file_va": "0x36b6f",
+    "code_xrefs": [
+      {
+        "string": "Anti Aim Pitch",
+        "refs": [
+          {
+            "pc": "0x1dcc18",
+            "va": "0x36b6f"
+          }
+        ]
+      }
+    ]
+  },
+  "Spin": {
+    "file_va": "0x31e01",
+    "code_xrefs": []
+  },
+  "Fov Check": {
+    "file_va": "0x32913",
+    "code_xrefs": [
+      {
+        "string": "Fov Check",
+        "refs": [
+          {
+            "pc": "0x1dc614",
+            "va": "0x32913"
+          }
+        ]
+      }
+    ]
+  },
+  "Fov Color": {
+    "file_va": "0x36b60",
+    "code_xrefs": [
+      {
+        "string": "Fov Color",
+        "refs": [
+          {
+            "pc": "0x1dc648",
+            "va": "0x36b60"
+          }
+        ]
+      }
+    ]
+  },
+  "Health Bar": {
+    "file_va": "0x37c2e",
+    "code_xrefs": [
+      {
+        "string": "Health Bar",
+        "refs": [
+          {
+            "pc": "0x1dbcdc",
+            "va": "0x37c2e"
+          }
+        ]
+      }
+    ]
+  },
+  "Third Person": {
+    "file_va": "0x2e5d3",
+    "code_xrefs": [
+      {
+        "string": "Third Person",
+        "refs": [
+          {
+            "pc": "0x1dc094",
+            "va": "0x2e5d3"
+          }
+        ]
+      }
+    ]
+  },
+  "scope fov": {
+    "file_va": "0x2eafc",
+    "code_xrefs": []
+  },
+  "padla": {
+    "file_va": "0x37373",
+    "code_xrefs": []
+  },
+  "fresnel": {
+    "file_va": "0x320ec",
+    "code_xrefs": []
+  },
+  "shador": {
+    "file_va": "0x37379",
+    "code_xrefs": []
+  },
+  "/sdcard/Android/data/com.axlebolt.standoff2/files/padla": {
+    "file_va": "0x37341",
+    "code_xrefs": []
+  },
+  "bypas hok result %d": {
+    "file_va": "0x31626",
+    "code_xrefs": [
+      {
+        "string": "bypas hok result %d",
+        "refs": [
+          {
+            "pc": "0x1d9134",
+            "va": "0x31626"
+          }
+        ]
+      }
+    ]
+  },
+  "Skin Changer: Swapped to weapon %d (skin %d)": {
+    "file_va": "0x3313e",
+    "code_xrefs": [
+      {
+        "string": "Skin Changer: Swapped to weapon %d (skin %d)",
+        "refs": [
+          {
+            "pc": "0x1d9f70",
+            "va": "0x3313e"
+          }
+        ]
+      }
+    ]
+  },
+  "Dear ImGui 1.92.7 (19270)": {
+    "file_va": "0x2d220",
+    "code_xrefs": []
+  }
+}

@@ -1,0 +1,1547 @@
+[
+  {
+    "name": "_ZNSt9exceptionD2Ev",
+    "addr": "0x24b5b0",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt6__ndk117__assoc_sub_state28set_exception_at_thread_exitESt13exception_ptr",
+    "addr": "0x249ea8",
+    "size": 164
+  },
+  {
+    "name": "_ZNSt12out_of_rangeD0Ev",
+    "addr": "0x24b8a4",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt9type_infoD2Ev",
+    "addr": "0x24d494",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt6__ndk16threadD1Ev",
+    "addr": "0x2492d4",
+    "size": 32
+  },
+  {
+    "name": "_ZNSt6__ndk112__next_primeEm",
+    "addr": "0x23ed98",
+    "size": 1824
+  },
+  {
+    "name": "_ZNSt6__ndk121recursive_timed_mutexD1Ev",
+    "addr": "0x248eb0",
+    "size": 84
+  },
+  {
+    "name": "_ZNKSt9exception4whatEv",
+    "addr": "0x24b5e4",
+    "size": 16
+  },
+  {
+    "name": "_ZNSt6__ndk115recursive_mutexC2Ev",
+    "addr": "0x248b48",
+    "size": 200
+  },
+  {
+    "name": "_ZNKSt20bad_array_new_length4whatEv",
+    "addr": "0x24b6c8",
+    "size": 16
+  },
+  {
+    "name": "_ZNSt16invalid_argumentD1Ev",
+    "addr": "0x24b6d8",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt6__ndk112system_errorC1ENS_10error_codeERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE",
+    "addr": "0x2481e4",
+    "size": 248
+  },
+  {
+    "name": "_ZNSt11logic_errorD0Ev",
+    "addr": "0x24b744",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt6__ndk112system_errorC2ENS_10error_codeEPKc",
+    "addr": "0x2483d0",
+    "size": 336
+  },
+  {
+    "name": "_ZNSt6__ndk15mutex4lockEv",
+    "addr": "0x248ad4",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt6__ndk14stoiERKNS_12basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEEPmi",
+    "addr": "0x2448b4",
+    "size": 212
+  },
+  {
+    "name": "_ZNSt6__ndk17promiseIvE13set_exceptionESt13exception_ptr",
+    "addr": "0x24a634",
+    "size": 96
+  },
+  {
+    "name": "_ZNSt6__ndk115__thread_structC2Ev",
+    "addr": "0x2495c8",
+    "size": 60
+  },
+  {
+    "name": "_ZNSt6__ndk15mutex6unlockEv",
+    "addr": "0x248b28",
+    "size": 32
+  },
+  {
+    "name": "_ZNSt6__ndk112system_errorD1Ev",
+    "addr": "0x2488f4",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt6__ndk119__thread_local_dataEv",
+    "addr": "0x249434",
+    "size": 148
+  },
+  {
+    "name": "_ZNSt6__ndk113random_deviceclEv",
+    "addr": "0x24aea4",
+    "size": 148
+  },
+  {
+    "name": "_ZNSt6__ndk16futureIvED2Ev",
+    "addr": "0x24a22c",
+    "size": 84
+  },
+  {
+    "name": "_ZNSt13runtime_errorD0Ev",
+    "addr": "0x24b7e8",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt20bad_array_new_lengthD1Ev",
+    "addr": "0x24b5b0",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt6__ndk115system_categoryEv",
+    "addr": "0x24814c",
+    "size": 96
+  },
+  {
+    "name": "_ZNSt6__ndk118condition_variable15__do_timed_waitERNS_11unique_lockINS_5mutexEEENS_6chrono10time_pointINS5_12system_clockENS5_8durationIxNS_5ratioILl1ELl1000000000EEEEEEE",
+    "addr": "0x2491a4",
+    "size": 160
+  },
+  {
+    "name": "_ZNSt6__ndk16futureIvE3getEv",
+    "addr": "0x24a280",
+    "size": 140
+  },
+  {
+    "name": "_ZSt17__throw_bad_allocv",
+    "addr": "0x23f544",
+    "size": 56
+  },
+  {
+    "name": "_ZNSt6__ndk15stoulERKNS_12basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEEPmi",
+    "addr": "0x244a00",
+    "size": 392
+  },
+  {
+    "name": "_ZNKSt6__ndk114error_category23default_error_conditionEi",
+    "addr": "0x248a40",
+    "size": 20
+  },
+  {
+    "name": "_ZNSt6__ndk18__sp_mut4lockEv",
+    "addr": "0x24acec",
+    "size": 36
+  },
+  {
+    "name": "_ZNSt6__ndk117__assoc_sub_state13set_exceptionESt13exception_ptr",
+    "addr": "0x249e04",
+    "size": 164
+  },
+  {
+    "name": "_ZNSt6__ndk121recursive_timed_mutexC1Ev",
+    "addr": "0x248e94",
+    "size": 28
+  },
+  {
+    "name": "_ZSt17current_exceptionv",
+    "addr": "0x24a99c",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt16nested_exceptionD2Ev",
+    "addr": "0x24a9c8",
+    "size": 24
+  },
+  {
+    "name": "_ZNSt6__ndk112system_errorC2ENS_10error_codeERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE",
+    "addr": "0x2481e4",
+    "size": 248
+  },
+  {
+    "name": "_ZNSt10bad_typeidD0Ev",
+    "addr": "0x24d544",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt6__ndk117__assoc_sub_state10__sub_waitERNS_11unique_lockINS_5mutexEEE",
+    "addr": "0x24a078",
+    "size": 144
+  },
+  {
+    "name": "_ZNKSt8bad_cast4whatEv",
+    "addr": "0x24d514",
+    "size": 16
+  },
+  {
+    "name": "_ZNSt6__ndk118condition_variableD2Ev",
+    "addr": "0x2490f8",
+    "size": 32
+  },
+  {
+    "name": "__cxa_deleted_virtual",
+    "addr": "0x24b598",
+    "size": 24
+  },
+  {
+    "name": "_ZNSt6__ndk114error_categoryD0Ev",
+    "addr": "0x248a38",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt13runtime_erroraSERKS_",
+    "addr": "0x23f894",
+    "size": 112
+  },
+  {
+    "name": "_ZNSt6__ndk119__shared_weak_count10__add_weakEv",
+    "addr": "0x24ab88",
+    "size": 36
+  },
+  {
+    "name": "_ZNSt6__ndk117__assoc_sub_state4waitEv",
+    "addr": "0x24a108",
+    "size": 164
+  },
+  {
+    "name": "DobbyHook",
+    "addr": "0x2389d0",
+    "size": 252
+  },
+  {
+    "name": "_ZNSt20bad_array_new_lengthC1Ev",
+    "addr": "0x24b684",
+    "size": 24
+  },
+  {
+    "name": "__cxa_demangle",
+    "addr": "0x24d580",
+    "size": 1528
+  },
+  {
+    "name": "_ZNKSt10bad_typeid4whatEv",
+    "addr": "0x24d570",
+    "size": 16
+  },
+  {
+    "name": "_ZNSt6__ndk18__sp_mut6unlockEv",
+    "addr": "0x24ad10",
+    "size": 36
+  },
+  {
+    "name": "_ZNSt11range_errorD2Ev",
+    "addr": "0x24b77c",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt6__ndk15mutexD1Ev",
+    "addr": "0x248ab4",
+    "size": 32
+  },
+  {
+    "name": "_ZNSt14overflow_errorD1Ev",
+    "addr": "0x24b77c",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt13runtime_errorC2ERKS_",
+    "addr": "0x23f85c",
+    "size": 56
+  },
+  {
+    "name": "_ZNSt6__ndk15stollERKNS_12basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEEPmi",
+    "addr": "0x244b88",
+    "size": 392
+  },
+  {
+    "name": "_ZNSt6__ndk111timed_mutex8try_lockEv",
+    "addr": "0x248dd0",
+    "size": 112
+  },
+  {
+    "name": "_ZNSt16nested_exceptionC2Ev",
+    "addr": "0x24a960",
+    "size": 60
+  },
+  {
+    "name": "_ZNSt11logic_errorC2EPKc",
+    "addr": "0x23f610",
+    "size": 136
+  },
+  {
+    "name": "_ZNSt11logic_errorC1ERKS_",
+    "addr": "0x23f698",
+    "size": 56
+  },
+  {
+    "name": "_ZNSt6__ndk115__thread_struct27__make_ready_at_thread_exitEPNS_17__assoc_sub_stateE",
+    "addr": "0x249760",
+    "size": 384
+  },
+  {
+    "name": "__cxa_decrement_exception_refcount",
+    "addr": "0x2662ec",
+    "size": 92
+  },
+  {
+    "name": "_ZSt14get_unexpectedv",
+    "addr": "0x24b24c",
+    "size": 20
+  },
+  {
+    "name": "_ZNSt15underflow_errorD1Ev",
+    "addr": "0x24b77c",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt6__ndk14stofERKNS_12basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEEPm",
+    "addr": "0x244e9c",
+    "size": 356
+  },
+  {
+    "name": "_ZNSt6__ndk119__shared_weak_countD0Ev",
+    "addr": "0x24aad0",
+    "size": 8
+  },
+  {
+    "name": "_ZNKSt13bad_exception4whatEv",
+    "addr": "0x24b620",
+    "size": 16
+  },
+  {
+    "name": "__cxa_pure_virtual",
+    "addr": "0x24b580",
+    "size": 24
+  },
+  {
+    "name": "_ZNSt6__ndk113random_deviceC2ERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE",
+    "addr": "0x24add8",
+    "size": 168
+  },
+  {
+    "name": "_ZNSt8bad_castD2Ev",
+    "addr": "0x24d4e0",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt6__ndk119__shared_weak_count12__add_sharedEv",
+    "addr": "0x24ab64",
+    "size": 36
+  },
+  {
+    "name": "__cxa_uncaught_exceptions",
+    "addr": "0x266710",
+    "size": 40
+  },
+  {
+    "name": "_ZNSt6__ndk16stoullERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPmi",
+    "addr": "0x244350",
+    "size": 368
+  },
+  {
+    "name": "_ZNSt6__ndk112system_errorC1EiRKNS_14error_categoryEPKc",
+    "addr": "0x2486dc",
+    "size": 356
+  },
+  {
+    "name": "__cxa_allocate_exception",
+    "addr": "0x265f68",
+    "size": 80
+  },
+  {
+    "name": "_ZNKSt6__ndk114error_category10equivalentEiRKNS_15error_conditionE",
+    "addr": "0x248a54",
+    "size": 68
+  },
+  {
+    "name": "_ZNSt6__ndk110to_wstringEd",
+    "addr": "0x247178",
+    "size": 476
+  },
+  {
+    "name": "_ZNSt6__ndk118condition_variable10notify_allEv",
+    "addr": "0x249138",
+    "size": 32
+  },
+  {
+    "name": "_ZNSt6__ndk115recursive_mutex8try_lockEv",
+    "addr": "0x248c7c",
+    "size": 40
+  },
+  {
+    "name": "_ZNKSt6__ndk114error_category10equivalentERKNS_10error_codeEi",
+    "addr": "0x248a98",
+    "size": 28
+  },
+  {
+    "name": "_ZNSt6__ndk19to_stringEd",
+    "addr": "0x246c30",
+    "size": 440
+  },
+  {
+    "name": "_ZNSt6__ndk110to_wstringEe",
+    "addr": "0x247354",
+    "size": 468
+  },
+  {
+    "name": "_ZNSt6__ndk118condition_variable10notify_oneEv",
+    "addr": "0x249118",
+    "size": 32
+  },
+  {
+    "name": "_ZNSt6__ndk113random_deviceC1ERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE",
+    "addr": "0x24add8",
+    "size": 168
+  },
+  {
+    "name": "_ZNSt6__ndk19to_stringEe",
+    "addr": "0x246de8",
+    "size": 432
+  },
+  {
+    "name": "_ZNSt6__ndk110to_wstringEf",
+    "addr": "0x246f98",
+    "size": 480
+  },
+  {
+    "name": "_ZNSt6__ndk19to_stringEf",
+    "addr": "0x246a74",
+    "size": 444
+  },
+  {
+    "name": "__cxa_end_catch",
+    "addr": "0x2661e8",
+    "size": 260
+  },
+  {
+    "name": "_ZNSt6__ndk14stodERKNS_12basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEEPm",
+    "addr": "0x245000",
+    "size": 356
+  },
+  {
+    "name": "_ZNSt6__ndk17promiseIvE9set_valueEv",
+    "addr": "0x24a594",
+    "size": 160
+  },
+  {
+    "name": "_ZNSt6__ndk17promiseIvED1Ev",
+    "addr": "0x24a360",
+    "size": 312
+  },
+  {
+    "name": "_ZNSt13bad_exceptionD0Ev",
+    "addr": "0x24b5f4",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt13exception_ptrD2Ev",
+    "addr": "0x24a8ec",
+    "size": 12
+  },
+  {
+    "name": "_ZNSt6__ndk114__shared_countD2Ev",
+    "addr": "0x24aac0",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt6__ndk110to_wstringEi",
+    "addr": "0x245c98",
+    "size": 480
+  },
+  {
+    "name": "_ZNSt9bad_allocD0Ev",
+    "addr": "0x24b648",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt8bad_castC2Ev",
+    "addr": "0x24d4c8",
+    "size": 24
+  },
+  {
+    "name": "__cxa_guard_release",
+    "addr": "0x24b0c0",
+    "size": 168
+  },
+  {
+    "name": "_ZNSt6__ndk19to_stringEi",
+    "addr": "0x2452dc",
+    "size": 304
+  },
+  {
+    "name": "_ZSt17rethrow_exceptionSt13exception_ptr",
+    "addr": "0x24aa64",
+    "size": 24
+  },
+  {
+    "name": "_ZNSt6__ndk110to_wstringEj",
+    "addr": "0x246420",
+    "size": 364
+  },
+  {
+    "name": "_ZNSt6__ndk19to_stringEj",
+    "addr": "0x245854",
+    "size": 188
+  },
+  {
+    "name": "_ZNSt11logic_errorC1EPKc",
+    "addr": "0x23f610",
+    "size": 136
+  },
+  {
+    "name": "_ZNSt6__ndk110to_wstringEl",
+    "addr": "0x245e78",
+    "size": 724
+  },
+  {
+    "name": "__cxa_uncaught_exception",
+    "addr": "0x2666e0",
+    "size": 48
+  },
+  {
+    "name": "DobbyCodePatch",
+    "addr": "0x23bcf0",
+    "size": 208
+  },
+  {
+    "name": "_ZNSt6__ndk19to_stringEl",
+    "addr": "0x24540c",
+    "size": 548
+  },
+  {
+    "name": "_ZNSt6__ndk110to_wstringEm",
+    "addr": "0x24658c",
+    "size": 628
+  },
+  {
+    "name": "_ZNSt6__ndk111timed_mutexD1Ev",
+    "addr": "0x248cc0",
+    "size": 84
+  },
+  {
+    "name": "_ZNSt12length_errorD0Ev",
+    "addr": "0x24b878",
+    "size": 44
+  },
+  {
+    "name": "__cxa_free_dependent_exception",
+    "addr": "0x2660c4",
+    "size": 8
+  },
+  {
+    "name": "_ZSt18uncaught_exceptionv",
+    "addr": "0x24a8c0",
+    "size": 36
+  },
+  {
+    "name": "_ZNSt6__ndk119__shared_weak_count14__release_weakEv",
+    "addr": "0x24ac28",
+    "size": 88
+  },
+  {
+    "name": "_ZNSt6__ndk19to_stringEm",
+    "addr": "0x245910",
+    "size": 452
+  },
+  {
+    "name": "_ZNSt6__ndk112bad_weak_ptrD0Ev",
+    "addr": "0x24aa84",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt6__ndk16thread4joinEv",
+    "addr": "0x2492f4",
+    "size": 76
+  },
+  {
+    "name": "_ZNKSt6__ndk113random_device7entropyEv",
+    "addr": "0x24af38",
+    "size": 88
+  },
+  {
+    "name": "_ZNSt6__ndk14stoiERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPmi",
+    "addr": "0x243f2c",
+    "size": 212
+  },
+  {
+    "name": "_ZNSt6__ndk116generic_categoryEv",
+    "addr": "0x247f84",
+    "size": 96
+  },
+  {
+    "name": "_ZNKSt6__ndk115error_condition7messageEv",
+    "addr": "0x2481ac",
+    "size": 28
+  },
+  {
+    "name": "_ZNSt6__ndk17promiseIvEC1Ev",
+    "addr": "0x24a30c",
+    "size": 84
+  },
+  {
+    "name": "__dynamic_cast",
+    "addr": "0x24bd38",
+    "size": 488
+  },
+  {
+    "name": "_ZNSt6__ndk112future_errorD0Ev",
+    "addr": "0x249c18",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt6__ndk113shared_futureIvED2Ev",
+    "addr": "0x24a718",
+    "size": 84
+  },
+  {
+    "name": "_ZNSt12domain_errorD1Ev",
+    "addr": "0x24b6d8",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt6__ndk120__throw_system_errorEiPKc",
+    "addr": "0x248928",
+    "size": 48
+  },
+  {
+    "name": "_ZNSt12out_of_rangeD1Ev",
+    "addr": "0x24b6d8",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt6__ndk15stoulERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPmi",
+    "addr": "0x244078",
+    "size": 364
+  },
+  {
+    "name": "_ZNKSt13runtime_error4whatEv",
+    "addr": "0x24b814",
+    "size": 12
+  },
+  {
+    "name": "_ZNSt9exceptionD0Ev",
+    "addr": "0x24b5b8",
+    "size": 44
+  },
+  {
+    "name": "_ZNKSt6__ndk119__shared_weak_count13__get_deleterERKSt9type_info",
+    "addr": "0x24ace0",
+    "size": 12
+  },
+  {
+    "name": "_ZNSt6__ndk110to_wstringEx",
+    "addr": "0x24614c",
+    "size": 724
+  },
+  {
+    "name": "_ZNSt6__ndk111timed_mutexC1Ev",
+    "addr": "0x248ca4",
+    "size": 28
+  },
+  {
+    "name": "_ZNSt6__ndk19to_stringEx",
+    "addr": "0x245630",
+    "size": 548
+  },
+  {
+    "name": "_ZNSt6__ndk110to_wstringEy",
+    "addr": "0x246800",
+    "size": 628
+  },
+  {
+    "name": "_ZNSt6__ndk16threadD2Ev",
+    "addr": "0x2492d4",
+    "size": 32
+  },
+  {
+    "name": "_ZNSt9type_infoD0Ev",
+    "addr": "0x24d49c",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt6__ndk121__throw_runtime_errorEPKc",
+    "addr": "0x23f904",
+    "size": 84
+  },
+  {
+    "name": "_ZNSt6__ndk19to_stringEy",
+    "addr": "0x245ad4",
+    "size": 452
+  },
+  {
+    "name": "_ZNSt6__ndk117__assoc_sub_state9set_valueEv",
+    "addr": "0x249c54",
+    "size": 140
+  },
+  {
+    "name": "_ZNSt6__ndk121recursive_timed_mutexD2Ev",
+    "addr": "0x248eb0",
+    "size": 84
+  },
+  {
+    "name": "_ZNSt6__ndk118condition_variable4waitERNS_11unique_lockINS_5mutexEEE",
+    "addr": "0x249158",
+    "size": 76
+  },
+  {
+    "name": "__gxx_personality_v0",
+    "addr": "0x266a58",
+    "size": 552
+  },
+  {
+    "name": "_ZNSt6__ndk111timed_mutex4lockEv",
+    "addr": "0x248d14",
+    "size": 144
+  },
+  {
+    "name": "_ZNSt11logic_errorD1Ev",
+    "addr": "0x24b6d8",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt16invalid_argumentD2Ev",
+    "addr": "0x24b6d8",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt6__ndk121recursive_timed_mutex8try_lockEv",
+    "addr": "0x248fe0",
+    "size": 156
+  },
+  {
+    "name": "_ZNSt6__ndk112system_errorD2Ev",
+    "addr": "0x2488f4",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt13runtime_errorD1Ev",
+    "addr": "0x24b77c",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt6__ndk15stollERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPmi",
+    "addr": "0x2441e4",
+    "size": 364
+  },
+  {
+    "name": "_ZNSt20bad_array_new_lengthD2Ev",
+    "addr": "0x24b5b0",
+    "size": 8
+  },
+  {
+    "name": "__cxa_get_exception_ptr",
+    "addr": "0x2661dc",
+    "size": 12
+  },
+  {
+    "name": "_ZNSt6__ndk14stolERKNS_12basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEEPmi",
+    "addr": "0x244988",
+    "size": 120
+  },
+  {
+    "name": "_ZNSt6__ndk121recursive_timed_mutexC2Ev",
+    "addr": "0x248e94",
+    "size": 28
+  },
+  {
+    "name": "_ZNSt10bad_typeidD1Ev",
+    "addr": "0x24d53c",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt16nested_exceptionD0Ev",
+    "addr": "0x24a9e0",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt6__ndk15mutex8try_lockEv",
+    "addr": "0x248b00",
+    "size": 40
+  },
+  {
+    "name": "_ZNSt13runtime_errorC2EPKc",
+    "addr": "0x23f7d4",
+    "size": 136
+  },
+  {
+    "name": "_ZNSt6__ndk17promiseIvE24set_value_at_thread_exitEv",
+    "addr": "0x24a694",
+    "size": 36
+  },
+  {
+    "name": "_ZNSt6__ndk121recursive_timed_mutex4lockEv",
+    "addr": "0x248f04",
+    "size": 220
+  },
+  {
+    "name": "_ZNSt6__ndk114error_categoryD1Ev",
+    "addr": "0x248a30",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt6__ndk115recursive_mutex4lockEv",
+    "addr": "0x248c30",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt20bad_array_new_lengthC2Ev",
+    "addr": "0x24b684",
+    "size": 24
+  },
+  {
+    "name": "_ZNSt6__ndk112system_errorC1ENS_10error_codeE",
+    "addr": "0x248520",
+    "size": 176
+  },
+  {
+    "name": "_ZNSt6__ndk121recursive_timed_mutex6unlockEv",
+    "addr": "0x24907c",
+    "size": 124
+  },
+  {
+    "name": "__cxa_free_exception",
+    "addr": "0x266064",
+    "size": 36
+  },
+  {
+    "name": "_ZNSt6__ndk117__assoc_sub_state9__executeEv",
+    "addr": "0x24a1ac",
+    "size": 20
+  },
+  {
+    "name": "_ZNSt6__ndk15mutexD2Ev",
+    "addr": "0x248ab4",
+    "size": 32
+  },
+  {
+    "name": "_ZNSt11range_errorD0Ev",
+    "addr": "0x24b8d0",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt14overflow_errorD2Ev",
+    "addr": "0x24b77c",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt6__ndk119__shared_weak_count4lockEv",
+    "addr": "0x24ac80",
+    "size": 96
+  },
+  {
+    "name": "_ZNSt11logic_erroraSERKS_",
+    "addr": "0x23f6d0",
+    "size": 112
+  },
+  {
+    "name": "_ZNSt10bad_typeidC1Ev",
+    "addr": "0x24d524",
+    "size": 24
+  },
+  {
+    "name": "_ZNSt6__ndk113random_deviceD1Ev",
+    "addr": "0x24ae80",
+    "size": 36
+  },
+  {
+    "name": "_ZNSt15underflow_errorD2Ev",
+    "addr": "0x24b77c",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt6__ndk112__get_sp_mutEPKv",
+    "addr": "0x24ad34",
+    "size": 84
+  },
+  {
+    "name": "_ZNSt6__ndk119__shared_weak_countD1Ev",
+    "addr": "0x24aac0",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt11logic_errorC2ERKS_",
+    "addr": "0x23f698",
+    "size": 56
+  },
+  {
+    "name": "_ZNSt6__ndk119__shared_weak_count16__release_sharedEv",
+    "addr": "0x24abac",
+    "size": 124
+  },
+  {
+    "name": "_ZNSt8bad_castD0Ev",
+    "addr": "0x24d4e8",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt6__ndk16chrono12system_clock9to_time_tERKNS0_10time_pointIS1_NS0_8durationIxNS_5ratioILl1ELl1000000EEEEEEE",
+    "addr": "0x23ed04",
+    "size": 40
+  },
+  {
+    "name": "_ZNSt6__ndk17promiseIvE10get_futureEv",
+    "addr": "0x24a56c",
+    "size": 40
+  },
+  {
+    "name": "_ZNSt6__ndk16chrono12steady_clock3nowEv",
+    "addr": "0x23ed40",
+    "size": 88
+  },
+  {
+    "name": "_ZNSt13runtime_errorC1EPKc",
+    "addr": "0x23f7d4",
+    "size": 136
+  },
+  {
+    "name": "_ZNSt6__ndk115__thread_struct25notify_all_at_thread_exitEPNS_18condition_variableEPNS_5mutexE",
+    "addr": "0x249648",
+    "size": 280
+  },
+  {
+    "name": "_ZNSt6__ndk115future_categoryEv",
+    "addr": "0x249b24",
+    "size": 96
+  },
+  {
+    "name": "_ZNSt6__ndk125notify_all_at_thread_exitERNS_18condition_variableENS_11unique_lockINS_5mutexEEE",
+    "addr": "0x249244",
+    "size": 144
+  },
+  {
+    "name": "_ZNKSt6__ndk110error_code7messageEv",
+    "addr": "0x2481c8",
+    "size": 28
+  },
+  {
+    "name": "_ZNSt6__ndk17promiseIvED2Ev",
+    "addr": "0x24a360",
+    "size": 312
+  },
+  {
+    "name": "_ZNSt13bad_exceptionD1Ev",
+    "addr": "0x24b5b0",
+    "size": 8
+  },
+  {
+    "name": "_ZNKSt6__ndk112bad_weak_ptr4whatEv",
+    "addr": "0x24aab0",
+    "size": 16
+  },
+  {
+    "name": "_ZNSt9bad_allocD1Ev",
+    "addr": "0x24b5b0",
+    "size": 8
+  },
+  {
+    "name": "_ZSt10unexpectedv",
+    "addr": "0x24b2bc",
+    "size": 28
+  },
+  {
+    "name": "_ZNSt6__ndk114__shared_countD0Ev",
+    "addr": "0x24aac8",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt6__ndk16chrono12system_clock11from_time_tEl",
+    "addr": "0x23ed2c",
+    "size": 20
+  },
+  {
+    "name": "_ZNSt13exception_ptrC1ERKS_",
+    "addr": "0x24a8f8",
+    "size": 24
+  },
+  {
+    "name": "_ZNSt6__ndk117__assoc_sub_state12__make_readyEv",
+    "addr": "0x249f4c",
+    "size": 68
+  },
+  {
+    "name": "_ZNSt12length_errorD1Ev",
+    "addr": "0x24b6d8",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt6__ndk111timed_mutexD2Ev",
+    "addr": "0x248cc0",
+    "size": 84
+  },
+  {
+    "name": "_ZNSt6__ndk112system_errorC2ENS_10error_codeE",
+    "addr": "0x248520",
+    "size": 176
+  },
+  {
+    "name": "_ZNSt6__ndk112bad_weak_ptrD1Ev",
+    "addr": "0x24aa7c",
+    "size": 8
+  },
+  {
+    "name": "__cxa_guard_abort",
+    "addr": "0x24b168",
+    "size": 156
+  },
+  {
+    "name": "__cxa_current_exception_type",
+    "addr": "0x266348",
+    "size": 88
+  },
+  {
+    "name": "_ZNSt6__ndk115recursive_mutexD1Ev",
+    "addr": "0x248c10",
+    "size": 32
+  },
+  {
+    "name": "DobbyGetVersion",
+    "addr": "0x23b674",
+    "size": 12
+  },
+  {
+    "name": "_ZNSt6__ndk17promiseIvEC2Ev",
+    "addr": "0x24a30c",
+    "size": 84
+  },
+  {
+    "name": "_ZNSt9bad_allocC1Ev",
+    "addr": "0x24b630",
+    "size": 24
+  },
+  {
+    "name": "_ZNSt6__ndk112future_errorD1Ev",
+    "addr": "0x249c10",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt12domain_errorD2Ev",
+    "addr": "0x24b6d8",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt6__ndk115__thread_structD1Ev",
+    "addr": "0x249604",
+    "size": 68
+  },
+  {
+    "name": "__cxa_get_globals",
+    "addr": "0x24b538",
+    "size": 36
+  },
+  {
+    "name": "__cxa_get_globals_fast",
+    "addr": "0x24b55c",
+    "size": 36
+  },
+  {
+    "name": "_ZNSt6__ndk111this_thread9sleep_forERKNS_6chrono8durationIxNS_5ratioILl1ELl1000000000EEEEE",
+    "addr": "0x2493b4",
+    "size": 128
+  },
+  {
+    "name": "_ZNSt9exceptionD1Ev",
+    "addr": "0x24b5b0",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt12out_of_rangeD2Ev",
+    "addr": "0x24b6d8",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt6__ndk111timed_mutexC2Ev",
+    "addr": "0x248ca4",
+    "size": 28
+  },
+  {
+    "name": "_ZNSt9type_infoD1Ev",
+    "addr": "0x24d494",
+    "size": 8
+  },
+  {
+    "name": "DobbyDestroy",
+    "addr": "0x23b680",
+    "size": 76
+  },
+  {
+    "name": "_ZNSt6__ndk15alignEmmRPvRm",
+    "addr": "0x24ad88",
+    "size": 80
+  },
+  {
+    "name": "_ZNSt6__ndk117__assoc_sub_state16__on_zero_sharedEv",
+    "addr": "0x249c44",
+    "size": 16
+  },
+  {
+    "name": "_ZNSt6__ndk117__assoc_sub_state4copyEv",
+    "addr": "0x249f90",
+    "size": 232
+  },
+  {
+    "name": "_ZSt13get_terminatev",
+    "addr": "0x24b2d8",
+    "size": 20
+  },
+  {
+    "name": "_ZNSt6__ndk15stoldERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPm",
+    "addr": "0x244750",
+    "size": 356
+  },
+  {
+    "name": "_ZNSt6__ndk115recursive_mutexC1Ev",
+    "addr": "0x248b48",
+    "size": 200
+  },
+  {
+    "name": "_ZNSt11logic_errorD2Ev",
+    "addr": "0x24b6d8",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt6__ndk114__shared_count12__add_sharedEv",
+    "addr": "0x24aad8",
+    "size": 36
+  },
+  {
+    "name": "_ZNSt16invalid_argumentD0Ev",
+    "addr": "0x24b84c",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt6__ndk115__thread_structC1Ev",
+    "addr": "0x2495c8",
+    "size": 60
+  },
+  {
+    "name": "_ZNSt13runtime_errorD2Ev",
+    "addr": "0x24b77c",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt6__ndk112system_errorD0Ev",
+    "addr": "0x2488fc",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt6__ndk16futureIvED1Ev",
+    "addr": "0x24a22c",
+    "size": 84
+  },
+  {
+    "name": "__cxa_rethrow_primary_exception",
+    "addr": "0x26653c",
+    "size": 304
+  },
+  {
+    "name": "_ZNSt6__ndk17promiseIvE28set_exception_at_thread_exitESt13exception_ptr",
+    "addr": "0x24a6b8",
+    "size": 96
+  },
+  {
+    "name": "_ZNSt20bad_array_new_lengthD0Ev",
+    "addr": "0x24b69c",
+    "size": 44
+  },
+  {
+    "name": "DobbySymbolResolver",
+    "addr": "0x23c5d8",
+    "size": 60
+  },
+  {
+    "name": "_ZNSt6__ndk16chrono12system_clock3nowEv",
+    "addr": "0x23ec8c",
+    "size": 120
+  },
+  {
+    "name": "_ZNSt10bad_typeidD2Ev",
+    "addr": "0x24d53c",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt16nested_exceptionD1Ev",
+    "addr": "0x24a9c8",
+    "size": 24
+  },
+  {
+    "name": "_ZNSt6__ndk112future_errorC1ENS_10error_codeE",
+    "addr": "0x249b84",
+    "size": 140
+  },
+  {
+    "name": "__cxa_allocate_dependent_exception",
+    "addr": "0x266088",
+    "size": 60
+  },
+  {
+    "name": "_ZNSt6__ndk14stolERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPmi",
+    "addr": "0x244000",
+    "size": 120
+  },
+  {
+    "name": "_ZNSt6__ndk16futureIvEC1EPNS_17__assoc_sub_stateE",
+    "addr": "0x24a1c0",
+    "size": 108
+  },
+  {
+    "name": "__cxa_rethrow",
+    "addr": "0x2663a0",
+    "size": 228
+  },
+  {
+    "name": "_ZNSt6__ndk112system_errorC2EiRKNS_14error_categoryEPKc",
+    "addr": "0x2486dc",
+    "size": 356
+  },
+  {
+    "name": "_ZNSt6__ndk114error_categoryD2Ev",
+    "addr": "0x248a30",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt6__ndk118condition_variableD1Ev",
+    "addr": "0x2490f8",
+    "size": 32
+  },
+  {
+    "name": "_ZNSt6__ndk112system_errorC1ENS_10error_codeEPKc",
+    "addr": "0x2483d0",
+    "size": 336
+  },
+  {
+    "name": "_ZNSt6__ndk113shared_futureIvEaSERKS1_",
+    "addr": "0x24a76c",
+    "size": 120
+  },
+  {
+    "name": "_ZNSt13runtime_errorC1ERKS_",
+    "addr": "0x23f85c",
+    "size": 56
+  },
+  {
+    "name": "_ZNSt6__ndk16thread6detachEv",
+    "addr": "0x249340",
+    "size": 72
+  },
+  {
+    "name": "_ZSt9terminatev",
+    "addr": "0x24b260",
+    "size": 64
+  },
+  {
+    "name": "_ZSt15get_new_handlerv",
+    "addr": "0x24b31c",
+    "size": 20
+  },
+  {
+    "name": "_ZNSt11range_errorD1Ev",
+    "addr": "0x24b77c",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt14overflow_errorD0Ev",
+    "addr": "0x24b8fc",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt6__ndk112system_errorC2EiRKNS_14error_categoryERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE",
+    "addr": "0x2485d0",
+    "size": 268
+  },
+  {
+    "name": "_ZNSt10bad_typeidC2Ev",
+    "addr": "0x24d524",
+    "size": 24
+  },
+  {
+    "name": "JNI_OnLoad",
+    "addr": "0x1d69e4",
+    "size": 280
+  },
+  {
+    "name": "_ZNSt16nested_exceptionC1Ev",
+    "addr": "0x24a960",
+    "size": 60
+  },
+  {
+    "name": "_ZNSt13runtime_errorC1ERKNSt6__ndk112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE",
+    "addr": "0x23f740",
+    "size": 148
+  },
+  {
+    "name": "_ZNSt6__ndk117__assoc_sub_state24set_value_at_thread_exitEv",
+    "addr": "0x249d70",
+    "size": 148
+  },
+  {
+    "name": "__cxa_current_primary_exception",
+    "addr": "0x2664b0",
+    "size": 140
+  },
+  {
+    "name": "_ZNSt6__ndk113random_deviceD2Ev",
+    "addr": "0x24ae80",
+    "size": 36
+  },
+  {
+    "name": "_ZNSt13exception_ptraSERKS_",
+    "addr": "0x24a910",
+    "size": 80
+  },
+  {
+    "name": "_ZNSt15underflow_errorD0Ev",
+    "addr": "0x24b928",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt6__ndk119__shared_weak_countD2Ev",
+    "addr": "0x24aac0",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt6__ndk114error_categoryC2Ev",
+    "addr": "0x248a18",
+    "size": 24
+  },
+  {
+    "name": "_ZSt19uncaught_exceptionsv",
+    "addr": "0x24a8e4",
+    "size": 8
+  },
+  {
+    "name": "_ZNKSt11logic_error4whatEv",
+    "addr": "0x24b770",
+    "size": 12
+  },
+  {
+    "name": "_ZNSt6__ndk112system_errorC1EiRKNS_14error_categoryERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE",
+    "addr": "0x2485d0",
+    "size": 268
+  },
+  {
+    "name": "_ZNSt8bad_castD1Ev",
+    "addr": "0x24d4e0",
+    "size": 8
+  },
+  {
+    "name": "_ZSt14set_unexpectedPFvvE",
+    "addr": "0x24b49c",
+    "size": 52
+  },
+  {
+    "name": "_ZNSt13runtime_errorC2ERKNSt6__ndk112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE",
+    "addr": "0x23f740",
+    "size": 148
+  },
+  {
+    "name": "_ZNKSt9bad_alloc4whatEv",
+    "addr": "0x24b674",
+    "size": 16
+  },
+  {
+    "name": "_ZSt13set_terminatePFvvE",
+    "addr": "0x24b4d0",
+    "size": 52
+  },
+  {
+    "name": "__cxa_begin_catch",
+    "addr": "0x265fb8",
+    "size": 172
+  },
+  {
+    "name": "_ZNSt6__ndk15stoldERKNS_12basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEEPm",
+    "addr": "0x245164",
+    "size": 376
+  },
+  {
+    "name": "_ZNSt6__ndk112future_errorC2ENS_10error_codeE",
+    "addr": "0x249b84",
+    "size": 140
+  },
+  {
+    "name": "_ZSt15set_new_handlerPFvvE",
+    "addr": "0x24b504",
+    "size": 36
+  },
+  {
+    "name": "_ZNSt13bad_exceptionD2Ev",
+    "addr": "0x24b5b0",
+    "size": 8
+  },
+  {
+    "name": "__cxa_throw",
+    "addr": "0x2660cc",
+    "size": 132
+  },
+  {
+    "name": "_ZNSt6__ndk112system_errorC1EiRKNS_14error_categoryE",
+    "addr": "0x248840",
+    "size": 180
+  },
+  {
+    "name": "_ZNSt9bad_allocD2Ev",
+    "addr": "0x24b5b0",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt13exception_ptrD1Ev",
+    "addr": "0x24a8ec",
+    "size": 12
+  },
+  {
+    "name": "_ZNSt6__ndk114__shared_countD1Ev",
+    "addr": "0x24aac0",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt6__ndk112system_errorC2EiRKNS_14error_categoryE",
+    "addr": "0x248840",
+    "size": 180
+  },
+  {
+    "name": "_ZNSt8bad_castC1Ev",
+    "addr": "0x24d4c8",
+    "size": 24
+  },
+  {
+    "name": "__cxa_guard_acquire",
+    "addr": "0x24af90",
+    "size": 304
+  },
+  {
+    "name": "__cxa_increment_exception_refcount",
+    "addr": "0x266484",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt12length_errorD2Ev",
+    "addr": "0x24b6d8",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt11logic_errorC2ERKNSt6__ndk112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE",
+    "addr": "0x23f57c",
+    "size": 148
+  },
+  {
+    "name": "_ZNSt6__ndk14stodERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPm",
+    "addr": "0x244608",
+    "size": 328
+  },
+  {
+    "name": "_ZNSt6__ndk16stoullERKNS_12basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEEPmi",
+    "addr": "0x244d10",
+    "size": 396
+  },
+  {
+    "name": "_ZNSt13exception_ptrC2ERKS_",
+    "addr": "0x24a8f8",
+    "size": 24
+  },
+  {
+    "name": "_ZNSt6__ndk112bad_weak_ptrD2Ev",
+    "addr": "0x24aa7c",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt6__ndk14stofERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPm",
+    "addr": "0x2444c0",
+    "size": 328
+  },
+  {
+    "name": "_ZNSt6__ndk111timed_mutex6unlockEv",
+    "addr": "0x248e40",
+    "size": 84
+  },
+  {
+    "name": "_ZNSt6__ndk114__shared_count16__release_sharedEv",
+    "addr": "0x24aafc",
+    "size": 104
+  },
+  {
+    "name": "_ZNSt6__ndk115recursive_mutexD2Ev",
+    "addr": "0x248c10",
+    "size": 32
+  },
+  {
+    "name": "_ZNSt6__ndk115recursive_mutex6unlockEv",
+    "addr": "0x248c5c",
+    "size": 32
+  },
+  {
+    "name": "__cxa_call_unexpected",
+    "addr": "0x26720c",
+    "size": 544
+  },
+  {
+    "name": "_ZNSt6__ndk16thread20hardware_concurrencyEv",
+    "addr": "0x249388",
+    "size": 44
+  },
+  {
+    "name": "_ZNSt6__ndk112future_errorD2Ev",
+    "addr": "0x249c10",
+    "size": 8
+  },
+  {
+    "name": "_ZNSt6__ndk16futureIvEC2EPNS_17__assoc_sub_stateE",
+    "addr": "0x24a1c0",
+    "size": 108
+  },
+  {
+    "name": "_ZNSt9bad_allocC2Ev",
+    "addr": "0x24b630",
+    "size": 24
+  },
+  {
+    "name": "_ZNSt11logic_errorC1ERKNSt6__ndk112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE",
+    "addr": "0x23f57c",
+    "size": 148
+  },
+  {
+    "name": "_ZNSt6__ndk113shared_futureIvED1Ev",
+    "addr": "0x24a718",
+    "size": 84
+  },
+  {
+    "name": "_ZNSt6__ndk115__thread_structD2Ev",
+    "addr": "0x249604",
+    "size": 68
+  },
+  {
+    "name": "_ZNSt12domain_errorD0Ev",
+    "addr": "0x24b820",
+    "size": 44
+  },
+  {
+    "name": "_ZNKSt16nested_exception14rethrow_nestedEv",
+    "addr": "0x24aa0c",
+    "size": 88
+  }
+]

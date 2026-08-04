@@ -1,0 +1,786 @@
+{
+  "libEGL.so": [
+    {
+      "string": "libEGL.so",
+      "locs": [
+        {
+          "off": 56259,
+          "va": 56259
+        },
+        {
+          "off": 222067,
+          "va": 222067
+        }
+      ]
+    }
+  ],
+  "eglSwapBuffers": [
+    {
+      "string": "eglSwapBuffers",
+      "locs": [
+        {
+          "off": 218971,
+          "va": 218971
+        }
+      ]
+    }
+  ],
+  "DobbyHook": [
+    {
+      "string": "DobbyHook",
+      "locs": [
+        {
+          "off": 30482,
+          "va": 30482
+        }
+      ]
+    }
+  ],
+  "DobbyDestroy": [
+    {
+      "string": "DobbyDestroy",
+      "locs": [
+        {
+          "off": 30585,
+          "va": 30585
+        }
+      ]
+    }
+  ],
+  "DobbyCodePatch": [
+    {
+      "string": "DobbyCodePatch",
+      "locs": [
+        {
+          "off": 33234,
+          "va": 33234
+        }
+      ]
+    }
+  ],
+  "DobbySymbolResolver": [
+    {
+      "string": "DobbySymbolResolver",
+      "locs": [
+        {
+          "off": 30462,
+          "va": 30462
+        }
+      ]
+    }
+  ],
+  "Halalium_Hooks": [
+    {
+      "string": "Halalium_Hooks",
+      "locs": [
+        {
+          "off": 217597,
+          "va": 217597
+        }
+      ]
+    }
+  ],
+  "Halalium_Bypass": [
+    {
+      "string": "Halalium_Bypass",
+      "locs": [
+        {
+          "off": 216344,
+          "va": 216344
+        }
+      ]
+    }
+  ],
+  "t.me/lemminghack": [
+    {
+      "string": "t.me/lemminghack, 0.39.2",
+      "locs": [
+        {
+          "off": 184703,
+          "va": 184703
+        }
+      ]
+    }
+  ],
+  "0.39.2": [
+    {
+      "string": "t.me/lemminghack, 0.39.2",
+      "locs": [
+        {
+          "off": 184703,
+          "va": 184703
+        }
+      ]
+    }
+  ],
+  "Lemming": [
+    {
+      "string": "Lemming",
+      "locs": [
+        {
+          "off": 188437,
+          "va": 188437
+        }
+      ]
+    }
+  ],
+  "##watermark": [
+    {
+      "string": "##watermark",
+      "locs": [
+        {
+          "off": 217030,
+          "va": 217030
+        }
+      ]
+    }
+  ],
+  "##wm_click": [
+    {
+      "string": "##wm_click",
+      "locs": [
+        {
+          "off": 193837,
+          "va": 193837
+        }
+      ]
+    }
+  ],
+  "##settings_watermark": [
+    {
+      "string": "##settings_watermark",
+      "locs": [
+        {
+          "off": 209987,
+          "va": 209987
+        }
+      ]
+    }
+  ],
+  "##skins_panel": [
+    {
+      "string": "##skins_panel",
+      "locs": [
+        {
+          "off": 186000,
+          "va": 186000
+        }
+      ]
+    }
+  ],
+  "##skins_list": [
+    {
+      "string": "##skins_list",
+      "locs": [
+        {
+          "off": 198409,
+          "va": 198409
+        }
+      ]
+    }
+  ],
+  "##weapons_list": [
+    {
+      "string": "##weapons_list",
+      "locs": [
+        {
+          "off": 203107,
+          "va": 203107
+        }
+      ]
+    }
+  ],
+  "##rage_left": [
+    {
+      "string": "##rage_left",
+      "locs": [
+        {
+          "off": 219651,
+          "va": 219651
+        }
+      ]
+    }
+  ],
+  "##rage_right_top": [
+    {
+      "string": "##rage_right_top",
+      "locs": [
+        {
+          "off": 222714,
+          "va": 222714
+        }
+      ]
+    }
+  ],
+  "##rage_right_bottom": [
+    {
+      "string": "##rage_right_bottom",
+      "locs": [
+        {
+          "off": 228378,
+          "va": 228378
+        }
+      ]
+    }
+  ],
+  "padla": [
+    {
+      "string": "/sdcard/Android/data/com.axlebolt.standoff2/files/padla",
+      "locs": [
+        {
+          "off": 226113,
+          "va": 226113
+        }
+      ]
+    }
+  ],
+  "fresnel": [
+    {
+      "string": "fresnel",
+      "locs": [
+        {
+          "off": 205036,
+          "va": 205036
+        }
+      ]
+    }
+  ],
+  "shador": [
+    {
+      "string": "shador",
+      "locs": [
+        {
+          "off": 226169,
+          "va": 226169
+        }
+      ]
+    }
+  ],
+  "/sdcard/Android/data/com.axlebolt.standoff2": [
+    {
+      "string": "/sdcard/Android/data/com.axlebolt.standoff2/files/padla",
+      "locs": [
+        {
+          "off": 226113,
+          "va": 226113
+        }
+      ]
+    }
+  ],
+  "JNI_OnLoad": [
+    {
+      "string": "JNI_OnLoad",
+      "locs": [
+        {
+          "off": 29626,
+          "va": 29626
+        }
+      ]
+    }
+  ],
+  "Skin Changer: Swapped": [
+    {
+      "string": "Skin Changer: Swapped to weapon %d (skin %d)",
+      "locs": [
+        {
+          "off": 209214,
+          "va": 209214
+        }
+      ]
+    }
+  ],
+  "bypas": [
+    {
+      "string": "bypas hok result %d",
+      "locs": [
+        {
+          "off": 202278,
+          "va": 202278
+        }
+      ]
+    }
+  ],
+  "Dear ImGui": [
+    {
+      "string": "Dear ImGui 1.92.7 (19270)",
+      "locs": [
+        {
+          "off": 184864,
+          "va": 184864
+        }
+      ]
+    }
+  ],
+  "imgui_impl_opengl3": [
+    {
+      "string": "imgui_impl_opengl3",
+      "locs": [
+        {
+          "off": 204480,
+          "va": 204480
+        }
+      ]
+    }
+  ],
+  "libhalalium.so": [
+    {
+      "string": "libhalalium.so",
+      "locs": [
+        {
+          "off": 56297,
+          "va": 56297
+        }
+      ]
+    }
+  ],
+  "Insert": [
+    {
+      "string": "Insert",
+      "locs": [
+        {
+          "off": 188671,
+          "va": 188671
+        }
+      ]
+    }
+  ],
+  "RightAlt": [
+    {
+      "string": "RightAlt",
+      "locs": [
+        {
+          "off": 186050,
+          "va": 186050
+        }
+      ]
+    }
+  ],
+  "Enable Esp": [
+    {
+      "string": "Enable Esp",
+      "locs": [
+        {
+          "off": 222737,
+          "va": 222737
+        }
+      ]
+    }
+  ],
+  "Silent Aim": [
+    {
+      "string": "Silent Aim",
+      "locs": [
+        {
+          "off": 205767,
+          "va": 205767
+        }
+      ]
+    }
+  ],
+  "Rage": [
+    {
+      "string": "MAC10_WildRage_StatTrack",
+      "locs": [
+        {
+          "off": 188273,
+          "va": 188273
+        }
+      ]
+    },
+    {
+      "string": "Rage",
+      "locs": [
+        {
+          "off": 191238,
+          "va": 191238
+        }
+      ]
+    },
+    {
+      "string": "MAC10_WildRage",
+      "locs": [
+        {
+          "off": 199134,
+          "va": 199134
+        }
+      ]
+    }
+  ],
+  "Anti Aim": [
+    {
+      "string": "Enable Anti Aim first",
+      "locs": [
+        {
+          "off": 188445,
+          "va": 188445
+        }
+      ]
+    },
+    {
+      "string": "Anti Aim",
+      "locs": [
+        {
+          "off": 201321,
+          "va": 201321
+        }
+      ]
+    },
+    {
+      "string": "Anti Aim Pitch",
+      "locs": [
+        {
+          "off": 224111,
+          "va": 224111
+        }
+      ]
+    }
+  ],
+  "Anti Aim Pitch": [
+    {
+      "string": "Anti Aim Pitch",
+      "locs": [
+        {
+          "off": 224111,
+          "va": 224111
+        }
+      ]
+    }
+  ],
+  "No spread": [
+    {
+      "string": "No spread",
+      "locs": [
+        {
+          "off": 201311,
+          "va": 201311
+        }
+      ]
+    }
+  ],
+  "Auto Fire": [
+    {
+      "string": "Auto Fire",
+      "locs": [
+        {
+          "off": 193802,
+          "va": 193802
+        }
+      ]
+    }
+  ],
+  "Auto Wall": [
+    {
+      "string": "Auto Wall",
+      "locs": [
+        {
+          "off": 185974,
+          "va": 185974
+        }
+      ]
+    }
+  ],
+  "Through Walls": [
+    {
+      "string": "Through Walls",
+      "locs": [
+        {
+          "off": 215764,
+          "va": 215764
+        }
+      ]
+    }
+  ],
+  "Wallshot": [
+    {
+      "string": "Wallshot",
+      "locs": [
+        {
+          "off": 193821,
+          "va": 193821
+        }
+      ]
+    }
+  ],
+  "Skin Changer": [
+    {
+      "string": "Skin Changer: Swapped to weapon %d (skin %d)",
+      "locs": [
+        {
+          "off": 209214,
+          "va": 209214
+        }
+      ]
+    },
+    {
+      "string": "Skin Changer",
+      "locs": [
+        {
+          "off": 221347,
+          "va": 221347
+        }
+      ]
+    }
+  ],
+  "Chams": [
+    {
+      "string": "Local Chams",
+      "locs": [
+        {
+          "off": 188477,
+          "va": 188477
+        }
+      ]
+    },
+    {
+      "string": "Chams",
+      "locs": [
+        {
+          "off": 203094,
+          "va": 203094
+        }
+      ]
+    },
+    {
+      "string": "Enemy Chams",
+      "locs": [
+        {
+          "off": 213207,
+          "va": 213207
+        }
+      ]
+    }
+  ],
+  "Local Chams": [
+    {
+      "string": "Local Chams",
+      "locs": [
+        {
+          "off": 188477,
+          "va": 188477
+        }
+      ]
+    }
+  ],
+  "Enemy Chams": [
+    {
+      "string": "Enemy Chams",
+      "locs": [
+        {
+          "off": 213207,
+          "va": 213207
+        }
+      ]
+    }
+  ],
+  "Spin": [
+    {
+      "string": "Spin",
+      "locs": [
+        {
+          "off": 204289,
+          "va": 204289
+        }
+      ]
+    },
+    {
+      "string": "Reverse Spin",
+      "locs": [
+        {
+          "off": 209974,
+          "va": 209974
+        }
+      ]
+    },
+    {
+      "string": "Spin Speed",
+      "locs": [
+        {
+          "off": 226849,
+          "va": 226849
+        }
+      ]
+    }
+  ],
+  "Fov Check": [
+    {
+      "string": "Fov Check",
+      "locs": [
+        {
+          "off": 207123,
+          "va": 207123
+        }
+      ]
+    }
+  ],
+  "Fov Color": [
+    {
+      "string": "Fov Color",
+      "locs": [
+        {
+          "off": 224096,
+          "va": 224096
+        }
+      ]
+    }
+  ],
+  "Health Bar": [
+    {
+      "string": "Health Bar",
+      "locs": [
+        {
+          "off": 228398,
+          "va": 228398
+        }
+      ]
+    }
+  ],
+  "Bone": [
+    {
+      "string": "Kunai_Bone",
+      "locs": [
+        {
+          "off": 209278,
+          "va": 209278
+        }
+      ]
+    },
+    {
+      "string": "Bone",
+      "locs": [
+        {
+          "off": 211446,
+          "va": 211446
+        }
+      ]
+    }
+  ],
+  "Box": [
+    {
+      "string": "Box Color",
+      "locs": [
+        {
+          "off": 188467,
+          "va": 188467
+        }
+      ]
+    },
+    {
+      "string": "ScorpionBox",
+      "locs": [
+        {
+          "off": 217645,
+          "va": 217645
+        }
+      ]
+    },
+    {
+      "string": "Box Type",
+      "locs": [
+        {
+          "off": 225479,
+          "va": 225479
+        }
+      ]
+    }
+  ],
+  "Third Person": [
+    {
+      "string": "Third Person",
+      "locs": [
+        {
+          "off": 189907,
+          "va": 189907
+        }
+      ]
+    }
+  ],
+  "Watermark": [
+    {
+      "string": "Watermark",
+      "locs": [
+        {
+          "off": 195730,
+          "va": 195730
+        }
+      ]
+    }
+  ],
+  "scope fov": [
+    {
+      "string": "scope fov",
+      "locs": [
+        {
+          "off": 191228,
+          "va": 191228
+        }
+      ]
+    }
+  ],
+  "Inf Ammo": [
+    {
+      "string": "Inf Ammo",
+      "locs": [
+        {
+          "off": 214327,
+          "va": 214327
+        }
+      ]
+    }
+  ],
+  "Speed": [
+    {
+      "string": "AKR12_Speedrun_StatTrack",
+      "locs": [
+        {
+          "off": 185949,
+          "va": 185949
+        }
+      ]
+    },
+    {
+      "string": "AKR12_Speedrun",
+      "locs": [
+        {
+          "off": 189432,
+          "va": 189432
+        }
+      ]
+    },
+    {
+      "string": "Jitter Speed",
+      "locs": [
+        {
+          "off": 189848,
+          "va": 189848
+        }
+      ]
+    },
+    {
+      "string": "Sway Speed",
+      "locs": [
+        {
+          "off": 199678,
+          "va": 199678
+        }
+      ]
+    },
+    {
+      "string": "Pitch Speed",
+      "locs": [
+        {
+          "off": 225467,
+          "va": 225467
+        }
+      ]
+    },
+    {
+      "string": "Spin Speed",
+      "locs": [
+        {
+          "off": 226849,
+          "va": 226849
+        }
+      ]
+    }
+  ]
+}
