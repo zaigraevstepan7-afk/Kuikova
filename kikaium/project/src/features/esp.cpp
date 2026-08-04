@@ -7,33 +7,50 @@
 
 Matrix esp::matrix()
 {
+    // Prefer matrix snapshotted on Unity thread; avoid live Unity calls from EGL.
+    if (m_have_matrix)
+        return m_cached;
+    return Matrix{};
+}
+
+void esp::cache_matrix()
+{
     Matrix mat{};
-    // Melodium path: PlayerMainCamera +0x20 → Camera*, then W2C injected
+    bool ok = false;
     if (c_player && c_player->local && c_player->local->m_pMainCamera && c_fn && c_fn->get_w2c_injected)
     {
         void *ptr = *(void **)((uintptr_t)c_player->local->m_pMainCamera + 0x20);
-        if (ptr)
+        if (ptr && c_globals->is_allocated(ptr))
         {
             c_fn->get_w2c_injected(ptr, &mat);
             if (mat.m00 != 0.f || mat.m11 != 0.f || mat.m22 != 0.f || mat.m33 != 0.f)
-                return mat;
+                ok = true;
         }
     }
-    // Fallback: Camera.get_main
-    if (c_fn && c_fn->camera_get_main && c_fn->get_w2c_injected)
+    if (!ok && c_fn && c_fn->camera_get_main && c_fn->get_w2c_injected)
     {
         void *cam = c_fn->camera_get_main();
-        if (cam)
+        if (cam && c_globals->is_allocated(cam))
+        {
             c_fn->get_w2c_injected(cam, &mat);
+            if (mat.m00 != 0.f || mat.m11 != 0.f || mat.m22 != 0.f || mat.m33 != 0.f)
+                ok = true;
+        }
     }
-    return mat;
+    m_cached = mat;
+    m_have_matrix = ok;
 }
 
 bool esp::update_matrix()
 {
-    Matrix m = esp::matrix();
-    this->matrix() = m;
-    return m.m00 != 0.f || m.m11 != 0.f || m.m22 != 0.f || m.m33 != 0.f;
+    cache_matrix();
+    return m_have_matrix;
+}
+
+void esp::clear_matrix()
+{
+    m_cached = Matrix{};
+    m_have_matrix = false;
 }
 
 void text(ImFont *font, float FontSize, const ImVec2 &position, const ImColor &textColor, const char *text, bool outline, bool shadow)
@@ -72,8 +89,8 @@ void DrawLine(const ImVec2 &ot, const ImVec2 &kuda, const ImVec4 &color, bool sh
     if (shadow)
         draw->AddLine(ot, kuda, IM_COL32(0, 0, 0, 255), 2);
     if (glow)
-        for (unsigned char i = 0; i < 0; i++)
-            draw->AddLine(ot, kuda, ImGui::ColorConvertFloat4ToU32(ImVec4(color.x, color.y, color.z, color.w * (1.0f / (float)0) * (((float)(0 - i)) / (float)0))), 1 + i);
+        for (unsigned char i = 0; i < 0; ++i)
+            (void)i; // intentionally disabled glow loop (was div-by-zero)
 
     draw->AddLine(ot, kuda, ImGui::ColorConvertFloat4ToU32(color), 1);
 }
@@ -87,8 +104,8 @@ void DrawCircle(const ImVec2 &ot, float radius, const ImVec4 &color, bool shadow
     if (shadow)
         draw->AddCircle(ot, radius, IM_COL32(0, 0, 0, 255), 0, 2);
     if (glow)
-        for (unsigned char i = 0; i < 0; i++)
-            draw->AddCircle(ot, radius, ImGui::ColorConvertFloat4ToU32(ImVec4(color.x, color.y, color.z, color.w * (1.0f / (float)0) * (((float)(0 - i)) / (float)0))), 0, 1 + i);
+        for (unsigned char i = 0; i < 0; ++i)
+            (void)i; // intentionally disabled glow loop (was div-by-zero)
 
     draw->AddCircle(ot, radius, ImGui::ColorConvertFloat4ToU32(color), 0, 1);
 }
@@ -104,6 +121,11 @@ void DrawSkeleton(const ImVec4 &color, bool shadow, bool glow, bool DrawHead, Ma
 
     auto _bipedMap = m_pCharacterView->c_biped;
     if (!_bipedMap)
+        return;
+
+    if (!_bipedMap->head || !_bipedMap->spine1)
+        return;
+    if (!c_globals->is_allocated(_bipedMap->head) || !c_globals->is_allocated(_bipedMap->spine1))
         return;
 
     auto headpos = _bipedMap->head->get_position();
@@ -124,9 +146,11 @@ void DrawSkeleton(const ImVec4 &color, bool shadow, bool glow, bool DrawHead, Ma
             continue;
         }
         auto a = *(c_transform **)((uintptr_t)_bipedMap + i);
+        if (!a || !c_globals->is_allocated(a))
+            continue;
         auto pos = c_globals->world2screen(worldToCameraMatrix, a->get_position());
         if (pos.z < 0.125f)
-            return;
+            continue;
 
         ImVec2 current(pos.x, pos.y);
         ImVec2 prev = array[index];
@@ -190,7 +214,15 @@ ImVec2 CenterText(const char *text, ImFont *font, float tsize, float x, float xw
 
 void esp::render()
 {
-    if (g.b_esp)
+    if (!g.b_esp)
+        return;
+    if (!c_player || !c_player->local || !c_player->game)
+        return;
+    if (!m_have_matrix)
+        return;
+    if (c_player->entity.empty())
+        return;
+
     {
         c_player_controller *player{};
         c_photon_player *photon{};
@@ -199,6 +231,7 @@ void esp::render()
         monoString *name{};
         float x, y;
         auto draw = ImGui::GetBackgroundDrawList();
+        const Matrix w2c = m_cached;
 
         static std::map<void*, float> fadeT;
         static std::map<void*, bool> wasAlive;
@@ -215,10 +248,10 @@ void esp::render()
             return 0.5f + 0.5f * cosf(3.1415926535f * t);
         };
 
-        for (int i{}; i < c_player->entity.size(); i++)
+        for (int i{}; i < (int)c_player->entity.size(); i++)
         {
             player = c_player->entity[i];
-            if (!player)
+            if (!player || !c_globals->is_allocated(player))
                 continue;
             if (!c_globals->is_enemy(c_player->local, player))
                 continue;
@@ -226,6 +259,8 @@ void esp::render()
             photon = player->m_pPhoton;
             transform = player->m_pTransform;
             if (!photon || !transform)
+                continue;
+            if (!c_globals->is_allocated(photon) || !c_globals->is_allocated(transform))
                 continue;
 
             health = photon->get_health();
@@ -277,8 +312,8 @@ void esp::render()
                 continue;
 
             Vector3 head{foot.x, foot.y + 1.65f, foot.z};
-            Vector3 footpos = c_globals->world2screen(this->matrix(), foot);
-            Vector3 headpos = c_globals->world2screen(this->matrix(), head);
+            Vector3 footpos = c_globals->world2screen(w2c, foot);
+            Vector3 headpos = c_globals->world2screen(w2c, head);
             float height = fabsf(footpos.y - headpos.y);
 
             if (footpos.z < 0.01f || headpos.z < 0.01f)
@@ -288,8 +323,8 @@ void esp::render()
             x = headpos.x - width * 0.5f;
             y = headpos.y;
 
-            // Halalium vis_left has no separate Bone toggle — skeleton with Enable Esp
-            DrawSkeleton({g.m_skeleton[0], g.m_skeleton[1], g.m_skeleton[2], g.m_skeleton[3]}, false, false, false, matrix(), player);
+            if (g.b_skeleton)
+                DrawSkeleton({g.m_skeleton[0], g.m_skeleton[1], g.m_skeleton[2], g.m_skeleton[3] * alpha}, false, false, false, w2c, player);
 
             if (g.b_rect)
             {
@@ -362,33 +397,36 @@ void esp::render()
                 const float fontSize = 15.0f;
                 auto player_name = photon->m_nameField;
                 if (!player_name)
-                    return;
+                    continue;
 
                 auto nameStr = player_name->toUTF8();
-                ImVec2 text_size = gui::font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, nameStr.c_str());
+                if (nameStr.empty())
+                    continue;
+                ImFont *nf = gui::font ? gui::font : ImGui::GetFont();
+                if (!nf)
+                    continue;
+                ImVec2 text_size = nf->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, nameStr.c_str());
                 float textX = x + (width * 0.5f) - (text_size.x * 0.5f);
                 float textY = y - text_size.y - 2.0f;
 
-                text(gui::font, fontSize, ImVec2(textX, textY), ApplyAlpha(ImColor(255, 255, 255, 255)), nameStr.c_str(), false, true);
+                text(nf, fontSize, ImVec2(textX, textY), ApplyAlpha(ImColor(255, 255, 255, 255)), nameStr.c_str(), false, true);
             }
 
             if (g.b_ammo)
             {
-                // Halalium has no ammo-bar ESP; no Halalium ammo-capacity field.
-                // Draw using current clip only (Weaponry/params id path from SkinChanger RE).
                 const float optimalSize = width * 0.0625f + 8.0f;
                 auto healthWidth = round(optimalSize * 0.2f);
                 auto padding = optimalSize * 0.350f;
                 ImVec4 color{g.m_ammo[0], g.m_ammo[1], g.m_ammo[2], g.m_ammo[3]};
                 auto weaponry = player->m_pWeaponry;
-                if (weaponry && weaponry->m_pCurrentWeapon)
+                if (weaponry && c_globals->is_allocated(weaponry) && weaponry->m_pCurrentWeapon)
                 {
                     auto weapon = (c_gun_controller *)weaponry->m_pCurrentWeapon;
                     auto *params = weapon->m_pParameters;
                     if (params && params->m_id >= 11 && params->m_id <= 65)
                     {
                         auto ammo = weapon->m_iAmmoSafe.get();
-                        const short max_ammo = 30; // no Halalium capacity offset — display-only
+                        const short max_ammo = 30;
                         float ammo_progress = std::clamp((float)ammo / (float)max_ammo, 0.0f, 1.0f);
                         float barWidth = width;
                         float barHeight = healthWidth;
@@ -397,7 +435,7 @@ void esp::render()
                         ImVec2 barStart = ImVec2(barX, barY);
                         ImVec2 barEnd = ImVec2(barX + barWidth, barY + barHeight);
                         ImVec2 fillStart = ImVec2(barX, barY);
-                        ImVec2 fillEnd = ImVec2(barX + barWidth * ammo_progress, barY);
+                        ImVec2 fillEnd = ImVec2(barX + barWidth * ammo_progress, barY + barHeight);
                         shadow_bar(barStart, barEnd);
                         draw->AddRectFilled(barStart, barEnd, ApplyAlpha(ImColor(0, 0, 0, 115)));
                         ImU32 colL = ApplyAlpha(ImGui::ColorConvertFloat4ToU32(color));
@@ -406,17 +444,17 @@ void esp::render()
                 }
             }
 
-            if (false && g.b_eweapon) // Melodium name-ESP — not Halalium
+            if (g.b_eweapon)
             {
                 auto weaponry = player->m_pWeaponry;
-                if (!weaponry)
-                    return;
+                if (!weaponry || !c_globals->is_allocated(weaponry))
+                    continue;
                 auto weapon = (c_gun_controller*)weaponry->m_pCurrentWeapon;
                 if (!weapon)
-                    return;
+                    continue;
                 auto *params = weapon->m_pParameters;
                 if (!params)
-                    return;
+                    continue;
                 auto id = params->m_id;
 
                 const char *weaponName;
@@ -479,36 +517,35 @@ void esp::render()
                 const float optimalSize = width * 0.0625f + 8.0f;
                 const float font_size = 15.0f;
                 const float fixed_text_height = font_size;
+                ImFont *wf = gui::font ? gui::font : ImGui::GetFont();
+                if (!wf)
+                    continue;
 
                 ImU32 colTxt = ApplyAlpha(ImColor(255, 255, 255, 255));
 
                 if (!g.b_ammo)
                 {
-                    text(gui::font, font_size,
+                    text(wf, font_size,
                         ImVec2(
-                            CenterText(weaponName, gui::font, font_size, x, width).x,
+                            CenterText(weaponName, wf, font_size, x, width).x,
                             y + height + optimalSize * 1.4f - fixed_text_height),
                         colTxt, weaponName, false, true);
                 }
-
-                if (g.b_ammo)
+                else if (id >= 11 && id <= 65)
                 {
-                    if (id >= 11 && id <= 65)
-                    {
-                        text(gui::font, font_size,
-                            ImVec2(
-                                CenterText(weaponName, gui::font, font_size, x, width).x,
-                                y + height + optimalSize * 2.3f - fixed_text_height),
-                            colTxt, weaponName, false, true);
-                    }
-                    if (id > 65 && id <= 100)
-                    {
-                        text(gui::font, font_size,
-                            ImVec2(
-                                CenterText(weaponName, gui::font, font_size, x, width).x,
-                                y + height + optimalSize * 1.4f - fixed_text_height),
-                            colTxt, weaponName, false, true);
-                    }
+                    text(wf, font_size,
+                        ImVec2(
+                            CenterText(weaponName, wf, font_size, x, width).x,
+                            y + height + optimalSize * 2.3f - fixed_text_height),
+                        colTxt, weaponName, false, true);
+                }
+                else if (id > 65 && id <= 100)
+                {
+                    text(wf, font_size,
+                        ImVec2(
+                            CenterText(weaponName, wf, font_size, x, width).x,
+                            y + height + optimalSize * 1.4f - fixed_text_height),
+                        colTxt, weaponName, false, true);
                 }
             }
 
@@ -528,10 +565,6 @@ void esp::render()
 
                 draw->AddRectFilled(pos1, pos2, ApplyAlpha(IM_COL32(0, 0, 0, 128)));
 
-                float healthHeight = height * healthPos;
-                ImVec2 healthPos1(pos1.x, pos2.y - healthHeight);
-                ImVec2 healthPos2(pos2.x, pos2.y);
-
                 shadow_bar(pos1, pos2);
 
                 draw->AddRectFilled({pos1.x, pos1.y}, {pos2.x, pos2.y}, ApplyAlpha(ImColor(0, 0, 0, 120)));
@@ -542,11 +575,14 @@ void esp::render()
                 {
                     char healthText[16];
                     snprintf(healthText, sizeof(healthText), "%d", health);
-                    ImVec2 textSize = gui::pixel->CalcTextSizeA(10, FLT_MAX, 0, healthText);
-                    float textX = x - healthWidth - padding + (healthWidth - textSize.x) * 0.5f;
-                    float textY = y + height * (1.0f - healthPos) - textSize.y + 2.0f;
-
-                    text(gui::pixel, 10, ImVec2(textX, textY), ApplyAlpha(ImColor(255, 255, 255, 255)), healthText, true, false);
+                    ImFont *pf = gui::pixel ? gui::pixel : ImGui::GetFont();
+                    if (pf)
+                    {
+                        ImVec2 textSize = pf->CalcTextSizeA(10, FLT_MAX, 0, healthText);
+                        float textX = x - healthWidth - padding + (healthWidth - textSize.x) * 0.5f;
+                        float textY = y + height * (1.0f - healthPos) - textSize.y + 2.0f;
+                        text(pf, 10, ImVec2(textX, textY), ApplyAlpha(ImColor(255, 255, 255, 255)), healthText, true, false);
+                    }
                 }
             }
         }

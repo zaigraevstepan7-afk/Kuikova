@@ -271,8 +271,10 @@ void hk_filter(c_delegate *thisptr, c_player_inputs *inputs)
 
 void antiaim::update()
 {
-    c_player_controls *controls{};
-    controls = c_player->controls;
+    if (!g.b_antiaim && !g.b_spin)
+        return;
+
+    c_player_controls *controls = c_player->controls;
     if (!controls)
         return;
 

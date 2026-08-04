@@ -195,10 +195,21 @@ bool globals::is_scoped() {
 void player::collect(c_player_controller* player)
 {
     if (!player) return;
+    if (!c_globals->is_allocated(player)) return;
     if (!player->m_pPhoton) return;
 
-    for (int i = 0; i < list.size(); i++) {
-        if (list[i] == player) return;
+    // prune dead entries while collecting
+    for (int i = 0; i < (int)list.size(); )
+    {
+        auto *p = list[i];
+        if (!p || !c_globals->is_allocated(p) || !p->m_pPhoton)
+        {
+            list.erase(list.begin() + i);
+            continue;
+        }
+        if (p == player)
+            return;
+        ++i;
     }
 
     list.push_back(player);
@@ -208,17 +219,26 @@ void player::reset()
 {
     local = nullptr;
 
-    for (int i = 0; i < list.size(); i++) {
-        if (!list[i] || !list[i]->m_pPhoton) {
+    for (int i = 0; i < (int)list.size(); )
+    {
+        if (!list[i] || !c_globals->is_allocated(list[i]) || !list[i]->m_pPhoton)
+        {
             list.erase(list.begin() + i);
-            i--;
+            continue;
         }
+        ++i;
     }
 }
 
 void player::after_match()
 {
     local = nullptr;
+    enemy = nullptr;
+    game = nullptr;
+    controls = nullptr;
+    weapon_controller = nullptr;
+    gun_controller = nullptr;
+    weapon_parameters = nullptr;
     entity.clear();
     list.clear();
 }
@@ -228,16 +248,21 @@ void player::update()
     local = nullptr;
     entity.clear();
 
-    for (int i = 0; i < list.size(); i++) {
+    for (int i = 0; i < (int)list.size(); )
+    {
         auto* player = list[i];
-        if (!player || !player->m_pPhoton) continue;
-
-        auto* photon = player->m_pPhoton;
-        if (photon->m_bIsLocal) {
-            local = player;
+        if (!player || !c_globals->is_allocated(player) || !player->m_pPhoton)
+        {
+            list.erase(list.begin() + i);
+            continue;
         }
 
+        auto* photon = player->m_pPhoton;
+        if (photon->m_bIsLocal)
+            local = player;
+
         entity.push_back(player);
+        ++i;
     }
 }
 

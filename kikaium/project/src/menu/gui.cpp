@@ -46,11 +46,11 @@ namespace gui
 
     void DrawWatermark()
     {
-        if (!g.b_watermark)
+        // Keep watermark alive while menu is open so user can always close it
+        if (!g.b_watermark && !open)
             return;
         (void)k_stux_contract;
 
-        // Exactly "xxx" — nothing else
         const char *brand = oxorany("xxx");
 
         ImGui::SetNextWindowPos(ImVec2(12.f, 12.f), ImGuiCond_Always);
@@ -110,7 +110,6 @@ namespace gui
     void render()
     {
         other();
-        ui.render();
         if (open && alpha < 1.f)
             alpha += 0.06f;
         else if (!open && alpha > 0.02f)
@@ -119,5 +118,6 @@ namespace gui
             alpha = 1.f;
         if (alpha < 0.f)
             alpha = 0.f;
+        ui.render();
     }
 }

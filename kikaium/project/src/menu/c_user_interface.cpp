@@ -3,6 +3,7 @@
 
 #include "includes/fonts/bold.hpp"
 #include "includes/oxorany/Oxorany.hpp"
+#include "includes/halalium_hooks.h"
 #include "globals.hpp"
 #include "gui.h"
 #include <cstring>
@@ -502,7 +503,7 @@ void C_UserInterface::render()
     }
 
     extern float alpha;
-    const float a = alpha > 0.02f ? alpha : 1.f;
+    const float a = (alpha < 0.02f) ? 0.02f : alpha;
     ImGui::GetStyle().TouchExtraPadding = ImVec2(6.f, 6.f);
 
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, a);
@@ -687,11 +688,31 @@ void C_UserInterface::config()
     if (this->beginChild(oxorany("##xxx_byp"), ImVec2(w, h), ImGuiChildFlags_Borders))
     {
         stux_section("BYPASS");
+        bool prev = g.b_bypass;
         checkbox(oxorany("Getrr Bypass"), &g.b_bypass);
-        ImGui::TextDisabled("%s", oxorany("OnStart safe restore-call (Halalium path)"));
+        if (g.b_bypass != prev || g.b_bypass != hhooks::getrr_is_armed())
+        {
+            if (g.b_bypass)
+            {
+                if (unity_base)
+                    hhooks::install_getrr_bypass(unity_base);
+            }
+            else
+            {
+                hhooks::uninstall_getrr_bypass();
+            }
+        }
+        ImGui::TextDisabled("%s", hhooks::getrr_is_armed()
+                                      ? oxorany("status: ARMED")
+                                      : oxorany("status: OFF"));
         ImGui::Dummy(ImVec2(0, 12.f));
         stux_section("OVERLAY");
+        bool wm = g.b_watermark;
         checkbox(oxorany("Watermark"), &g.b_watermark);
+        // Don't allow hiding watermark while menu is open (soft-lock)
+        if (open && !g.b_watermark)
+            g.b_watermark = true;
+        (void)wm;
         ImGui::Dummy(ImVec2(0, 8.f));
         ImGui::TextColored(ImVec4(1.f, 0.77f, 0.28f, 1.f), "xxx");
         ImGui::TextColored(ImVec4(0.55f, 0.50f, 0.40f, 1.f), "standoff 2 0.39.2");

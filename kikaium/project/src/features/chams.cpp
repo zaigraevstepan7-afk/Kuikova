@@ -25,6 +25,7 @@ c_material *create_material(const char *name)
             }
         }
     }
+    return nullptr;
 }
 
 void set_materials(c_player_controller *player, c_material *material)

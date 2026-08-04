@@ -71,19 +71,18 @@ void new_update(c_player_controller *player)
 
     if (!is_local)
     {
-        // Halalium: strb #1 → [player,#0xd8] (Through Walls / ESP reveal)
-        if (g.b_through_walls || g.b_esp)
+        // Only force visibility when Through Walls is on (not bare ESP)
+        if (g.b_through_walls)
         {
             hchain::set_visible(player, true);
             player->m_bCharacterVisible = true;
-        }
-        if (g.b_through_walls)
             player->set_visible();
+        }
     }
 
-    if (c_player->local)
+    if (c_player->local && is_local)
     {
-        if (g.b_third && is_local)
+        if (g.b_third)
         {
             if (photon->get_health() > 0)
             {
@@ -95,18 +94,19 @@ void new_update(c_player_controller *player)
         }
 
         c_misc->init(c_player->local);
-        c_antiaim->update();
+        if (g.b_antiaim || g.b_spin)
+            c_antiaim->update();
         if (g.b_world || g.b_apply_world)
             c_world->init(c_player->local);
-        c_chams->local(c_player->local);
-        if (is_local)
-            c_skins->tick(player);
+        if (g.b_local)
+            c_chams->local(c_player->local);
+        c_skins->tick(player);
     }
 
     if (c_globals->is_enemy(c_player->local, player))
         c_player->enemy = player;
 
-    if (c_player->enemy)
+    if (c_player->enemy && g.b_players)
         c_chams->enemy(c_player->enemy);
 
     c_player->collect(player);
@@ -124,9 +124,12 @@ void new_lateupdate(c_player_controller *player)
         {
             c_player->local = player;
             c_globals->updateGun();
+            if (c_esp)
+                c_esp->cache_matrix();
             if (g.b_silent)
                 c_globals->updateTarget();
-            c_antiaim->late_update(player);
+            if (g.b_antiaim || g.b_spin)
+                c_antiaim->late_update(player);
             if (g.b_third && player->m_pTransform)
             {
                 auto *ph = reinterpret_cast<c_photon_player *>(hchain::photon(player));
@@ -146,6 +149,12 @@ void new_game_update(c_game_controller *game)
         return;
     if (!game || !g_sdk_ready.load(std::memory_order_acquire))
     {
+        if (!game && c_player)
+        {
+            c_player->after_match();
+            if (c_esp)
+                c_esp->clear_matrix();
+        }
         old_game_update(game);
         return;
     }
@@ -155,6 +164,8 @@ void new_game_update(c_game_controller *game)
     auto *ctrl = reinterpret_cast<c_player_controls *>(hchain::game_controls(game));
     if (ctrl && c_globals->is_allocated(ctrl))
         c_player->controls = ctrl;
+    else
+        c_player->controls = nullptr;
 
     old_game_update(game);
 }

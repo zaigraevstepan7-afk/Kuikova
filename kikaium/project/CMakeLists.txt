@@ -81,6 +81,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
             POST_BUILD
             COMMAND ${CMAKE_STRIP} --strip-all $<TARGET_FILE:xxx>
             COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/../bin"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/../../xxx/bin"
             COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:xxx> "${CMAKE_SOURCE_DIR}/../bin/libxxx.so"
             COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:xxx> "${CMAKE_SOURCE_DIR}/../../xxx/bin/libxxx.so"
             COMMENT "Install libxxx.so -> kikaium/bin + xxx/bin"

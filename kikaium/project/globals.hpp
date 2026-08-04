@@ -297,7 +297,7 @@ inline struct g_
     float m_distance[4] = {1.f, 1.f, 1.f, 1.f};
     float m_accent[4] = {0.91f, 0.66f, 0.35f, 1.f}; // Halalium "Accent Color"
     // Melodium-only leftovers — forced OFF, no UI
-    bool b_name = false;
+    bool b_name = true;
     bool b_ammo = false;
     bool b_eweapon = false;
     float m_ammo[4] = {0.077f, 0.251f, 0.605f, 1.0f};

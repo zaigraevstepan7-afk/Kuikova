@@ -151,7 +151,8 @@ inline bool &getrr_armed()
 
 inline bool &getrr_reentrant()
 {
-    static bool v = false;
+    // TLS so nested calls from other threads don't trip the process-global flag
+    thread_local bool v = false;
     return v;
 }
 
@@ -159,13 +160,12 @@ using getrr_fn = void *(*)(void *self, int32_t p, void *method);
 
 inline void *hk_getrr(void *self, int32_t p, void *method)
 {
-    // Re-entrancy: if AC nests, just run real code path once we're unhooked.
+    // Re-entrancy: call real OnStart while temporarily restored (no trampoline).
     if (getrr_reentrant())
     {
-        if (getrr_target() && getrr_armed())
-        {
-            // Should not happen while patched; fall through carefully.
-        }
+        void *target = getrr_target();
+        if (target)
+            return ((getrr_fn)target)(self, p, method);
         return nullptr;
     }
     getrr_reentrant() = true;
@@ -217,7 +217,6 @@ inline bool install_getrr_bypass(uintptr_t game_base)
         return false;
     }
 
-    // Patch jump only — calling orig uses temporary restore (avoids PC-relative tramp crash).
     if (!a64hook::patch_jump(target, (void *)hk_getrr, getrr_backup()))
     {
         __android_log_print(ANDROID_LOG_ERROR, "xxx_Bypass", "getrr install failed @%p", target);
@@ -230,6 +229,21 @@ inline bool install_getrr_bypass(uintptr_t game_base)
                         "getrr OnStart hook OK rva=0x%lx @%p (safe restore-call)",
                         (unsigned long)kGetrrRva, target);
     return true;
+}
+
+inline bool uninstall_getrr_bypass()
+{
+    if (!getrr_armed() || !getrr_target())
+        return true;
+    a64hook::restore(getrr_target(), getrr_backup());
+    getrr_armed() = false;
+    __android_log_print(ANDROID_LOG_INFO, "xxx_Bypass", "getrr bypass OFF");
+    return true;
+}
+
+inline bool getrr_is_armed()
+{
+    return getrr_armed();
 }
 
 } // namespace hhooks
