@@ -48,6 +48,7 @@ Everything else is MethodInfo/`dlsym` resolve or disabled.
 | Photon.isLocal | `0x30` | Update `ldrb` |
 | GameController.player_controls / local | `0x2B0` / `0x2C0` | profile |
 | Camera.matrix | `0xF0` | profile |
+| Camera nest | `+0x20` → `+0x10` → `@0xF0` | Melodium / working ESP (required) |
 
 ### Method RVAs (libunity)
 
@@ -97,7 +98,7 @@ Features that need them use **MethodInfo resolve** (`globals::init` → `c_fn` /
 
 | Site | Off | Status |
 |---|---|---|
-| esp Camera `+0x20`/`+0x10` | community | **removed** → MethodInfo w2c |
+| esp Camera `+0x20`/`+0x10`/`@0xF0` | Melodium + working ESP | **required** for W2S matrix |
 | esp ammo capacity `+0x130` | community | **removed** |
 | visual HUD `+0xB8/+0x30/+0x50` | Melodium | **removed** (keep Halalium `set_fov`) |
 | antiaim TranslationData `+0xE0` | community | **disabled** |

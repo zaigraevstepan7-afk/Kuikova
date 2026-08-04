@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <cstdio>
 #include <src/menu/gui.h>
+#include "sdk/OffsetsBridge.h"
+#include "includes/halalium_chains.h"
 
 Matrix esp::matrix()
 {
@@ -13,30 +15,57 @@ Matrix esp::matrix()
     return Matrix{};
 }
 
+static bool matrix_nonzero(const Matrix &m)
+{
+    return m.m00 != 0.f || m.m11 != 0.f || m.m22 != 0.f || m.m33 != 0.f;
+}
+
+// Halalium/Melodium 0.39.2 ESP matrix: PlayerMainCamera+0x20 → +0x10 → Matrix@0xF0
+static bool read_camera_matrix_chain(void *main_camera, Matrix *out)
+{
+    if (!main_camera || !out || !c_globals || !c_globals->is_allocated(main_camera))
+        return false;
+
+    void *ptr = *(void **)((uintptr_t)main_camera + Offsets::Camera::transform);
+    if (!ptr || !c_globals->is_allocated(ptr))
+        return false;
+
+    void *cashed = *(void **)((uintptr_t)ptr + Offsets::Camera::ptr);
+    if (!cashed || !c_globals->is_allocated(cashed))
+        return false;
+
+    Matrix m = *(Matrix *)((uintptr_t)cashed + Offsets::Camera::matrix);
+    if (!matrix_nonzero(m))
+        m = *(Matrix *)((uintptr_t)cashed + Offsets::Camera::matrix_alt);
+    if (!matrix_nonzero(m))
+        return false;
+
+    *out = m;
+    return true;
+}
+
 void esp::cache_matrix()
 {
     Matrix mat{};
     bool ok = false;
-    if (c_player && c_player->local && c_player->local->m_pMainCamera && c_fn && c_fn->get_w2c_injected)
+
+    if (c_player && c_player->local)
     {
-        void *ptr = *(void **)((uintptr_t)c_player->local->m_pMainCamera + 0x20);
-        if (ptr && c_globals->is_allocated(ptr))
-        {
-            c_fn->get_w2c_injected(ptr, &mat);
-            if (mat.m00 != 0.f || mat.m11 != 0.f || mat.m22 != 0.f || mat.m33 != 0.f)
-                ok = true;
-        }
+        void *cam = c_player->local->m_pMainCamera;
+        if (!cam)
+            cam = hchain::main_camera(c_player->local);
+        if (read_camera_matrix_chain(cam, &mat))
+            ok = true;
     }
-    if (!ok && c_fn && c_fn->camera_get_main && c_fn->get_w2c_injected)
+
+    // Fallback: Unity Camera.main with same nest (some builds expose matrix there)
+    if (!ok && c_fn && c_fn->camera_get_main)
     {
         void *cam = c_fn->camera_get_main();
-        if (cam && c_globals->is_allocated(cam))
-        {
-            c_fn->get_w2c_injected(cam, &mat);
-            if (mat.m00 != 0.f || mat.m11 != 0.f || mat.m22 != 0.f || mat.m33 != 0.f)
-                ok = true;
-        }
+        if (read_camera_matrix_chain(cam, &mat))
+            ok = true;
     }
+
     m_cached = mat;
     m_have_matrix = ok;
 }
@@ -216,7 +245,8 @@ void esp::render()
 {
     if (!g.b_esp)
         return;
-    if (!c_player || !c_player->local || !c_player->game)
+    // Entities come from PC.Update; GameController TypeInfo is not required to draw.
+    if (!c_player || !c_player->local)
         return;
     if (!m_have_matrix)
         return;
@@ -264,14 +294,15 @@ void esp::render()
                 continue;
 
             health = photon->get_health();
+            // Property miss (-1) must not kill ESP — still draw as full HP
             if (health < 0)
-                continue;
+                health = 100;
 
             bool alive = health > 0;
 
             if (!fadeT.count(player))
             {
-                fadeT[player] = alive ? 0.0f : 1.0f;
+                fadeT[player] = 1.0f; // show immediately — no multi-frame fade-in gate
                 wasAlive[player] = alive;
             }
 
@@ -396,20 +427,18 @@ void esp::render()
             {
                 const float fontSize = 15.0f;
                 auto player_name = photon->m_nameField;
-                if (!player_name)
-                    continue;
-
-                auto nameStr = player_name->toUTF8();
-                if (nameStr.empty())
-                    continue;
-                ImFont *nf = gui::font ? gui::font : ImGui::GetFont();
-                if (!nf)
-                    continue;
-                ImVec2 text_size = nf->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, nameStr.c_str());
-                float textX = x + (width * 0.5f) - (text_size.x * 0.5f);
-                float textY = y - text_size.y - 2.0f;
-
-                text(nf, fontSize, ImVec2(textX, textY), ApplyAlpha(ImColor(255, 255, 255, 255)), nameStr.c_str(), false, true);
+                if (player_name)
+                {
+                    auto nameStr = player_name->toUTF8();
+                    ImFont *nf = gui::font ? gui::font : ImGui::GetFont();
+                    if (nf && !nameStr.empty())
+                    {
+                        ImVec2 text_size = nf->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, nameStr.c_str());
+                        float textX = x + (width * 0.5f) - (text_size.x * 0.5f);
+                        float textY = y - text_size.y - 2.0f;
+                        text(nf, fontSize, ImVec2(textX, textY), ApplyAlpha(ImColor(255, 255, 255, 255)), nameStr.c_str(), false, true);
+                    }
+                }
             }
 
             if (g.b_ammo)

@@ -101,6 +101,9 @@ void new_update(c_player_controller *player)
         if (g.b_local)
             c_chams->local(c_player->local);
         c_skins->tick(player);
+        // Also cache ESP matrix here — LateUpdate hook can miss a frame
+        if (c_esp)
+            c_esp->cache_matrix();
     }
 
     if (c_globals->is_enemy(c_player->local, player))

@@ -61,7 +61,12 @@ namespace GameController {
 }
 
 namespace Camera {
-    constexpr uintptr_t matrix = 0xF0; // profile only — no transform/ptr in Halalium
+    // Melodium / working SO2 chain on PlayerMainCamera:
+    // +(transform) → +(ptr) → Matrix at +(matrix). Same nest Halalium profile matrix@0xF0.
+    constexpr uintptr_t transform = 0x20;
+    constexpr uintptr_t ptr       = 0x10;
+    constexpr uintptr_t matrix    = 0xF0;
+    constexpr uintptr_t matrix_alt = 0x100; // some builds
 }
 
 namespace Photon {

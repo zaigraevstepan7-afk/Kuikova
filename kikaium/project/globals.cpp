@@ -127,10 +127,7 @@ bool globals::is_enemy(c_player_controller *local, c_player_controller *enemy)
     if (!local || !enemy)
         return false;
 
-    team_t local_team = local->m_team;
-    team_t enemy_team = enemy->m_team;
-
-    return local_team != enemy_team;
+    return hchain::team(local) != hchain::team(enemy);
 }
 
 bool globals::is_sniper()
@@ -258,7 +255,8 @@ void player::update()
         }
 
         auto* photon = player->m_pPhoton;
-        if (photon->m_bIsLocal)
+        // Prefer Halalium isLocal chain; struct field is the same @0x30
+        if (photon->m_bIsLocal || hchain::is_local(player))
             local = player;
 
         entity.push_back(player);
