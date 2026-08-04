@@ -15,7 +15,7 @@ constexpr uintptr_t kWeaponSkinId = 0xE0;
 
 void skins::tick(c_player_controller *local)
 {
-    if (!g.b_skin_changer || !local || !base)
+    if (!g.b_skin_changer || !local || !unity_base)
         return;
 
     auto *weaponry = local->m_pWeaponry;
@@ -46,9 +46,9 @@ void skins::tick(c_player_controller *local)
     using mid_t    = void (*)(void *weaponry, uint8_t cur_byte, void *method);
     using equip_t  = void (*)(void *weaponry, void *new_weapon, int z, void *method);
 
-    auto create = reinterpret_cast<create_t>(base + Offsets::Method::Skin_CreateOrGet);
-    auto mid    = reinterpret_cast<mid_t>(base + Offsets::Method::Skin_Mid);
-    auto equip  = reinterpret_cast<equip_t>(base + Offsets::Method::Skin_Equip);
+    auto create = reinterpret_cast<create_t>(unity_base + Offsets::Method::Skin_CreateOrGet);
+    auto mid    = reinterpret_cast<mid_t>(unity_base + Offsets::Method::Skin_Mid);
+    auto equip  = reinterpret_cast<equip_t>(unity_base + Offsets::Method::Skin_Equip);
     if (!create || !mid || !equip)
         return;
 

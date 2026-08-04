@@ -6,31 +6,30 @@ class c_camera
 public:
     void *get_main()
     {
-        using a = void *(*)(); 
-        a b = reinterpret_cast<a>(base + c_offsets->get_main);
-        return b(); 
+        if (!c_fn || !c_fn->camera_get_main)
+            return nullptr;
+        return c_fn->camera_get_main();
     }
 
     void set_fov(float c)
     {
-        using a = void(*)(void*, float afd);
-        a b = reinterpret_cast<a>(base + c_offsets->set_fov);
-        return b((void*)this, c);
+        // Halalium UnityMethod::set_fov (libunity)
+        if (!c_fn || !c_fn->set_fov)
+            return;
+        c_fn->set_fov((void *)this, c);
     }
 
-    Matrix get_projection_matrix_injected() {
-        Matrix ret{};
-        using a = void(*)(c_camera*, Matrix&);
-        a b = reinterpret_cast<a>(base + c_offsets->get_projection_matrix_injected);
-        b(this, ret);
-        return ret;
+    Matrix get_projection_matrix_injected()
+    {
+        return Matrix{};
     }
 
-    Matrix get_world_to_camera_matrix_injected() {
+    Matrix get_world_to_camera_matrix_injected()
+    {
         Matrix ret{};
-        using a = void(*)(c_camera*, Matrix&);
-        a b = reinterpret_cast<a>(base + c_offsets->fsdfds);
-        b(this, ret);
+        if (!c_fn || !c_fn->get_w2c_injected)
+            return ret;
+        c_fn->get_w2c_injected((void *)this, &ret);
         return ret;
     }
 };

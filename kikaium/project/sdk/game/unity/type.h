@@ -3,20 +3,19 @@ class c_renderer;
 #pragma pack(1)
 class c_type
 {
-    public:
-    c_type* get_type(monoString* asdad)
+public:
+    c_type *get_type(monoString *asdad)
     {
-        using a = c_type*(*)(monoString* c);
-        a b = reinterpret_cast<a>(base + c_offsets->get_type);
-        return b(asdad);
+        if (!c_fn || !c_fn->type_get_type)
+            return nullptr;
+        return (c_type *)c_fn->type_get_type(asdad);
     }
 
-    monoArray<c_renderer *> * find_objects_of_type()
+    monoArray<c_renderer *> *find_objects_of_type()
     {
-        using a = monoArray<c_renderer *> *(*)(c_type* c);
-        a b = reinterpret_cast<a>(base + c_offsets->find_objects_of_type);
-        return b(this);
+        if (!c_fn || !c_fn->find_objects_of_type)
+            return nullptr;
+        return (monoArray<c_renderer *> *)c_fn->find_objects_of_type(this);
     }
-
 };
 #pragma pack()

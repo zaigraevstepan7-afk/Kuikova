@@ -1,13 +1,14 @@
 #pragma once
 
 #pragma pack(1)
-class c_shader {
-    public:
+class c_shader
+{
+public:
     c_shader *find(monoString *name)
     {
-        using a = c_shader *(*)(monoString *sdfds);
-        a b = reinterpret_cast<a>(base + c_offsets->find);
-        return b(name);
+        if (!c_fn || !c_fn->shader_find)
+            return nullptr;
+        return (c_shader *)c_fn->shader_find(name);
     }
 };
 #pragma pack()

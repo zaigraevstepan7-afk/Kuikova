@@ -6,30 +6,30 @@ class c_renderer
 public:
     void *get_material()
     {
-        using a = void *(*)(c_renderer *);
-        a b = reinterpret_cast<a>(base + c_offsets->get_material);
-        return b(this);
+        if (!c_fn || !c_fn->renderer_get_material)
+            return nullptr;
+        return c_fn->renderer_get_material(this);
     }
 
     void set_material(c_material *tex)
     {
-        using a = void (*)(c_renderer *, c_material *poss);
-        a b = reinterpret_cast<a>(base + c_offsets->set_material);
-        return b(this, tex);
+        if (!c_fn || !c_fn->renderer_set_material)
+            return;
+        c_fn->renderer_set_material(this, tex);
     }
 
     monoArray<c_material *> *get_materials()
     {
-        using a = monoArray<c_material *> *(*)(c_renderer *);
-        a b = reinterpret_cast<a>(base + c_offsets->get_materials);
-        return b(this);
+        if (!c_fn || !c_fn->renderer_get_materials)
+            return nullptr;
+        return (monoArray<c_material *> *)c_fn->renderer_get_materials(this);
     }
 
     void set_materials(monoArray<c_material *> *tex)
     {
-        using a = void (*)(c_renderer *, monoArray<c_material *> *poss);
-        a b = reinterpret_cast<a>(base + c_offsets->set_materials);
-        return b(this, tex);
+        if (!c_fn || !c_fn->renderer_set_materials)
+            return;
+        c_fn->renderer_set_materials(this, tex);
     }
 };
 #pragma pack()

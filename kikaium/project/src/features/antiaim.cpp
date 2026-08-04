@@ -25,14 +25,14 @@ void antiaim::force_move(c_player_controller *player, const ImVec2 &direction)
     if (!walk_parameters)
         return;
 
-    dir = *reinterpret_cast<blended_value_t<ImVec2> **>(reinterpret_cast<uintptr_t>(data) + oxorany(0xe0));
-    if (!dir)
-        return;
-
-    speed = walk_parameters->m_fSpeed;
-
-    dir->m_actual = {direction.x * speed, direction.y * speed};
+    // TranslationData direction blend @0xE0 is NOT in Halalium profile — skip force_move.
+    (void)direction;
+    (void)data;
+    (void)walk_parameters;
+    (void)dir;
+    (void)speed;
 }
+
 
 void antiaim::movement_fix(float orig_yaw, float antiaim_yaw, c_player_inputs *inputs, c_player_controller *local)
 {

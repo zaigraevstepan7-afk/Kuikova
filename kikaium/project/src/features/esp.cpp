@@ -7,54 +7,23 @@
 
 Matrix esp::matrix()
 {
-    c_player_controller *local{};
-    c_player_main_camera *main_camera{};
-    void *ptr{};
-    void *cashed{};
+    // Halalium-only path: Camera.get_main + get_worldToCameraMatrix_Injected (MethodInfo).
+    // Offsets::Camera::matrix (0xF0) is Halalium profile but needs a Camera* — obtained via API, not Melodium field chain.
     Matrix mat{};
-
-    local = c_player->local;
-    if (local)
+    if (c_fn && c_fn->camera_get_main && c_fn->get_w2c_injected)
     {
-        main_camera = local->m_pMainCamera;
-        if (main_camera)
-        {
-            ptr = *(void **)((uintptr_t)main_camera + oxorany(0x20));
-            if (ptr)
-            {
-                cashed = *(void **)((uintptr_t)ptr + oxorany(0x10));
-                if (cashed)
-                {
-                    // Camera view matrix — Halalium RE / Offsets::Camera::matrix (0xF0 on 0.39.2)
-                    mat = *(Matrix *)((uintptr_t)cashed + Offsets::Camera::matrix);
-                }
-            }
-        }
+        void *cam = c_fn->camera_get_main();
+        if (cam)
+            c_fn->get_w2c_injected(cam, &mat);
     }
-
     return mat;
 }
 
 bool esp::update_matrix()
 {
-    c_player_controller *local = c_player->local;
-    if (!local)
-        return false;
-
-    c_player_main_camera *main_camera = local->m_pMainCamera;
-    if (!main_camera)
-        return false;
-
-    void *ptr = *(void **)((uintptr_t)main_camera + oxorany(0x20));
-    if (!ptr)
-        return false;
-
-    void *cashed = *(void **)((uintptr_t)ptr + oxorany(0x10));
-    if (!cashed)
-        return false;
-
-    this->matrix() = *(Matrix *)((uintptr_t)cashed + Offsets::Camera::matrix);
-    return true;
+    Matrix m = esp::matrix();
+    this->matrix() = m;
+    return m.m00 != 0.f || m.m11 != 0.f || m.m22 != 0.f || m.m33 != 0.f;
 }
 
 void text(ImFont *font, float FontSize, const ImVec2 &position, const ImColor &textColor, const char *text, bool outline, bool shadow)
@@ -395,61 +364,39 @@ void esp::render()
 
             if (g.b_ammo)
             {
+                // Halalium has no ammo-bar ESP; no Halalium ammo-capacity field.
+                // Draw using current clip only (Weaponry/params id path from SkinChanger RE).
                 const float optimalSize = width * 0.0625f + 8.0f;
                 auto healthWidth = round(optimalSize * 0.2f);
                 auto padding = optimalSize * 0.350f;
-                static std::map<void *, float> lastAmmoMap;
                 ImVec4 color{g.m_ammo[0], g.m_ammo[1], g.m_ammo[2], g.m_ammo[3]};
                 auto weaponry = player->m_pWeaponry;
-                if (!weaponry)
-                    return;
-                auto weapon = (c_gun_controller*)weaponry->m_pCurrentWeapon;
-                if (!weapon)
-                    return;
-                auto params = *(void**)((uintptr_t)weapon + oxorany(0xa8));
-                if (!params)
-                    return;
-                auto m_id = *(uint8_t*)((uintptr_t)params + oxorany(0x18));
-                if (m_id >= 11 && m_id <= 65)
+                if (weaponry && weaponry->m_pCurrentWeapon)
                 {
-                    auto ammo = weapon->m_iAmmoSafe.get();
-                    auto ammunition = *(void**)((uintptr_t)params + oxorany(0x130));
-                    if (!ammunition)
-                        return;
-                    short max_ammo = *(short*)((uintptr_t)ammunition + oxorany(0x10));
-                    if (max_ammo == 0)
-                        return;
-                    float &animatedAmmo = lastAmmoMap[player];
-                    float ammo_progress = std::clamp((float)ammo / max_ammo, 0.0f, 1.0f);
-                    animatedAmmo += (ammo_progress - animatedAmmo) * 0.1f;
-
-                    float barWidth = width;
-                    float barHeight = healthWidth;
-                    float barX = x;
-                    float barY = y + height + padding;
-                    ImVec2 barStart = ImVec2(barX, barY);
-                    ImVec2 barEnd = ImVec2(barX + barWidth, barY + barHeight);
-                    ImVec2 fillStart = ImVec2(barX, barY);
-                    ImVec2 fillEnd = ImVec2(barX + barWidth * animatedAmmo, barY);
-
-                    shadow_bar(barStart, barEnd);
-                    draw->AddRectFilled(barStart, barEnd, ApplyAlpha(ImColor(0, 0, 0, 115)));
-
-                    ImU32 colL = ApplyAlpha(ImGui::ColorConvertFloat4ToU32(color));
-                    draw->AddRectFilledMultiColor(fillStart, fillEnd, colL, colL, colL, colL);
-
-                    if (ammo < max_ammo && ammo > 1)
+                    auto weapon = (c_gun_controller *)weaponry->m_pCurrentWeapon;
+                    auto *params = weapon->m_pParameters;
+                    if (params && params->m_id >= 11 && params->m_id <= 65)
                     {
-                        char ammoText[16];
-                        snprintf(ammoText, sizeof(ammoText), "%d", ammo);
-                        ImVec2 textSize = gui::pixel->CalcTextSizeA(10, FLT_MAX, 0, ammoText);
-                        ImVec2 textPos = ImVec2(fillEnd.x - textSize.x + 2.0f, barY + (barHeight - textSize.y) * 0.5f);
-                        text(gui::pixel, 10, textPos, ApplyAlpha(ImColor(255,255,255,255)), ammoText, true, false);
+                        auto ammo = weapon->m_iAmmoSafe.get();
+                        const short max_ammo = 30; // no Halalium capacity offset — display-only
+                        float ammo_progress = std::clamp((float)ammo / (float)max_ammo, 0.0f, 1.0f);
+                        float barWidth = width;
+                        float barHeight = healthWidth;
+                        float barX = x;
+                        float barY = y + height + padding;
+                        ImVec2 barStart = ImVec2(barX, barY);
+                        ImVec2 barEnd = ImVec2(barX + barWidth, barY + barHeight);
+                        ImVec2 fillStart = ImVec2(barX, barY);
+                        ImVec2 fillEnd = ImVec2(barX + barWidth * ammo_progress, barY);
+                        shadow_bar(barStart, barEnd);
+                        draw->AddRectFilled(barStart, barEnd, ApplyAlpha(ImColor(0, 0, 0, 115)));
+                        ImU32 colL = ApplyAlpha(ImGui::ColorConvertFloat4ToU32(color));
+                        draw->AddRectFilledMultiColor(fillStart, fillEnd, colL, colL, colL, colL);
                     }
                 }
             }
 
-            if (g.b_eweapon)
+            if (false && g.b_eweapon) // Melodium name-ESP — not Halalium
             {
                 auto weaponry = player->m_pWeaponry;
                 if (!weaponry)
@@ -457,10 +404,10 @@ void esp::render()
                 auto weapon = (c_gun_controller*)weaponry->m_pCurrentWeapon;
                 if (!weapon)
                     return;
-                auto params = *(void**)((uintptr_t)weapon + oxorany(0xa8));
+                auto *params = weapon->m_pParameters;
                 if (!params)
                     return;
-                auto id = *(uint8_t*)((uintptr_t)params + oxorany(0x18));
+                auto id = params->m_id;
 
                 const char *weaponName;
                 switch (id)

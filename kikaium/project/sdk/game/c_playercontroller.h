@@ -129,19 +129,9 @@ class c_characher_controller
 public:
     Vector3 get_velocity()
     {
-        if (!this || !c_offsets)
+        if (!this || !c_fn || !c_fn->get_velocity)
             return Vector3{};
-
-        uintptr_t addr = base + c_offsets->get_velocity;
-        if (!addr)
-            return Vector3{};
-
-        using fn = Vector3 (*)(c_characher_controller *);
-        fn f = reinterpret_cast<fn>(addr);
-        if (!f)
-            return Vector3{};
-
-        return f(this);
+        return c_fn->get_velocity(this);
     }
 };
 #pragma pack()
@@ -207,22 +197,21 @@ public:
 
     void set_tps()
     {
-        using a = void (*)(c_player_controller *);
-        a b = reinterpret_cast<a>(base + c_offsets->set_tps);
-        return b(this);
+        if (c_fn && c_fn->set_tps)
+            c_fn->set_tps(this);
     }
     void set_fps()
     {
-        using a = void (*)(c_player_controller *);
-        a b = reinterpret_cast<a>(base + c_offsets->set_fps);
-        return b(this);
+        if (c_fn && c_fn->set_fps)
+            c_fn->set_fps(this);
     }
 
     void set_visible()
     {
-        using a = void (*)(c_player_controller *);
-        a b = reinterpret_cast<a>(base + c_offsets->set_visible);
-        return b(this);
+        // Halalium Through Walls: field character_visible @0xD8 (+ optional MethodInfo)
+        m_bCharacterVisible = true;
+        if (c_fn && c_fn->set_visible)
+            c_fn->set_visible(this);
     }
 };
 #pragma pack()

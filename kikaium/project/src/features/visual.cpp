@@ -185,28 +185,8 @@ void visual::remove(c_player_controller *local) {
                     return;
 
                 camera->set_fov(59.9);
-
-                if (!g.b_scope)
-                    return;
-
-                // PlayerControls.HUDView @ 0xB8; AimView @ HUD+0x30; _sniperSight @ Aim+0x50
-                auto hudView = *(void **)((uintptr_t)controls + oxorany(0xb8));
-                if (!hudView)
-                    return;
-
-                auto aimView = *(c_component **)((uintptr_t)hudView + oxorany(0x30));
-                if (!aimView)
-                    return;
-
-                auto sniper = *(c_component **)((uintptr_t)aimView + oxorany(0x50));
-                if (!sniper)
-                    return;
-
-                auto game_object = sniper->get_game_object();
-                if (!game_object)
-                    return;
-
-                c_methods->set_active(game_object, false);
+                // HUD sight hide used Melodium fields (controls+0xB8…); not in Halalium profile — skip.
+                (void)controls;
             }
         }
     }

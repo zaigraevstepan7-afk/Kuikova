@@ -7,58 +7,58 @@ class c_material
 public:
     void *get_texture()
     {
-        using a = void *(*)(c_material *);
-        a b = reinterpret_cast<a>(base + c_offsets->get_texture);
-        return b(this);
+        if (!c_fn || !c_fn->mat_get_texture)
+            return nullptr;
+        return c_fn->mat_get_texture(this);
     }
 
     void set_texture(uintptr_t tex)
     {
-        using a = void (*)(c_material *, uintptr_t poss);
-        a b = reinterpret_cast<a>(base + c_offsets->set_texture);
-        return b(this, tex);
+        if (!c_fn || !c_fn->mat_set_texture)
+            return;
+        c_fn->mat_set_texture(this, (void *)tex);
     }
 
     void *get_shader()
     {
-        using a = void *(*)(c_material *);
-        a b = reinterpret_cast<a>(base + c_offsets->get_shader);
-        return b(this);
+        if (!c_fn || !c_fn->mat_get_shader)
+            return nullptr;
+        return c_fn->mat_get_shader(this);
     }
 
     void set_shader(void *s)
     {
-        using a = void (*)(c_material *, void *poss);
-        a b = reinterpret_cast<a>(base + c_offsets->set_shader);
-        return b(this, s);
+        if (!c_fn || !c_fn->mat_set_shader)
+            return;
+        c_fn->mat_set_shader(this, s);
     }
 
     void new_material(c_shader *s)
     {
-        using a = void (*)(c_material *, c_shader *poss);
-        a b = reinterpret_cast<a>(base + c_offsets->new_material);
-        return b(this, s);
+        if (!c_fn || !c_fn->mat_ctor_shader)
+            return;
+        c_fn->mat_ctor_shader(this, s);
     }
 
     void set_color(color_t c)
     {
-        using a = void (*)(c_material *, color_t poss);
-        a b = reinterpret_cast<a>(base + c_offsets->set_color);
-        return b(this, c);
+        if (!c_fn || !c_fn->mat_set_color)
+            return;
+        c_fn->mat_set_color(this, c);
     }
 
     void set_int(monoString *name, int val)
     {
-        using a = void (*)(c_material *, monoString *sdfds, int asssd);
-        a b = reinterpret_cast<a>(base + c_offsets->set_int);
-        return b(this, name, val);
+        if (!c_fn || !c_fn->mat_set_int)
+            return;
+        c_fn->mat_set_int(this, name, val);
     }
 
     void set_float(monoString *name, float val)
     {
-        using a = void (*)(c_material *, monoString *sdfds, float asssd);
-        a b = reinterpret_cast<a>(base + c_offsets->set_float);
-        return b(this, name, val);
+        if (!c_fn || !c_fn->mat_set_float)
+            return;
+        c_fn->mat_set_float(this, name, val);
     }
 };
 #pragma pack()

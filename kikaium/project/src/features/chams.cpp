@@ -182,25 +182,9 @@ void apply_weapon(c_renderer* renderer)
 
 
 void chams::weapon(c_player_controller *player) {
-    if (!player || !g.weapon_chams) return;
-    if (!c_player->gun_controller) return;
-    void *lod{};
-    monoArray<void *> *skinned_mesh_render{};
-    const char *mat{};
-
-    lod = c_player->gun_controller->m_pLOD;
-    if (!lod) return;
-
-    skinned_mesh_render = *(monoArray<void *>**)((uintptr_t) lod + oxorany(0x48));
-    if (!skinned_mesh_render) return;
-
-    for (int i{}; i < skinned_mesh_render->capacity; i++) {
-        c_renderer *instance = (c_renderer*)skinned_mesh_render->m_Items[i];
-        if (!instance) continue;
-
-        apply_weapon(instance);
-
-    }
+    // Weapon LOD mesh list offset is NOT in Halalium profile — feature disabled.
+    (void)player;
+    return;
 }
 
 void chams::hit(c_player_controller *player)

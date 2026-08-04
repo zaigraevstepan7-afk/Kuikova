@@ -28,7 +28,7 @@ void strict_hit(void* _this, void* hit_data, void* player_hit_controller)
 
     // Melodium hit_chams - never arm (not Halalium)
     if (false && g.hit_chams) {
-        auto a = safe_type<c_player_controller *>::field(_this, oxorany(0x70));
+        auto a = safe_type<c_player_controller *>::field(_this, Offsets::PlayerManager::local_player);
         if (a.has_value)
             target_t.hitted = a.value;
         LOGD("target_t.hitted -> %p", target_t.hitted);
@@ -374,7 +374,18 @@ struct icall
     }
 
     void *resolve_icall() { return nullptr; }
-    void *resolve_icall_unity() { return ((void *(*)(const char *))(base + c_offsets->icall))(this->function_name); }
+    void *resolve_icall_unity()
+    {
+        // Non-Halalium icall RVA removed — resolve via dlsym if exported
+        static void *(*resolve)(const char *) = nullptr;
+        if (!resolve)
+        {
+            void *h = dlopen("libil2cpp.so", RTLD_NOW);
+            if (h)
+                resolve = (decltype(resolve))dlsym(h, "il2cpp_resolve_icall");
+        }
+        return resolve ? resolve(this->function_name) : nullptr;
+    }
 };
 
 template <class h, class o>
@@ -570,22 +581,9 @@ void update::init()
     if (gun_controller)
         vmt(gun_controller, oxorany("FEEBGAGHGGCGACA"), (void *)hook_executecommands, (void **)&old_executecommands);
 
-    void *ray_delegate = (void *)(base + c_offsets->ray);
-    if (!ray_delegate || !c_globals->is_allocated(ray_delegate))
-    {
-        LOGD("ray icall slot addr invalid - silent/AutoWall limited");
-        ray_delegate = nullptr;
-    }
-    for (int i = 0; i < 3 && ray_delegate && !*(void **)ray_delegate; i++)
-        sleep(1);
-    if (ray_delegate && *(void **)ray_delegate)
-    {
-        icall_hook(ray_delegate, oxorany("UnityEngine.PhysicsScene::Internal_Raycast_Injected(UnityEngine.PhysicsScene&,UnityEngine.Ray&,System.Single,UnityEngine.RaycastHit&,System.Int32,UnityEngine.QueryTriggerInteraction)"), hook_raycast, &old_raycast);
-    }
-    else
-    {
-        LOGD("ray icall slot empty - silent/AutoWall limited");
-    }
+    // Raycast icall: Melodium slot RVA removed. Silent uses MethodInfo Physics when available;
+    // optional resolve via il2cpp_resolve_icall dlsym in icall_hook path.
+    LOGD("ray icall hardcoded slot disabled (not Halalium) — silent via MethodInfo/Physics only");
 
     if (Offsets::Hook::use_getrr_bypass && unity_base)
     {
