@@ -487,11 +487,11 @@ static bool hook_rva(uintptr_t rva, void *hook, void **out_orig, const char *tag
 
 void update::init()
 {
-    // Do NOT block forever on libsigner — that left features dead while menu still drew.
+    LOGI("update::init begin (soft)");
+
     for (int i = 0; i < 8 && !loadedlib(oxorany("libsigner.so")) && !loadedlib(oxorany("lib/arm64/libsigner.so")); i++)
         sleep(1);
 
-    // If preferred base makes Update RVA non-executable, flip to the other image (Halalium uses libunity string).
     auto try_bases = [&]() {
         uintptr_t candidates[2] = {
             find_module_base_rx("libil2cpp.so"),
@@ -504,7 +504,7 @@ void update::init()
             if (maps_contains_exec(cand + 0x8E7C40C))
             {
                 base = cand;
-                LOGD("selected game base %p for Update RVA", (void *)base);
+                LOGI("selected game base %p", (void *)base);
                 return true;
             }
         }
@@ -514,70 +514,11 @@ void update::init()
     };
     try_bases();
 
-    ::init(); // resolve il2cpp APIs against current base
+    // Resolve Unity input/screen helpers for touch — no game method patches yet.
+    ::init();
+    LOGI("il2cpp/unity helpers resolved");
 
-    // A64 RVA inline hooks disabled for inject stability (stolen-byte tramp can SIGSEGV).
-    // Use VMT name hooks only — same path as pre-Halalium-RVA fallback.
-    bool hooked_pc = false;
-    LOGI("a64 Update/LateUpdate hooks OFF (stable inject); using VMT fallback");
-
-    // --- Fallback: name VMT if il2cpp APIs work ---
-    Il2CppClass *game_controller = nullptr;
-    Il2CppClass *player_controller = nullptr;
-    if (il2cpp_class_from_name && dll::charp)
-    {
-        game_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Game"), oxorany("GameController"));
-        player_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Player"), oxorany("PlayerController"));
-        LOGD("class_from_name GameController=%p PlayerController=%p", game_controller, player_controller);
-    }
-    else
-    {
-        LOGD("il2cpp_class_from_name unavailable (api resolve failed)");
-    }
-
-    if (game_controller)
-        vmt(game_controller, oxorany("Update"), (void *)new_game_update, (void **)&old_game_update);
-
-    if (!hooked_pc && player_controller)
-    {
-        vmt(player_controller, oxorany("Update"), (void *)new_update, (void **)&old_update);
-        vmt(player_controller, oxorany("LateUpdate"), (void *)new_lateupdate, (void **)&old_lateupdate);
-    }
-
-    Il2CppClass *hit_controller = nullptr;
-    Il2CppClass *gun_controller = nullptr;
-    if (il2cpp_class_from_name && dll::charp)
-    {
-        hit_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Player.Hit"), oxorany("PlayerHitController"));
-        gun_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Inventory.Gun"), oxorany("GunController"));
-    }
-
-    if (hit_controller) {
-        LOGD("hit_controller -> %p", hit_controller);
-        vmt(hit_controller, oxorany("ACHHGEDAEGBBHFB"), (void *)strict_hit, (void **)&old_strict_hit);
-        if (hit_controller->vtable)
-            hit_controller->vtable[84].methodPtr = (Il2CppMethodPointer)strict_hit;
-    }
-
-    if (gun_controller)
-    {
-        vmt(gun_controller, oxorany("FEEBGAGHGGCGACA"), (void *)hook_executecommands, (void **)&old_executecommands);
-        if (gun_controller->vtable)
-            gun_controller->vtable[20].methodPtr = (Il2CppMethodPointer)hook_executecommands;
-    }
-
-    // Raycast icall — optional; don't hang forever
-    void *ray_delegate = (void *)(base + c_offsets->ray);
-    for (int i = 0; i < 10 && ray_delegate && !*(void **)ray_delegate; i++)
-        sleep(1);
-    if (ray_delegate && *(void **)ray_delegate)
-    {
-        icall_hook(ray_delegate, oxorany("UnityEngine.PhysicsScene::Internal_Raycast_Injected(UnityEngine.PhysicsScene&,UnityEngine.Ray&,System.Single,UnityEngine.RaycastHit&,System.Int32,UnityEngine.QueryTriggerInteraction)"), hook_raycast, &old_raycast);
-    }
-    else
-    {
-        LOGD("ray icall slot empty — silent wallcheck may be limited");
-    }
-
-    LOGD("update::init done hooked_pc=%d base=%p", (int)hooked_pc, (void *)base);
+    // Hard game hooks (A64 RVA / VMT slot writes / ray icall) deferred:
+    // they were crashing right after ImGui inited. Menu+watermark only for now.
+    LOGI("update::init soft done — game feature hooks deferred (menu-only stable)");
 }

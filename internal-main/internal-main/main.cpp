@@ -23,11 +23,16 @@
 #include "includes/imgui/backends/imgui_impl_opengl3.h"
 #include <cstdio>
 #include <cstdlib>
+#include <cstddef>
 #include <link.h>
 #include <elf.h>
 #include <cinttypes>
 #include <linux/elf.h>
 #include "globals.hpp"
+// Do NOT include <fcntl.h> here — globals.hpp defines `bool open`, which collides.
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <errno.h>
 #include "src/menu/gui.h"
 #include "includes/fonts/verdana.h"
 #include "includes/fonts/smallest_pixel.h"
@@ -726,11 +731,53 @@ void *entry()
 // REGISTER_ZYGISK_MODULE(tenmi_zygisk)
 #include "jni.h"
 
+// Process-wide once: AndKitty/memfd can dlopen multiple SO copies; each has its
+// own static `started`, which double-hooks egl and crashes after ImGui inits.
+// Abstract UNIX bind — no storage permission; auto-clears on process death.
+// (Cannot use flock/open here: globals.hpp defines `bool open`.)
+static bool claim_process_once()
+{
+    int s = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    if (s < 0)
+    {
+        LOGI("process lock socket failed errno=%d — refuse start", errno);
+        return false;
+    }
+
+    sockaddr_un addr{};
+    addr.sun_family = AF_UNIX;
+    // Abstract namespace: sun_path[0] == '\0', then name bytes (no trailing NUL in length).
+    static const char name[] = "melodium_once_v2";
+    const size_t name_len = sizeof(name) - 1;
+    addr.sun_path[0] = '\0';
+    memcpy(addr.sun_path + 1, name, name_len);
+    socklen_t len = static_cast<socklen_t>(offsetof(sockaddr_un, sun_path) + 1 + name_len);
+
+    if (bind(s, reinterpret_cast<sockaddr *>(&addr), len) == 0)
+    {
+        // Leak socket for process lifetime — holds the abstract name.
+        LOGI("claimed process lock (abstract unix)");
+        return true;
+    }
+
+    const int err = errno;
+    close(s);
+    if (err == EADDRINUSE)
+    {
+        LOGI("another melodium instance holds abstract lock — skip start");
+        return false;
+    }
+    LOGI("abstract lock bind failed errno=%d — refuse start", err);
+    return false;
+}
+
 static void start_melodium_once()
 {
-    static std::atomic<bool> started{false};
+    static std::atomic<bool> local_started{false};
     bool expected = false;
-    if (!started.compare_exchange_strong(expected, true))
+    if (!local_started.compare_exchange_strong(expected, true))
+        return;
+    if (!claim_process_once())
         return;
     LOGI("start_melodium_once");
     std::thread(entry).detach();
