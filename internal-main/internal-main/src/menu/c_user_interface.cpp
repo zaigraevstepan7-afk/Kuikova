@@ -592,7 +592,7 @@ int aasdd;
 auto color_flags = ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_NoDragDrop | ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_NoBorder;
 void C_UserInterface::rage()
 {
-    if (this->beginChild("esp", ImVec2((ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2, ImGui::GetContentRegionAvail().y -  (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2)), ImGuiChildFlags_Borders))
+    if (this->beginChild("overlay##k", ImVec2((ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2, ImGui::GetContentRegionAvail().y -  (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2)), ImGuiChildFlags_Borders))
     {
         checkbox(oxorany("update matrix"), &g.update_matrix);
         checkbox(oxorany("esp"), &g.b_esp);
@@ -615,7 +615,7 @@ void C_UserInterface::rage()
 
     ImGui::SameLine();
 
-    if (this->beginChild("visuals", ImVec2((ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2, ImGui::GetContentRegionAvail().y -  (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2)), ImGuiChildFlags_Borders))
+    if (this->beginChild("world##k", ImVec2((ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2, ImGui::GetContentRegionAvail().y -  (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2)), ImGuiChildFlags_Borders))
     {
         ImGui::Text(oxorany("world"));
         checkbox(oxorany("solid world"), &g.b_solid);
@@ -682,7 +682,7 @@ void C_UserInterface::visuals()
         page_t(&g.hitbox[2], oxorany("hip")),
         page_t(&g.hitbox[3], oxorany("legs"))
     };
-    if (this->beginChild(oxorany("silent"), ImVec2((ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2, ImGui::GetContentRegionAvail().y -  (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2)), ImGuiChildFlags_Borders)) {
+    if (this->beginChild(oxorany("aim##k"), ImVec2((ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2, ImGui::GetContentRegionAvail().y -  (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2)), ImGuiChildFlags_Borders)) {
         checkbox(oxorany("silent"), &g.b_silent);
         checkbox(oxorany("auto fire"), &g.b_fire);
         multiCombo(oxorany("hitbox"), hitboxes, IM_ARRAYSIZE(hitboxes));
@@ -699,7 +699,7 @@ void C_UserInterface::visuals()
 
     ImGui::SameLine();
 
-    if (this->beginChild("anti aims", ImVec2((ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2, ImGui::GetContentRegionAvail().y -  (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2)), ImGuiChildFlags_Borders))
+    if (this->beginChild("aa##k", ImVec2((ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2, ImGui::GetContentRegionAvail().y -  (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2)), ImGuiChildFlags_Borders))
     {
         checkbox(oxorany("anti aims"), &g.b_antiaim);
         auto pitch = g.i_pitch;
@@ -726,7 +726,7 @@ void C_UserInterface::exploits()
     float childWidth = ImGui::GetWindowSize().x - ImGui::GetStyle().WindowPadding.x * 2;
     float childHeight = ImGui::GetContentRegionAvail().y -  ImGui::GetStyle().WindowPadding.y * 2 - ImGui::GetStyle().ItemSpacing.y * 2;
 
-    if (this->beginChild(oxorany("exploits"), ImVec2(childWidth, childHeight), ImGuiChildFlags_Borders))
+    if (this->beginChild(oxorany("tools##k"), ImVec2(childWidth, childHeight), ImGuiChildFlags_Borders))
     {
         // checkbox(oxorany("one hit kill"), &g.b_onehit);
         // checkbox(oxorany("fire rate"), &g.b_frate);
@@ -743,7 +743,7 @@ void C_UserInterface::misc()
     float childWidth = ImGui::GetWindowSize().x - ImGui::GetStyle().WindowPadding.x * 2;
     float childHeight = ImGui::GetContentRegionAvail().y -  ImGui::GetStyle().WindowPadding.y * 2 - ImGui::GetStyle().ItemSpacing.y * 2;
 
-    if (this->beginChild(oxorany("misc"), ImVec2(childWidth, childHeight), ImGuiChildFlags_Borders))
+    if (this->beginChild(oxorany("more##k"), ImVec2(childWidth, childHeight), ImGuiChildFlags_Borders))
     {
         checkbox(oxorany("fast walk"), &g.b_walk);
         checkbox(oxorany("auto strafer"), &g.b_strafer);
@@ -766,9 +766,9 @@ void C_UserInterface::config()
     float childWidth = ImGui::GetWindowSize().x - ImGui::GetStyle().WindowPadding.x * 2;
     float childHeight = ImGui::GetContentRegionAvail().y -  ImGui::GetStyle().WindowPadding.y * 2 - ImGui::GetStyle().ItemSpacing.y * 2;
 
-    if (this->beginChild(oxorany("configs"), ImVec2(childWidth, childHeight), ImGuiChildFlags_Borders))
+    if (this->beginChild(oxorany("controls##k"), ImVec2(childWidth, childHeight), ImGuiChildFlags_Borders))
     {
-        ImGui::Text(oxorany("t.me/melrele"));
+        ImGui::Text(oxorany("kikaium private"));
         ImGui::Text(oxorany("configs in next patch maybe"));
     }
 
