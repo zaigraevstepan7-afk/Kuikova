@@ -57,6 +57,8 @@ namespace gui
 
     void DrawWatermark()
     {
+        if (!g.b_watermark)
+            return;
         (void)k_kikaium_contract; // keep contract string in .rodata for build verify
         const char *brand = oxorany("Kikaium");
         const char *line = oxorany("private  ·  0.39.2");
@@ -118,7 +120,7 @@ namespace gui
                          ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
         if (g.b_scope && c_player->local && c_player->weapon_parameters && c_globals->is_scoped())
-            cross();
+            cross(); // Melodium remove-scope cross — flag forced off
 
         ImGui::End();
         DrawWatermark();

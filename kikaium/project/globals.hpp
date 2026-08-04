@@ -337,21 +337,22 @@ inline struct g_
     bool b_line;
     bool b_rect;
     bool b_health;
-    bool b_name;
-    bool b_ammo;
     bool b_skeleton;
-    bool b_eweapon;
+    bool b_name = false;      // Melodium-only — kept off
+    bool b_ammo = false;
+    bool b_eweapon = false;
     float m_ammo[4] = {0.077f, 0.251f, 0.605f, 1.0f};
     float m_health[4] = {0.025f, 0.560f, 0.025f, 1.0f};
     float m_rect[4] = {1.0f, 0.0f, 0.0f, 1.0f};
     float m_skeleton[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-    bool b_tracer;
+    bool b_tracer = false;    // Melodium-only
     float m_tracer[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-    bool b_marker;
+    bool b_marker = false;
     float m_marker[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-    bool b_dmarker;
+    bool b_dmarker = false;
     bool b_sk;
     float m_sk[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    bool b_watermark = true;  // Halalium Watermark
 
     // ragebot (Halalium surface: Silent Aim / Auto Fire / Auto Wall / Through Walls / Wallshot / No spread / Inf Ammo)
     bool b_silent;
@@ -364,12 +365,12 @@ inline struct g_
     bool b_fov_check;     // Fov Check
     float f_fov_check = 120.f;
     float m_fov_color[4] = {1.f, 0.2f, 0.2f, 0.35f};
-    bool b_duck;
-    bool b_stop;
+    bool b_duck = false;      // Melodium-only
+    bool b_stop = false;
     int hitchance = 75;
-    bool hitbox[4];
-    bool b_dt;
-    bool predict;
+    bool hitbox[4] = {true, false, false, false}; // head default for silent
+    bool b_dt = false;
+    bool predict = false;
     float factor = 1;
     int fak = 5;
     float dist = 1.65;
@@ -385,28 +386,28 @@ inline struct g_
     bool b_spin;
     int i_pitch = 0;
     int i_yaw = 0;
-    bool b_jitter;
+    bool b_jitter = false;    // Melodium-only
     int i_range = 0;
     float f_speed;
-    bool b_chaos;
+    bool b_chaos = false;
     float f_jitter_speed = 0.3f;
     int frames = 1;
 
-    // misc
-    bool b_strafer;
-    bool b_walk;
+    // misc — Melodium-only flags forced off (no UI)
+    bool b_strafer = false;
+    bool b_walk = false;
     bool b_third;
     int knife = 0;
-    bool b_peek;
-    bool b_aspect;
+    bool b_peek = false;
+    bool b_aspect = false;
     float f_aspect = 1.5;
-    bool b_scope;
+    bool b_scope = false;
     float m_fov = 59.9f;
 
     // chams
     bool b_players;
     bool b_local;
-    bool b_gloves;
+    bool b_gloves = false;
     float m_players[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     float m_local[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     float m_gloves[4] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -417,33 +418,32 @@ inline struct g_
     int i_gloves = 0;
     int i_hit = 0;
     int i_weapon = 0;
-    bool hit_chams;
-    bool weapon_chams;
+    bool hit_chams = false;
+    bool weapon_chams = false;
 
-
-    // world
+    // world — Halalium has World Color; Melodium fog/sky/solid off
     bool b_world;
-    bool b_solid;
-    bool b_fog;
+    bool b_solid = false;
+    bool b_fog = false;
     float m_world[4] = {0.500f, 0.500f, 0.500f, 0.700f};
     float m_fog[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     float f_start = 5.0f;
     float f_end = 20.0f;
-    bool b_sky;
+    bool b_sky = false;
     float m_sky[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     int c_flags = 2;
 
-    // exploits
-    bool b_onehit;
-    bool b_frate;
-    bool b_god;
-    bool sethp;
+    // exploits — Melodium-only, forced off
+    bool b_onehit = false;
+    bool b_frate = false;
+    bool b_god = false;
+    bool sethp = false;
     float dur = 100;
-    bool b_weapon;
-    bool b_bomb;
+    bool b_weapon = false;
+    bool b_bomb = false;
 
     int steps = 2500;
-    bool update_matrix{};
+    bool update_matrix = true; // internal ESP matrix, not a Melodium menu toggle
 
 } g;
 enum class team_t : uint8_t;

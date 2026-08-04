@@ -1,23 +1,21 @@
-# Melodium feature extras (to port onto Kikaium)
+# Melodium features are FORBIDDEN in Kikaium
 
-`libkikaium.so` already ships Halalium’s built-in cheats (Silent Aim, Anti Aim,
-ESP, Chams, Auto Wall, Inf Ammo, …).
+Kikaium menu/runtime must match **Halalium surface only**.
 
-These Melodium UI toggles are **ours** and still only in source
-(`internal-main/internal-main/src/features/` + menu):
+## Allowed (from Halalium SO strings)
 
-- god mode
-- one hit kill
-- double tap
-- endless ammo / fire rate
-- autostop / auto strafer / auto fire
-- fast walk / duck / jitter / predict
-- third person / remove scope / aspect ratio
-- set health
-- Melodium ESP details (box/name/health/ammo/skeleton/weapon)
-- world / fog / sky / solid world
-- tracer / marker / damage marker
-- weapon chams variants
+Enable Esp, Box, Bone, Health Bar, Fov Check, Fov Color, scope fov,
+Chams, Local Chams, Enemy Chams, World Color,
+Silent Aim, Auto Fire, Auto Wall, Through Walls, Wallshot, No spread, Inf Ammo,
+Anti Aim, Anti Aim Pitch, Spin, Spin Speed,
+Skin Changer, Third Person, Watermark.
 
-Do not stack `libmelodium.so` on `libkikaium.so` (double hooks). Port these
-into an open Kikaium build when ready.
+Tabs: Rage / Visuals / Misc / Settings / Skins.
+
+## Removed Melodium extras (no UI, flags forced off)
+
+fog, sky, solid world, tracer, marker, damage marker,
+name/ammo/weapon ESP, update matrix, weapon chams,
+duck, autostop, double tap, jitter, random in jump,
+fast walk, auto strafer, remove scope, aspect ratio,
+god / OHK / set health / fire rate.

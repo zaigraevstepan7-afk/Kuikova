@@ -81,11 +81,15 @@ void new_update(c_player_controller *player)
                 // func with local player
 
                 c_misc->init(c_player->local);
-                c_visual->hits(c_player->local);
+                // Melodium hitmarkers off unless Halalium adds them later
+                if (g.b_marker || g.b_dmarker || g.b_tracer)
+                    c_visual->hits(c_player->local);
                 c_antiaim->update();
-                c_world->init(c_player->local);
+                if (g.b_world || g.b_fog || g.b_sky || g.b_solid)
+                    c_world->init(c_player->local);
                 c_chams->local(c_player->local);
-                c_chams->weapon(c_player->local);
+                if (g.weapon_chams)
+                    c_chams->weapon(c_player->local);
             }
 
             if (c_globals->is_enemy(c_player->local, player))
@@ -155,7 +159,8 @@ void new_lateupdate(c_player_controller *player)
             if (local) {
                 c_globals->updateGun();
                 c_antiaim->late_update(local);
-                c_visual->remove(c_player->local);
+                if (g.b_scope)
+                    c_visual->remove(c_player->local);
 
                 if (g.b_aspect)
                 {

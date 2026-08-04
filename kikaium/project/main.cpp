@@ -220,10 +220,10 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
         handle_touch();
     gui::render();
 
-    // Melodium-style overlays: only after update::init wired VMT/touch.
+    // Overlays after SDK ready. Hitmarkers are Melodium-only (flags default off).
     if (sdk)
     {
-        if (c_visual)
+        if ((g.b_marker || g.b_dmarker || g.b_tracer) && c_visual)
         {
             c_visual->draw_hits();
             c_visual->hitmarker();
