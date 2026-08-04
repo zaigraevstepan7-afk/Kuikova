@@ -114,6 +114,39 @@ void new_update(c_player_controller *player)
     old_update(player);
 }
 
+// Halalium has NO GameController VMT — instance comes from TypeInfo statics.
+// Permanent VMT stays visible during AntiCheat OnStart (getrr cannot destroy it).
+static void refresh_game_from_typeinfo()
+{
+    if (!c_player || !c_globals || !c_offsets || !g_sdk_ready.load(std::memory_order_acquire))
+        return;
+
+    auto *game = reinterpret_cast<c_game_controller *>(
+        c_globals->type_info_instance(c_offsets->c_game_controller, 0));
+    if (!game || !c_globals->is_allocated(game))
+    {
+        if (c_player->game || c_player->local)
+        {
+            c_player->after_match();
+            if (c_esp)
+                c_esp->clear_matrix();
+        }
+        return;
+    }
+
+    c_player->game = game;
+    auto *ctrl = reinterpret_cast<c_player_controls *>(hchain::game_controls(game));
+    if (ctrl && c_globals->is_allocated(ctrl))
+        c_player->controls = ctrl;
+    else
+        c_player->controls = nullptr;
+}
+
+void update::tick_lobby_cleanup()
+{
+    refresh_game_from_typeinfo();
+}
+
 void (*old_lateupdate)(c_player_controller *player);
 void new_lateupdate(c_player_controller *player)
 {
@@ -123,6 +156,7 @@ void new_lateupdate(c_player_controller *player)
         if (hchain::is_local(player))
         {
             c_player->local = player;
+            refresh_game_from_typeinfo();
             c_globals->updateGun();
             if (c_esp)
                 c_esp->cache_matrix();
@@ -140,34 +174,6 @@ void new_lateupdate(c_player_controller *player)
     }
     if (old_lateupdate)
         old_lateupdate(player);
-}
-
-void (*old_game_update)(c_game_controller *game);
-void new_game_update(c_game_controller *game)
-{
-    if (!old_game_update)
-        return;
-    if (!game || !g_sdk_ready.load(std::memory_order_acquire))
-    {
-        if (!game && c_player)
-        {
-            c_player->after_match();
-            if (c_esp)
-                c_esp->clear_matrix();
-        }
-        old_game_update(game);
-        return;
-    }
-
-    c_player->game = game;
-    // Halalium: GameController.player_controls @0x2B0
-    auto *ctrl = reinterpret_cast<c_player_controls *>(hchain::game_controls(game));
-    if (ctrl && c_globals->is_allocated(ctrl))
-        c_player->controls = ctrl;
-    else
-        c_player->controls = nullptr;
-
-    old_game_update(game);
 }
 
 bool (*old_raycast)(void *, ray_t *, float, raycast_hit_t *, int32_t, uint8_t);
@@ -589,15 +595,14 @@ void update::init()
         LOGD("GameController=%p PlayerController=%p", game_controller, player_controller);
     }
 
-    // Halalium: prefer tracked Dobby/a64 RVAs. VMT patches stay visible during OnStart —
-    // only use VMT fallback when tracked RVA failed. Skip gun/hit VMT for ESP build
-    // (those are rage paths; permanent VMT is not destroyed by getrr).
-    if (Offsets::Hook::use_vmt_update_hooks && game_controller)
-        vmt(game_controller, oxorany("Update"), (void *)new_game_update, (void **)&old_game_update);
+    // Halalium: NO GameController VMT. Prefer tracked a64 RVAs for PC Update/LateUpdate.
+    // VMT only as fallback when tracked RVA failed (permanent — visible during OnStart).
+    // Skip gun/hit VMT for ESP build (rage paths; not destroyed by getrr).
+    (void)game_controller;
 
-    if (!hooked_pc && player_controller)
+    if (!hooked_pc && Offsets::Hook::use_vmt_update_hooks && player_controller)
         vmt(player_controller, oxorany("Update"), (void *)new_update, (void **)&old_update);
-    if (!hooked_late && player_controller)
+    if (!hooked_late && Offsets::Hook::use_vmt_update_hooks && player_controller)
         vmt(player_controller, oxorany("LateUpdate"), (void *)new_lateupdate, (void **)&old_lateupdate);
 
     // Rage VMT only if silent/fire UI paths are armed later — not for ESP+bypass hide profile

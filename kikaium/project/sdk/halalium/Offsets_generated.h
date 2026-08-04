@@ -100,6 +100,7 @@ namespace UnityMethod {
 namespace Hook {
     constexpr bool use_egl_swap_buffers = true;
     constexpr bool open_menu_via_watermark_click = true;
+    // Halalium: no GameController VMT. PC Update/Late VMT only if tracked RVA fails
     constexpr bool use_vmt_update_hooks = true;
     constexpr bool use_getrr_bypass = true;
     constexpr bool use_secondary_hooks = false;

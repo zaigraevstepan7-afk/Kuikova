@@ -48,6 +48,7 @@
 #include "src/menu/c_user_interface.hpp"
 #include "src/features/esp.h"
 #include "src/features/visual.h"
+#include "src/features/update.h"
 // vis 0x3A4E0 //ya 0x30EC8
 
 bool egl_inited = false;
@@ -433,6 +434,9 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
     const bool sdk = g_sdk_ready.load(std::memory_order_acquire);
     if (sdk)
     {
+        // Halalium: no GC VMT — TypeInfo refresh / lobby clear from render path too
+        if (c_update)
+            c_update->tick_lobby_cleanup();
         if (g.b_fov_check && c_egl && c_egl->width > 0 && c_egl->heigth > 0)
         {
             ImDrawList *dl = ImGui::GetForegroundDrawList();
@@ -896,7 +900,6 @@ il2cpp_t *_il2cpp;
 #include <cstdint>
 #include <unistd.h>
 #include <stdio.h>
-#include "src/features/update.h"
 
 static bool address_in_maps(uintptr_t addr)
 {
