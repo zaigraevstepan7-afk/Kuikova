@@ -393,6 +393,12 @@ def load_methods_from_script(script_path: Path) -> Dict[str, int]:
             out["PlayerHitController.StrictHit"] = addr
     # Documented Halalium PlayerController Update RVA (not always in ScriptMethod)
     out.setdefault("PlayerController.Update", 0x8E7C40C)
+    out.setdefault("PlayerController.LateUpdate", 0x8E7CF50)
+    out.setdefault("Hook.Secondary", 0x8E0085C)
+    out.setdefault("Hook.Tertiary", 0x79FE5E0)
+    out.setdefault("Hook.TertiaryAlt", 0x147E970)
+    out.setdefault("Hook.ExtraA", 0x8D663EC)
+    out.setdefault("Hook.ExtraB", 0x8D2B2B0)
     out.setdefault("AntiCheat.OnStart_getrr", 0x8B9579C)
     return out
 
@@ -563,8 +569,14 @@ namespace Camera {{
 }}
 
 namespace Method {{
-    // Halalium A64 targets (optional; Kikaium prefers VMT name hooks for stability)
+    // Halalium egl_install Dobby targets (base + RVA)
     constexpr uintptr_t PlayerController_Update = {m('PlayerController.Update', 0x8E7C40C)};
+    constexpr uintptr_t PlayerController_LateUpdate = {m('PlayerController.LateUpdate', 0x8E7CF50)};
+    constexpr uintptr_t HookSecondary = {m('Hook.Secondary', 0x8E0085C)};
+    constexpr uintptr_t HookTertiary = {m('Hook.Tertiary', 0x79FE5E0)};
+    constexpr uintptr_t HookTertiaryAlt = {m('Hook.TertiaryAlt', 0x147E970)};
+    constexpr uintptr_t HookExtraA = {m('Hook.ExtraA', 0x8D663EC)};
+    constexpr uintptr_t HookExtraB = {m('Hook.ExtraB', 0x8D2B2B0)};
     constexpr uintptr_t AntiCheat_OnStart_getrr = {m('AntiCheat.OnStart_getrr', 0x8B9579C)};
     constexpr uintptr_t Gun_ExecuteCommands     = {m('GunController.ExecuteCommands', 0)};
     constexpr uintptr_t Hit_StrictHit           = {m('PlayerHitController.StrictHit', 0)};

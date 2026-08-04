@@ -114,7 +114,7 @@ void antiaim::init(c_player_controller *local, c_player_inputs *inputs)
         }
     }
 
-    if (!g.b_antiaim)
+    if (!g.b_antiaim && !g.b_spin)
         return;
 
     bool stop = false;
@@ -303,7 +303,7 @@ void antiaim::update()
 
 void antiaim::late_update(c_player_controller *local)
 {
-    if (!g.b_antiaim || !local)
+    if ((!g.b_antiaim && !g.b_spin) || !local)
         return;
 
     c_transform *holder{};

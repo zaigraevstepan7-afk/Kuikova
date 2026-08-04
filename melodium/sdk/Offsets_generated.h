@@ -62,8 +62,14 @@ namespace Camera {
 }
 
 namespace Method {
-    // Halalium A64 targets (optional; Kikaium prefers VMT name hooks for stability)
+    // Halalium egl_install Dobby targets (base + RVA)
     constexpr uintptr_t PlayerController_Update = 0x8E7C40C;
+    constexpr uintptr_t PlayerController_LateUpdate = 0x8E7CF50;
+    constexpr uintptr_t HookSecondary = 0x8E0085C;
+    constexpr uintptr_t HookTertiary = 0x79FE5E0;
+    constexpr uintptr_t HookTertiaryAlt = 0x147E970;
+    constexpr uintptr_t HookExtraA = 0x8D663EC;
+    constexpr uintptr_t HookExtraB = 0x8D2B2B0;
     constexpr uintptr_t AntiCheat_OnStart_getrr = 0x8B9579C;
     constexpr uintptr_t Gun_ExecuteCommands     = 0x0;
     constexpr uintptr_t Hit_StrictHit           = 0x0;

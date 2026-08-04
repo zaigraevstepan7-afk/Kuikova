@@ -59,9 +59,9 @@ build_once() {
     echo "FAIL: menu contract marker missing" >&2
     exit 4
   fi
-  if ! grep -q 'Halalium-style VMT' "$dump"; then
+  if ! grep -qE 'Halalium reconstruct|Halalium RVA Update|Halalium-style VMT' "$dump"; then
     rm -f "$dump"
-    echo "FAIL: VMT init path missing — not a full cheat build" >&2
+    echo "FAIL: Halalium init path marker missing" >&2
     exit 4
   fi
   if ! readelf -Ws "$so" 2>/dev/null | grep -q 'JNI_OnLoad'; then

@@ -353,10 +353,17 @@ inline struct g_
     bool b_sk;
     float m_sk[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 
-    // ragebot
+    // ragebot (Halalium surface: Silent Aim / Auto Fire / Auto Wall / Through Walls / Wallshot / No spread / Inf Ammo)
     bool b_silent;
     bool b_fire;
-    bool b_endless;
+    bool b_endless;       // Inf Ammo
+    bool b_nospread;      // No spread
+    bool b_autowall;      // Auto Wall
+    bool b_through_walls; // Through Walls
+    bool b_wallshot;      // Wallshot
+    bool b_fov_check;     // Fov Check
+    float f_fov_check = 120.f;
+    float m_fov_color[4] = {1.f, 0.2f, 0.2f, 0.35f};
     bool b_duck;
     bool b_stop;
     int hitchance = 75;
@@ -368,8 +375,14 @@ inline struct g_
     float dist = 1.65;
     float mom = 2.5;
 
-    // anti aim
+    // skins (Halalium Skin Changer)
+    bool b_skin_changer;
+    int i_skin_weapon = 0;
+    int i_skin_id = 0;
+
+    // anti aim (Halalium: Anti Aim / Anti Aim Pitch / Spin)
     bool b_antiaim;
+    bool b_spin;
     int i_pitch = 0;
     int i_yaw = 0;
     bool b_jitter;
@@ -440,7 +453,6 @@ inline struct abc
 {
     void *player{};
 } abcd;
-// Halalium-style: starts closed; tap watermark to open.
-// Default open=true so first inject still shows UI if touch path is broken.
-inline bool open = true;
+// Halalium: menu starts CLOSED; open only via ##wm_click on watermark.
+inline bool open = false;
 #include "sdk/game/include.h"

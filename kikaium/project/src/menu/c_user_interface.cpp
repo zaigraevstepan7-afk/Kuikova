@@ -554,7 +554,7 @@ void C_UserInterface::render()
             rdl->AddRectFilled(lp, ImVec2(lp.x + rail_w - 36.f, lp.y + 1.f), IM_COL32(232, 168, 88, 160));
             ImGui::Dummy(ImVec2(0, 14.f));
 
-            static const char *tabs[] = {"drawing", "nova", "tools", "more", "controls"};
+            static const char *tabs[] = {"Rage", "Visuals", "Misc", "Settings", "Skins"};
             for (int i = 0; i < 5; i++)
             {
                 bool selected = (m_iCurrentTab == i);
@@ -564,8 +564,7 @@ void C_UserInterface::render()
                 ImVec2 btn_sz(rail_w - 20.f, 40.f);
                 ImVec2 p0 = ImGui::GetCursorScreenPos();
                 bool hovered = false;
-                // invisible button for hit + custom draw
-                if (ImGui::InvisibleButton("tab", btn_sz))
+                if (ImGui::InvisibleButton("##tabbtn", btn_sz))
                     m_iCurrentTab = i;
                 hovered = ImGui::IsItemHovered();
                 ImVec2 p1 = ImGui::GetItemRectMax();
@@ -601,20 +600,20 @@ void C_UserInterface::render()
         {
             switch (m_iCurrentTab)
             {
-            case 0:
-                rage();
-                break;
-            case 1:
+            case 0: // Rage — Halalium aim / AA surface
                 visuals();
                 break;
-            case 2:
-                exploits();
+            case 1: // Visuals — ESP / chams / world
+                rage();
                 break;
-            case 3:
+            case 2: // Misc
                 misc();
                 break;
-            case 4:
+            case 3: // Settings
                 config();
+                break;
+            case 4: // Skins
+                exploits();
                 break;
             }
         }
@@ -631,130 +630,114 @@ int aasdd;
 auto color_flags = ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_NoDragDrop | ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_NoBorder;
 void C_UserInterface::rage()
 {
-    if (this->beginChild("overlay##k", ImVec2((ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2, ImGui::GetContentRegionAvail().y -  (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2)), ImGuiChildFlags_Borders))
+    // Halalium Visuals tab content (ESP / chams) — Melodium widget chrome
+    if (this->beginChild("##rage_left_esp", ImVec2((ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2, ImGui::GetContentRegionAvail().y -  (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2)), ImGuiChildFlags_Borders))
     {
-        checkbox(oxorany("update matrix"), &g.update_matrix);
-        checkbox(oxorany("esp"), &g.b_esp);
-        checkbox(oxorany("box"), &g.b_rect);
+        checkbox(oxorany("Enable Esp"), &g.b_esp);
+        checkbox(oxorany("Box"), &g.b_rect);
         ImGui::SameLine();
-        ImGui::ColorEdit4(oxorany("##dsfssfsfs"), g.m_rect, color_flags);
+        ImGui::ColorEdit4(oxorany("##boxcol"), g.m_rect, color_flags);
+        checkbox(oxorany("Health Bar"), &g.b_health);
+        ImGui::SameLine();
+        ImGui::ColorEdit4(oxorany("##hpcol"), g.m_health, color_flags);
+        checkbox(oxorany("Bone"), &g.b_skeleton);
+        ImGui::SameLine();
+        ImGui::ColorEdit4(oxorany("##bonecol"), g.m_skeleton, color_flags);
         checkbox(oxorany("name"), &g.b_name);
-        checkbox(oxorany("health"), &g.b_health);
-        ImGui::SameLine();
-        ImGui::ColorEdit4(oxorany("##dfsdfgfdsdff"), g.m_health, color_flags);
         checkbox(oxorany("ammo"), &g.b_ammo);
         ImGui::SameLine();
-        ImGui::ColorEdit4(oxorany("##fgdfgdfg"), g.m_ammo, color_flags);
-        checkbox(oxorany("skeleton"), &g.b_skeleton);
-        ImGui::SameLine();
-        ImGui::ColorEdit4(oxorany("##fguujhdfg"), g.m_skeleton, color_flags);
+        ImGui::ColorEdit4(oxorany("##ammocol"), g.m_ammo, color_flags);
         checkbox(oxorany("weapon"), &g.b_eweapon);
+        checkbox(oxorany("Fov Check"), &g.b_fov_check);
+        if (g.b_fov_check)
+        {
+            slider_float(oxorany("scope fov"), &g.f_fov_check, 10.f, 180.f);
+            ImGui::ColorEdit4(oxorany("Fov Color"), g.m_fov_color, color_flags);
+        }
+        checkbox(oxorany("update matrix"), &g.update_matrix);
     }
     this->endChild();
 
     ImGui::SameLine();
 
-    if (this->beginChild("world##k", ImVec2((ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2, ImGui::GetContentRegionAvail().y -  (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2)), ImGuiChildFlags_Borders))
+    if (this->beginChild("##rage_right_chams", ImVec2((ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2, ImGui::GetContentRegionAvail().y -  (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2)), ImGuiChildFlags_Borders))
     {
-        ImGui::Text(oxorany("world"));
-        checkbox(oxorany("solid world"), &g.b_solid);
-        checkbox(oxorany("world color"), &g.b_world);
+        checkbox(oxorany("Chams"), &g.b_players);
         ImGui::SameLine();
-        ImGui::ColorEdit4(oxorany("##daaaaaa"), g.m_world, color_flags);
-        checkbox(oxorany("fog"), &g.b_fog);
-        ImGui::SameLine();
-        ImGui::ColorEdit4(oxorany("##sdfgdsfgdsg"), g.m_fog, color_flags);
-        if (g.b_fog)
-        {
-            slider_float(oxorany("fog start"), &g.f_start, 1.0f, 6.0f);
-            slider_float(oxorany("fog end"), &g.f_end, 1.0f, 50.0f);
-        }
-        checkbox(oxorany("sky"), &g.b_sky);
-        ImGui::SameLine();
-        ImGui::ColorEdit4(oxorany("##sdfgdfdgsfgdsg"), g.m_sky, color_flags);
-        ImGui::Text(oxorany("chams"));
-        checkbox(oxorany("players"), &g.b_players);
-        ImGui::SameLine();
-        ImGui::ColorEdit4(oxorany("##dfgdfg"), g.m_players, color_flags);
-
+        ImGui::ColorEdit4(oxorany("##enemych"), g.m_players, color_flags);
         if (g.b_players)
         {
             auto chams = g.i_players;
-            ImGui::Combo(oxorany("material##DDsdfDd"), &chams, enemy_, IM_ARRAYSIZE(enemy_));
+            ImGui::Combo(oxorany("Enemy Chams"), &chams, enemy_, IM_ARRAYSIZE(enemy_));
             g.i_players = chams;
         }
-        checkbox(oxorany("local"), &g.b_local);
+        checkbox(oxorany("Local Chams"), &g.b_local);
         ImGui::SameLine();
-        ImGui::ColorEdit4(oxorany("##dsgghhgsd"), g.m_local, color_flags);
+        ImGui::ColorEdit4(oxorany("##localch"), g.m_local, color_flags);
         if (g.b_local)
         {
             auto dgg = g.i_local;
-            ImGui::Combo(oxorany("material##DDddhD"), &dgg, local_, IM_ARRAYSIZE(local_));
+            ImGui::Combo(oxorany("material##local"), &dgg, local_, IM_ARRAYSIZE(local_));
             g.i_local = dgg;
         }
         checkbox(oxorany("weapom chams"), &g.weapon_chams);
         ImGui::SameLine();
-        ImGui::ColorEdit4(oxorany("##dsfsdfsdfdsfsfdsfjhjghjgh"), g.m_weapon, color_flags);
-        if (g.weapon_chams)
-        {
-            auto dgg = g.i_weapon;
-            ImGui::Combo(oxorany("material##DDdghjhgjghjgdhD"), &dgg, hit_, IM_ARRAYSIZE(hit_));
-            g.i_weapon = dgg;
-        }
-        ImGui::Text(oxorany("bullet"));
+        ImGui::ColorEdit4(oxorany("##wpnch"), g.m_weapon, color_flags);
         checkbox(oxorany("tracer"), &g.b_tracer);
-        ImGui::SameLine();
-        ImGui::ColorEdit4(oxorany("##fggghfjh"), g.m_tracer, color_flags);
         checkbox(oxorany("marker"), &g.b_marker);
-        ImGui::SameLine();
-        ImGui::ColorEdit4(oxorany("##dfgfdg"), g.m_marker, color_flags);
         checkbox(oxorany("damage"), &g.b_dmarker);
+        checkbox(oxorany("solid world"), &g.b_solid);
+        checkbox(oxorany("world color"), &g.b_world);
+        checkbox(oxorany("fog"), &g.b_fog);
+        checkbox(oxorany("sky"), &g.b_sky);
     }
     this->endChild();
 }
 
 void C_UserInterface::visuals()
 {
+    // Halalium Rage tab — Silent Aim / walls / AA
     static page_t hitboxes[] {
         page_t(&g.hitbox[0], oxorany("head")),
         page_t(&g.hitbox[1], oxorany("body")),
         page_t(&g.hitbox[2], oxorany("hip")),
         page_t(&g.hitbox[3], oxorany("legs"))
     };
-    if (this->beginChild(oxorany("aim##k"), ImVec2((ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2, ImGui::GetContentRegionAvail().y -  (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2)), ImGuiChildFlags_Borders)) {
-        checkbox(oxorany("silent"), &g.b_silent);
-        checkbox(oxorany("auto fire"), &g.b_fire);
+    if (this->beginChild(oxorany("##vis_aim"), ImVec2((ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2, ImGui::GetContentRegionAvail().y -  (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2)), ImGuiChildFlags_Borders)) {
+        checkbox(oxorany("Silent Aim"), &g.b_silent);
+        checkbox(oxorany("Auto Fire"), &g.b_fire);
+        checkbox(oxorany("Auto Wall"), &g.b_autowall);
+        checkbox(oxorany("Through Walls"), &g.b_through_walls);
+        checkbox(oxorany("Wallshot"), &g.b_wallshot);
+        checkbox(oxorany("No spread"), &g.b_nospread);
         multiCombo(oxorany("hitbox"), hitboxes, IM_ARRAYSIZE(hitboxes));
         checkbox(oxorany("duck"), &g.b_duck);
         checkbox(oxorany("autostop"), &g.b_stop);
-        checkbox(oxorany("endless ammo"), &g.b_endless);
+        checkbox(oxorany("Inf Ammo"), &g.b_endless);
         checkbox(oxorany("double tap"), &g.b_dt);
-
-        // checkbox(oxorany("predict"), &g.predict);
-        // if (g.predict)
-        //     slider_float(oxorany("factor"), &g.factor, 0, 10);
     }
     this->endChild();
 
     ImGui::SameLine();
 
-    if (this->beginChild("aa##k", ImVec2((ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2, ImGui::GetContentRegionAvail().y -  (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2)), ImGuiChildFlags_Borders))
+    if (this->beginChild("##vis_aa", ImVec2((ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2, ImGui::GetContentRegionAvail().y -  (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2)), ImGuiChildFlags_Borders))
     {
-        checkbox(oxorany("anti aims"), &g.b_antiaim);
+        checkbox(oxorany("Anti Aim"), &g.b_antiaim);
         auto pitch = g.i_pitch;
-        ImGui::Combo(oxorany("pitch"), &pitch, pitch_, IM_ARRAYSIZE(pitch_));
+        ImGui::Combo(oxorany("Anti Aim Pitch"), &pitch, pitch_, IM_ARRAYSIZE(pitch_));
         g.i_pitch = pitch;
         int yaw = g.i_yaw;
         ImGui::Combo(oxorany("yaw"), &yaw, yaw_, IM_ARRAYSIZE(yaw_));
         g.i_yaw = yaw;
+        checkbox(oxorany("Spin"), &g.b_spin);
+        if (g.b_spin || g.b_antiaim)
+            slider_float(oxorany("spin speed"), &g.f_speed, 0, 180);
         checkbox(oxorany("jitter"), &g.b_jitter);
         if (g.b_jitter)
         {
             slider_int(oxorany("range"), &g.i_range, 0, 50);
             slider_int(oxorany("frames"), &g.frames, 0, 30);
-
         }
-        slider_float(oxorany("spin speed"), &g.f_speed, 0, 180);
         checkbox(oxorany("random in jump"), &g.b_chaos);
     }
     this->endChild();
@@ -762,16 +745,19 @@ void C_UserInterface::visuals()
 
 void C_UserInterface::exploits()
 {
+    // Halalium Skins tab
     float childWidth = ImGui::GetWindowSize().x - ImGui::GetStyle().WindowPadding.x * 2;
     float childHeight = ImGui::GetContentRegionAvail().y -  ImGui::GetStyle().WindowPadding.y * 2 - ImGui::GetStyle().ItemSpacing.y * 2;
 
-    if (this->beginChild(oxorany("tools##k"), ImVec2(childWidth, childHeight), ImGuiChildFlags_Borders))
+    if (this->beginChild(oxorany("##skins_panel"), ImVec2(childWidth, childHeight), ImGuiChildFlags_Borders))
     {
-        // checkbox(oxorany("one hit kill"), &g.b_onehit);
-        // checkbox(oxorany("fire rate"), &g.b_frate);
-        // checkbox(oxorany("god mode"), &g.b_god);
-        // checkbox(oxorany("set health"), &g.sethp);
-        // slider_float(oxorany("dur"), &g.dur, 1, 1000);
+        checkbox(oxorany("Skin Changer"), &g.b_skin_changer);
+        if (g.b_skin_changer)
+        {
+            slider_int(oxorany("weapon id"), &g.i_skin_weapon, 0, 64);
+            slider_int(oxorany("skin id"), &g.i_skin_id, 0, 512);
+            ImGui::TextColored(ImVec4(0.55f, 0.55f, 0.50f, 1.f), "InstantiateViaServer path (Halalium)");
+        }
     }
 
     this->endChild();
@@ -782,19 +768,19 @@ void C_UserInterface::misc()
     float childWidth = ImGui::GetWindowSize().x - ImGui::GetStyle().WindowPadding.x * 2;
     float childHeight = ImGui::GetContentRegionAvail().y -  ImGui::GetStyle().WindowPadding.y * 2 - ImGui::GetStyle().ItemSpacing.y * 2;
 
-    if (this->beginChild(oxorany("more##k"), ImVec2(childWidth, childHeight), ImGuiChildFlags_Borders))
+    if (this->beginChild(oxorany("##misc_left"), ImVec2(childWidth, childHeight), ImGuiChildFlags_Borders))
     {
+        checkbox(oxorany("Third Person"), &g.b_third);
+        if (g.b_third)
+            slider_float(oxorany("distance"), &g.mom, 2, 3);
         checkbox(oxorany("fast walk"), &g.b_walk);
         checkbox(oxorany("auto strafer"), &g.b_strafer);
-        checkbox(oxorany("third person"), &g.b_third);
-        if (g.b_third)
-        slider_float(oxorany("distance"), &g.mom, 2, 3);
         checkbox(oxorany("remove scope"), &g.b_scope);
         slider_float(oxorany("fov"), &g.m_fov, 59.9f, 100.f);
         checkbox(oxorany("aspect ratio"), &g.b_aspect);
-        if (g.b_aspect) {
-         slider_float(oxorany("value"), &g.f_aspect, 1, 5);
-        }
+        if (g.b_aspect)
+            slider_float(oxorany("value"), &g.f_aspect, 1, 5);
+        ImGui::TextColored(ImVec4(0.55f, 0.55f, 0.50f, 1.f), "Watermark always on — tap to open");
     }
 
     this->endChild();

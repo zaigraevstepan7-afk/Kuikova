@@ -156,7 +156,13 @@
   },
   "methods": {
     "AntiCheat.OnStart_getrr": "0x8b9579c",
-    "PlayerController.Update": "0x8e7c40c"
+    "PlayerController.Update": "0x8e7c40c",
+    "PlayerController.LateUpdate": "0x8e7cf50",
+    "Hook.Secondary": "0x8e0085c",
+    "Hook.Tertiary": "0x79fe5e0",
+    "Hook.TertiaryAlt": "0x147e970",
+    "Hook.ExtraA": "0x8d663ec",
+    "Hook.ExtraB": "0x8d2b2b0"
   },
   "notes": [
     "Kikaium contract: eglSwapBuffers draw + ##wm_click open + VMT Update hooks + Offsets from this profile"

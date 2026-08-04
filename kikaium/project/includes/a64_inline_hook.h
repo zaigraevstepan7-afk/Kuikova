@@ -1,8 +1,6 @@
 #pragma once
-// Minimal AArch64 inline hook (Halalium/Dobby-equivalent for one symbol).
-// Backs up the first 16 bytes, patches an absolute LDR/BR trampoline into the
-// target, and builds an executable stub that runs the original bytes then
-// jumps back to target+16.
+// AArch64 inline hook — Halalium/Dobby-equivalent for tracked game RVAs.
+// 16-byte LDR x16 / BR x16 patch + executable trampoline (stolen bytes + return).
 
 #include <cstdint>
 #include <cstring>
@@ -39,16 +37,54 @@ constexpr uint32_t kBrX16 = 0xD61F0200u;
 
 inline bool already_patched(void *target)
 {
+    if (!target)
+        return false;
     auto *w = reinterpret_cast<uint32_t *>(target);
     return w[0] == kLdrX16 && w[1] == kBrX16;
 }
 
-inline bool install(void *target, void *replacement, void **out_trampoline)
+inline void release_trampoline(void *tramp)
 {
-    if (!target || !replacement || !out_trampoline)
-        return false;
+    if (tramp)
+        munmap(tramp, 16 + 16);
+}
 
-    // Second inject into same process often re-patches already-hooked egl → crash.
+inline bool restore(void *target, const uint8_t backup[kPatchSize])
+{
+    if (!target || !backup)
+        return false;
+    if (!make_rwx(target, kPatchSize))
+        return false;
+    memcpy(target, backup, kPatchSize);
+    __builtin___clear_cache((char *)target, (char *)target + kPatchSize);
+    make_rx(target, kPatchSize);
+    return true;
+}
+
+// Patch jump only (no trampoline). Used by getrr OnStart.
+inline bool patch_jump(void *target, void *replacement, uint8_t backup[kPatchSize])
+{
+    if (!target || !replacement || !backup)
+        return false;
+    if (already_patched(target))
+        return false;
+    memcpy(backup, target, kPatchSize);
+    if (!make_rwx(target, kPatchSize))
+        return false;
+    auto *t = (uint8_t *)target;
+    uint32_t *patch = (uint32_t *)t;
+    patch[0] = kLdrX16;
+    patch[1] = kBrX16;
+    *(uint64_t *)(t + 8) = (uint64_t)replacement;
+    __builtin___clear_cache((char *)t, (char *)t + kPatchSize);
+    make_rx(target, kPatchSize);
+    return true;
+}
+
+inline bool install_with_backup(void *target, void *replacement, void **out_trampoline, uint8_t backup[kPatchSize])
+{
+    if (!target || !replacement || !out_trampoline || !backup)
+        return false;
     if (already_patched(target))
     {
         MELODIUM_HOOK_LOG("a64hook refuse double-patch @%p", target);
@@ -64,13 +100,13 @@ inline bool install(void *target, void *replacement, void **out_trampoline)
     auto *t = (uint8_t *)target;
     auto *s = (uint8_t *)stub;
 
+    memcpy(backup, t, kPatchSize);
     memcpy(s, t, 16);
 
     uint32_t *back = (uint32_t *)(s + 16);
     back[0] = kLdrX16;
     back[1] = kBrX16;
     *(uint64_t *)(s + 16 + 8) = (uint64_t)(t + 16);
-
     __builtin___clear_cache((char *)s, (char *)s + stub_size);
 
     if (!make_rwx(target, kPatchSize))
@@ -83,13 +119,18 @@ inline bool install(void *target, void *replacement, void **out_trampoline)
     patch[0] = kLdrX16;
     patch[1] = kBrX16;
     *(uint64_t *)(t + 8) = (uint64_t)replacement;
-
     __builtin___clear_cache((char *)t, (char *)t + kPatchSize);
     make_rx(target, kPatchSize);
 
     *out_trampoline = stub;
-    MELODIUM_HOOK_LOG("a64hook installed target=%p hook=%p tramp=%p", target, replacement, stub);
+    MELODIUM_HOOK_LOG("a64hook+backup installed target=%p hook=%p tramp=%p", target, replacement, stub);
     return true;
+}
+
+inline bool install(void *target, void *replacement, void **out_trampoline)
+{
+    uint8_t unused[kPatchSize]{};
+    return install_with_backup(target, replacement, out_trampoline, unused);
 }
 
 } // namespace a64hook

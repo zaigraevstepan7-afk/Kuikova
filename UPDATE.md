@@ -1,15 +1,13 @@
-# Kikaium = Halalium RE + Melodium-style source (real cheat SO)
+# Kikaium = Halalium reconstruction (source), Melodium-quality menu
 
-Primary product: **Kikaium** (`kikaium/project` → `kikaium/bin/libkikaium.so`).
+Not a renamed Halalium SO. Capstone RE of `libhalalium.so` → rebuild:
 
-Unlike the soft menu-only Melodium snapshot, Kikaium builds with:
-- VMT Update/LateUpdate + hit/gun hooks
-- ESP / visual overlays on `eglSwapBuffers` after `g_sdk_ready`
-- Halalium offsets from improved `tools/halalium_emu` (brace-aware dump.cs + ScriptMethod)
+- egl + ##wm_click (menu starts closed)
+- Absolute RVA Update/LateUpdate (Halalium Dobby list)
+- Halalium feature labels (Silent Aim, Enable Esp, Auto Wall, …)
+- Melodium left-rail widgets / copper theme
 
 ```bash
 bash tools/halalium_emu/update.sh
-bash kikaium/build.sh --verify   # 3× build + JNI/VMT/egl/wm checks
+bash kikaium/build.sh --verify
 ```
-
-Docs: `kikaium/README.md`, `kikaium/docs/HALALIUM_FULL_RE.md`.
