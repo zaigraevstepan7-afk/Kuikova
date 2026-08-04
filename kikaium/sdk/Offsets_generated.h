@@ -46,6 +46,8 @@ namespace Player {
     constexpr uintptr_t movement_controller  = 0x98;
     constexpr uintptr_t character_view       = 0x48;
     constexpr uintptr_t photon_view          = 0x150;
+    // Halalium Update_Halalium_Hooks: strb [player,#0xd8]
+    constexpr uintptr_t character_visible    = 0xD8;
 }
 
 namespace Weaponry {

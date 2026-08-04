@@ -48,6 +48,8 @@ namespace TypeInfo {
     constexpr uintptr_t GameManager       = 0xAC58C00; // 180718592
     constexpr uintptr_t TouchController   = 0xAC60B48; // 180751176
     constexpr uintptr_t AntiCheatManager  = 0xAC4DA30;
+    constexpr uintptr_t GunController     = 0xAC59040; // from Halalium profile / generated
+    constexpr uintptr_t PlayerMainCamera  = 0xAC5E188;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,6 +97,7 @@ namespace Player {
     constexpr uintptr_t character_controller = 0x118;
     constexpr uintptr_t photon_view          = 0x150;
     constexpr uintptr_t photon_player        = 0x160;
+    constexpr uintptr_t character_visible    = 0xD8; // Halalium Update strb
 }
 
 namespace Weaponry {
