@@ -54,14 +54,18 @@ inline bool install_tracked(void *target, void *replacement, void **orig_out)
             continue;
         if (e.active)
             return true;
-        // reinstall into existing slot
-        if (!a64hook::install_with_backup(target, replacement, &e.trampoline, e.backup))
+        // reinstall into existing slot (don't clobber old tramp before release)
+        void *tramp = nullptr;
+        if (!a64hook::install_with_backup(target, replacement, &tramp, e.backup))
             return false;
+        if (e.trampoline && e.trampoline != tramp)
+            a64hook::release_trampoline(e.trampoline);
+        e.trampoline = tramp;
         e.replacement = replacement;
         e.orig_out = orig_out;
         e.active = true;
         if (orig_out)
-            *orig_out = e.trampoline;
+            *orig_out = tramp;
         return true;
     }
 
