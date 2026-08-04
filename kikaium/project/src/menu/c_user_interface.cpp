@@ -498,13 +498,13 @@ void C_UserInterface::render()
     if (lock > 0)
     {
         g_menu_input_lock.store(lock - 1, std::memory_order_release);
+        // Don't wipe MousePos — only suppress the button that opened the menu
         ImGui::GetIO().AddMouseButtonEvent(0, false);
-        ImGui::GetIO().MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
     }
 
     extern float alpha;
     const float a = (alpha < 0.02f) ? 0.02f : alpha;
-    ImGui::GetStyle().TouchExtraPadding = ImVec2(6.f, 6.f);
+    ImGui::GetStyle().TouchExtraPadding = ImVec2(10.f, 10.f);
 
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, a);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f);
@@ -533,6 +533,7 @@ void C_UserInterface::render()
         ImGui::SetNextWindowPos(ImVec2((c_egl->width - ww) * 0.5f, (c_egl->heigth - wh) * 0.5f), ImGuiCond_Once);
         ImGui::SetNextWindowSize(ImVec2(ww, wh), ImGuiCond_Once);
     }
+    ImGui::SetNextWindowFocus();
 
     // xxx — new internal: ESP + Bypass only (SO2 0.39.2)
     if (this->beginWindow("xxx_shell", nullptr, ImGuiWindowFlags_NoScrollbar))
@@ -559,19 +560,18 @@ void C_UserInterface::render()
             ImGui::SetCursorPosX(rail_x + 8.f);
             bool selected = (m_iCurrentTab == i);
             ImVec2 p0 = ImGui::GetCursorScreenPos();
-            ImGui::PushStyleColor(ImGuiCol_Button, selected ? ImVec4(1.f, 0.77f, 0.28f, 0.14f) : ImVec4(0, 0, 0, 0));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.f, 1.f, 1.f, 0.05f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.f, 0.77f, 0.28f, 0.22f));
-            if (ImGui::Button("##r", ImVec2(rail_w - 16.f, 48.f)))
+            ImGui::PushStyleColor(ImGuiCol_Button, selected ? ImVec4(1.f, 0.77f, 0.28f, 0.18f) : ImVec4(0.06f, 0.06f, 0.07f, 1.f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.f, 0.77f, 0.28f, 0.28f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.f, 0.77f, 0.28f, 0.40f));
+            ImGui::PushStyleColor(ImGuiCol_Text, selected ? ImVec4(1.f, 0.77f, 0.28f, 1.f) : ImVec4(0.70f, 0.66f, 0.58f, 1.f));
+            // Use labeled button so hit-test + click are the same control (more reliable on touch)
+            if (ImGui::Button(tabs[i], ImVec2(rail_w - 16.f, 52.f)))
                 m_iCurrentTab = i;
-            ImGui::PopStyleColor(3);
+            ImGui::PopStyleColor(4);
 
-            ImU32 col = selected ? stux_ui::kAccent : (ImGui::IsItemHovered() ? IM_COL32(230, 220, 200, 255) : stux_ui::kMuted);
-            ImVec2 ts = ImGui::CalcTextSize(tabs[i]);
-            dl->AddText(ImVec2(p0.x + 8.f, p0.y + (48.f - ts.y) * 0.5f), col, tabs[i]);
             if (selected)
-                dl->AddRectFilled(ImVec2(wp.x + rail_x, p0.y + 10.f), ImVec2(wp.x + rail_x + 2.f, p0.y + 38.f), stux_ui::kAccent);
-            ImGui::Dummy(ImVec2(0, 4.f));
+                dl->AddRectFilled(ImVec2(wp.x + rail_x, p0.y + 10.f), ImVec2(wp.x + rail_x + 2.f, p0.y + 42.f), stux_ui::kAccent);
+            ImGui::Dummy(ImVec2(0, 6.f));
             ImGui::PopID();
         }
 
@@ -582,6 +582,7 @@ void C_UserInterface::render()
             {
             case 0: rage(); break;     // ESP panel
             case 1: config(); break;   // Bypass panel
+            default: m_iCurrentTab = 0; rage(); break;
             }
         }
         ImGui::EndChild();

@@ -239,9 +239,18 @@ void handle_touch()
         }
         if (from_input)
         {
+            // Only emit BUTTON edges — repeating AddMouseButtonEvent(true) every
+            // frame makes checkboxes/tabs toggle on press AND release.
+            static bool prev_down = false;
+            static float prev_x = -1.f, prev_y = -1.f;
             io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
-            io.AddMousePosEvent(x, y);
-            io.AddMouseButtonEvent(0, down);
+            if (x != prev_x || y != prev_y || down != prev_down)
+                io.AddMousePosEvent(x, y);
+            if (down != prev_down)
+                io.AddMouseButtonEvent(0, down);
+            prev_down = down;
+            prev_x = x;
+            prev_y = y;
             return;
         }
     }
@@ -289,7 +298,8 @@ void handle_touch()
         {
             io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
             io.AddMousePosEvent(x, y);
-            io.AddMouseButtonEvent(0, true);
+            if (!touch_active)
+                io.AddMouseButtonEvent(0, true);
             touch_active = true;
             touch_store(x, y, true, false);
         }
@@ -297,7 +307,8 @@ void handle_touch()
         {
             io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
             io.AddMousePosEvent(x, y);
-            io.AddMouseButtonEvent(0, false);
+            if (touch_active)
+                io.AddMouseButtonEvent(0, false);
             touch_active = false;
             touch_store(x, y, false, false);
         }

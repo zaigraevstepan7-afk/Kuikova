@@ -53,19 +53,20 @@ namespace gui
 
         const char *brand = oxorany("xxx");
 
-        // Top-left, always on top of game UI so tap target is obvious
         ImGui::SetNextWindowPos(ImVec2(16.f, 16.f), ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(0.0f);
-        ImGui::SetNextWindowFocus();
+        // NEVER SetNextWindowFocus every frame — steals focus from menu tabs/checkboxes
+        if (!open)
+            ImGui::SetNextWindowFocus();
 
         ImGui::Begin(oxorany("##stux_wm"), nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse |
                          ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings |
                          ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_AlwaysAutoResize |
-                         ImGuiWindowFlags_NoNav);
+                         ImGuiWindowFlags_NoNav |
+                         (open ? ImGuiWindowFlags_NoBringToFrontOnFocus : 0));
 
-        ImGui::PushFont(nullptr);
         ImVec2 ts = ImGui::CalcTextSize(brand);
         float pad = 14.f;
         float width = ts.x + pad * 2.f + 8.f;
@@ -79,17 +80,15 @@ namespace gui
         dl->AddRectFilled(rmin, rmax, IM_COL32(0, 0, 0, 200), 0.f);
         dl->AddRect(rmin, rmax, IM_COL32(255, 196, 72, 220), 0.f, 0, 1.5f);
         dl->AddText(ImVec2(p.x + pad, p.y + pad), IM_COL32(255, 255, 255, 255), brand);
-        ImGui::PopFont();
 
         ImGui::Dummy(ImVec2(width, height));
         ImGui::SetCursorScreenPos(rmin);
-        bool clicked = ImGui::InvisibleButton(oxorany("##wm_click"), ImVec2(width, height));
-        if (!clicked && kik_input::consume_tap_in_rect(rmin.x, rmin.y, rmax.x, rmax.y))
-            clicked = true;
-        if (clicked)
+        // Single click path only (InvisibleButton = release). Do NOT also use
+        // consume_tap_in_rect — that fired on press → double toggle (open/close flicker).
+        if (ImGui::InvisibleButton(oxorany("##wm_click"), ImVec2(width, height)))
         {
             open = !open;
-            g_menu_input_lock.store(8, std::memory_order_release);
+            g_menu_input_lock.store(6, std::memory_order_release);
         }
         ImGui::End();
     }
