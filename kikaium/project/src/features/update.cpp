@@ -518,11 +518,11 @@ void update::init()
     for (int i = 0; i < 8 && !loadedlib(oxorany("libsigner.so")) && !loadedlib(oxorany("lib/arm64/libsigner.so")); i++)
         sleep(1);
 
-    // CRITICAL split:
-    // - base      = libil2cpp.so  (il2cpp API + TypeInfo)
-    // - unity_base= libunity.so   (Halalium method RVAs like Update 0x8E7C40C)
-    // Old code set base=libunity when RVA was executable, then ::init() resolved
-    // il2cpp_domain_get = unity+offset and crashed ~3s after inject on img_to_asm.
+    // CRITICAL split (Halalium RE):
+    // - base       = libil2cpp.so  (il2cpp API + TypeInfo only)
+    // - unity_base = libunity.so   (Halalium Dobby method RVAs — libunity_base_resolve)
+    // Dump ScriptMethod numbers match Halalium RVAs; Halalium hangs them on libunity.
+    // Do NOT assume dump format ⇒ must use libil2cpp for hooks.
     base = find_module_base_rx("libil2cpp.so");
     if (!base)
         base = resolve_il2cpp_base();
@@ -547,27 +547,24 @@ void update::init()
     const uintptr_t update_rva = Offsets::Method::PlayerController_Update;
     const uintptr_t late_rva = Offsets::Method::PlayerController_LateUpdate;
 
-    bool hooked_pc = false;
-    bool hooked_late = false;
+    // Halalium order: libunity first, libil2cpp only as exec fallback
+    auto hook_game = [&](uintptr_t rva, void *hook, void **out_orig, const char *tag) -> bool {
+        if (unity_base && hook_rva_tracked(unity_base, rva, hook, out_orig, tag))
+            return true;
+        if (base && base != unity_base && hook_rva_tracked(base, rva, hook, out_orig, tag))
+            return true;
+        return false;
+    };
 
-    if (unity_base)
-    {
-        hooked_pc = hook_rva_tracked(unity_base, update_rva, (void *)new_update, (void **)&old_update, "PC.Update");
-        hooked_late = hook_rva_tracked(unity_base, late_rva, (void *)new_lateupdate, (void **)&old_lateupdate, "PC.LateUpdate");
+    bool hooked_pc = hook_game(update_rva, (void *)new_update, (void **)&old_update, "PC.Update");
+    bool hooked_late = hook_game(late_rva, (void *)new_lateupdate, (void **)&old_lateupdate, "PC.LateUpdate");
 
-        if (Offsets::Hook::use_secondary_hooks)
-        {
-            hook_rva_tracked(unity_base, Offsets::Method::HookSecondary, (void *)new_secondary_halalium, (void **)&old_secondary, "Secondary");
-            bool ter = hook_rva_tracked(unity_base, Offsets::Method::HookTertiary, (void *)new_tertiary_halalium, (void **)&old_tertiary, "Tertiary");
-            if (!ter)
-                hook_rva_tracked(unity_base, Offsets::Method::HookTertiaryAlt, (void *)new_tertiary_halalium, (void **)&old_tertiary, "TertiaryAlt");
-            hook_rva_tracked(unity_base, Offsets::Method::HookExtraA, (void *)new_extraA_halalium, (void **)&old_extraA, "ExtraA");
-            hook_rva_tracked(unity_base, Offsets::Method::HookExtraB, (void *)new_extraB_halalium, (void **)&old_extraB, "ExtraB");
-        }
-    }
-    else
+    if (Offsets::Hook::use_secondary_hooks)
     {
-        LOGI("unity_base missing - RVA hooks skipped (VMT only)");
+        hook_game(Offsets::Method::HookSecondary, (void *)new_secondary_halalium, (void **)&old_secondary, "Secondary");
+        hook_game(Offsets::Method::HookTertiary, (void *)new_tertiary_halalium, (void **)&old_tertiary, "Tertiary");
+        hook_game(Offsets::Method::HookExtraA, (void *)new_extraA_halalium, (void **)&old_extraA, "ExtraA");
+        hook_game(Offsets::Method::HookExtraB, (void *)new_extraB_halalium, (void **)&old_extraB, "ExtraB");
     }
 
     LOGI("kikaium: Halalium RVA Update=%d Late=%d", (int)hooked_pc, (int)hooked_late);
@@ -602,32 +599,7 @@ void update::init()
     if (gun_controller)
         vmt(gun_controller, oxorany("FEEBGAGHGGCGACA"), (void *)hook_executecommands, (void **)&old_executecommands);
 
-    // Silent Aim Melodium backup: swap Physics raycast icall table slot (same ABI as hook_raycast).
-    // Primary Silent path is Halalium Tertiary (use_secondary_hooks).
-    if (base)
-    {
-        void **slot = reinterpret_cast<void **>(base + 0x84DB9F0);
-        if (hmem::readable((uintptr_t)slot, sizeof(void *)))
-        {
-            void *orig = *slot;
-            if (orig && maps_contains_exec((uintptr_t)orig))
-            {
-                if (hhooks::install_tracked(orig, (void *)hook_raycast, (void **)&old_raycast))
-                {
-                    LOGI("raycast Melodium path hooked @%p (slot %p)", orig, slot);
-                }
-                else
-                {
-                    // Direct slot swap if inline hook fails (Melodium icall_hook style)
-                    old_raycast = (decltype(old_raycast))orig;
-                    *slot = (void *)hook_raycast;
-                    LOGI("raycast Melodium slot swapped @%p", slot);
-                }
-            }
-            else
-                LOGI("raycast slot empty/non-exec — Silent via Tertiary only");
-        }
-    }
+    // Silent Aim primary path: Halalium Tertiary (use_secondary_hooks).
 
     if (Offsets::Hook::use_getrr_bypass && unity_base)
     {

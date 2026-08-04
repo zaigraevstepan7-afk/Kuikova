@@ -376,54 +376,64 @@ void globals::updateTarget() {
 
 void globals::init()
 {
-    auto bind_u = [](uintptr_t rva) -> void * {
-        if (!unity_base || !rva)
+    // Halalium method hooks use libunity base (libunity_base_resolve / egl_install).
+    // Dump ScriptMethod RVAs are the same numbers; module is chosen by exec mapping:
+    // prefer unity_base (Halalium), fall back to libil2cpp if that page is not executable.
+    auto bind_rva = [](uintptr_t rva) -> void * {
+        if (!rva)
             return nullptr;
-        void *p = (void *)(unity_base + rva);
-        return maps_contains_exec((uintptr_t)p) ? p : nullptr;
+        for (uintptr_t mod : {unity_base, base})
+        {
+            if (!mod)
+                continue;
+            void *p = (void *)(mod + rva);
+            if (maps_contains_exec((uintptr_t)p))
+                return p;
+        }
+        return nullptr;
     };
 
-    if (unity_base)
+    if (unity_base || base)
     {
-        c_fn->set_active = (decltype(c_fn->set_active))(unity_base + Offsets::UnityMethod::set_active);
-        c_fn->set_fov = (decltype(c_fn->set_fov))(unity_base + Offsets::UnityMethod::set_fov);
-        c_fn->get_game_object = (decltype(c_fn->get_game_object))(unity_base + Offsets::UnityMethod::get_game_object);
+        c_fn->set_active = (decltype(c_fn->set_active))bind_rva(Offsets::UnityMethod::set_active);
+        c_fn->set_fov = (decltype(c_fn->set_fov))bind_rva(Offsets::UnityMethod::set_fov);
+        c_fn->get_game_object = (decltype(c_fn->get_game_object))bind_rva(Offsets::UnityMethod::get_game_object);
         c_methods->set_active = c_fn->set_active;
 
-        // Melodium 0.39.2 Transform/Camera/Physics/TPS — proven working on device
-        c_fn->get_position = (decltype(c_fn->get_position))bind_u(0x6005138);
-        c_fn->set_position = (decltype(c_fn->set_position))bind_u(0x6009694);
-        c_fn->get_forward = (decltype(c_fn->get_forward))bind_u(0x60062E0);
-        c_fn->get_up = (decltype(c_fn->get_up))bind_u(0x6002608);
-        c_fn->get_euler_angles = (decltype(c_fn->get_euler_angles))bind_u(0x6006BF0);
-        c_fn->set_euler_angles = (decltype(c_fn->set_euler_angles))bind_u(0x5FEC6CC);
-        c_fn->get_rotation = (decltype(c_fn->get_rotation))bind_u(0x5FF2184);
-        c_fn->get_transform = (decltype(c_fn->get_transform))bind_u(0x5FF113C);
-        c_fn->camera_get_main = (decltype(c_fn->camera_get_main))bind_u(0x5FACE04);
-        c_fn->get_w2c_injected = (decltype(c_fn->get_w2c_injected))bind_u(0x5FBA5F4);
-        c_fn->shader_find = (decltype(c_fn->shader_find))bind_u(0x6A95144);
-        c_fn->mat_get_texture = (decltype(c_fn->mat_get_texture))bind_u(0x6A92FA4);
-        c_fn->mat_set_texture = (decltype(c_fn->mat_set_texture))bind_u(0x6A81174);
-        c_fn->mat_get_shader = (decltype(c_fn->mat_get_shader))bind_u(0x6A82020);
-        c_fn->mat_set_shader = (decltype(c_fn->mat_set_shader))bind_u(0x6A88CA8);
-        c_fn->mat_ctor_shader = (decltype(c_fn->mat_ctor_shader))bind_u(0x6A98518);
-        c_fn->mat_set_color = (decltype(c_fn->mat_set_color))bind_u(0x6A96904);
-        c_fn->mat_set_int = (decltype(c_fn->mat_set_int))bind_u(0x6A84BE4);
-        c_fn->mat_set_float = (decltype(c_fn->mat_set_float))bind_u(0x6A8BF28);
-        c_fn->renderer_get_material = (decltype(c_fn->renderer_get_material))bind_u(0x6A962B4);
-        c_fn->renderer_set_material = (decltype(c_fn->renderer_set_material))bind_u(0x6A91498);
-        c_fn->renderer_get_materials = (decltype(c_fn->renderer_get_materials))bind_u(0x6A9149C);
-        c_fn->renderer_set_materials = (decltype(c_fn->renderer_set_materials))bind_u(0x6A8EFD8);
-        c_fn->find_objects_of_type = (decltype(c_fn->find_objects_of_type))bind_u(0x5FF2770);
-        c_fn->set_tps = (decltype(c_fn->set_tps))bind_u(0x8E7E63C);
-        c_fn->set_fps = (decltype(c_fn->set_fps))bind_u(0x8E7EC48);
-        c_fn->set_visible = (decltype(c_fn->set_visible))bind_u(0x8E880E4);
-        c_fn->get_velocity = (decltype(c_fn->get_velocity))bind_u(0x7A05344);
+        // Same numeric RVAs as dump/Melodium — bound via Halalium unity-first policy above
+        c_fn->get_position = (decltype(c_fn->get_position))bind_rva(0x6005138);
+        c_fn->set_position = (decltype(c_fn->set_position))bind_rva(0x6009694);
+        c_fn->get_forward = (decltype(c_fn->get_forward))bind_rva(0x60062E0);
+        c_fn->get_up = (decltype(c_fn->get_up))bind_rva(0x6002608);
+        c_fn->get_euler_angles = (decltype(c_fn->get_euler_angles))bind_rva(0x6006BF0);
+        c_fn->set_euler_angles = (decltype(c_fn->set_euler_angles))bind_rva(0x5FEC6CC);
+        c_fn->get_rotation = (decltype(c_fn->get_rotation))bind_rva(0x5FF2184);
+        c_fn->get_transform = (decltype(c_fn->get_transform))bind_rva(0x5FF113C);
+        c_fn->camera_get_main = (decltype(c_fn->camera_get_main))bind_rva(0x5FACE04);
+        c_fn->get_w2c_injected = (decltype(c_fn->get_w2c_injected))bind_rva(0x5FBA5F4);
+        c_fn->shader_find = (decltype(c_fn->shader_find))bind_rva(0x6A95144);
+        c_fn->mat_get_texture = (decltype(c_fn->mat_get_texture))bind_rva(0x6A92FA4);
+        c_fn->mat_set_texture = (decltype(c_fn->mat_set_texture))bind_rva(0x6A81174);
+        c_fn->mat_get_shader = (decltype(c_fn->mat_get_shader))bind_rva(0x6A82020);
+        c_fn->mat_set_shader = (decltype(c_fn->mat_set_shader))bind_rva(0x6A88CA8);
+        c_fn->mat_ctor_shader = (decltype(c_fn->mat_ctor_shader))bind_rva(0x6A98518);
+        c_fn->mat_set_color = (decltype(c_fn->mat_set_color))bind_rva(0x6A96904);
+        c_fn->mat_set_int = (decltype(c_fn->mat_set_int))bind_rva(0x6A84BE4);
+        c_fn->mat_set_float = (decltype(c_fn->mat_set_float))bind_rva(0x6A8BF28);
+        c_fn->renderer_get_material = (decltype(c_fn->renderer_get_material))bind_rva(0x6A962B4);
+        c_fn->renderer_set_material = (decltype(c_fn->renderer_set_material))bind_rva(0x6A91498);
+        c_fn->renderer_get_materials = (decltype(c_fn->renderer_get_materials))bind_rva(0x6A9149C);
+        c_fn->renderer_set_materials = (decltype(c_fn->renderer_set_materials))bind_rva(0x6A8EFD8);
+        c_fn->find_objects_of_type = (decltype(c_fn->find_objects_of_type))bind_rva(0x5FF2770);
+        c_fn->set_tps = (decltype(c_fn->set_tps))bind_rva(0x8E7E63C);
+        c_fn->set_fps = (decltype(c_fn->set_fps))bind_rva(0x8E7EC48);
+        c_fn->set_visible = (decltype(c_fn->set_visible))bind_rva(0x8E880E4);
+        c_fn->get_velocity = (decltype(c_fn->get_velocity))bind_rva(0x7A05344);
 
-        c_methods->linecast = (decltype(c_methods->linecast))bind_u(0x7A020F4);
-        c_methods->sphere_cast = (decltype(c_methods->sphere_cast))bind_u(0x79FFF6C);
-        c_methods->get_count = (decltype(c_methods->get_count))bind_u(0x684E370);
-        c_methods->get_touch = (decltype(c_methods->get_touch))bind_u(0x684EDAC);
+        c_methods->linecast = (decltype(c_methods->linecast))bind_rva(0x7A020F4);
+        c_methods->sphere_cast = (decltype(c_methods->sphere_cast))bind_rva(0x79FFF6C);
+        c_methods->get_count = (decltype(c_methods->get_count))bind_rva(0x684E370);
+        c_methods->get_touch = (decltype(c_methods->get_touch))bind_rva(0x684EDAC);
     }
 
     // MethodInfo fill-ins for anything Melodium RVA missed
