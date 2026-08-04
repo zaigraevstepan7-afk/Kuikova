@@ -323,11 +323,11 @@ static void apply_imgui_style()
     auto style = &ImGui::GetStyle();
     ImGui::StyleColorsDark();
 
-    // xxxpastuxxx style: graphite + mint (replaces charcoal/copper)
-    const ImVec4 mint = ImVec4(0.24f, 1.00f, 0.71f, 1.00f);
-    const ImVec4 mint_dim = ImVec4(0.10f, 0.35f, 0.28f, 1.00f);
-    const ImVec4 bg = ImVec4(0.031f, 0.047f, 0.055f, 0.98f);
-    const ImVec4 bg2 = ImVec4(0.05f, 0.07f, 0.08f, 1.00f);
+    // xxxpastuxxx style: ink + amber (replaces charcoal/copper)
+    const ImVec4 mint = ImVec4(1.00f, 0.77f, 0.28f, 1.00f);
+    const ImVec4 mint_dim = ImVec4(0.45f, 0.32f, 0.08f, 1.00f);
+    const ImVec4 bg = ImVec4(0.024f, 0.024f, 0.031f, 0.98f);
+    const ImVec4 bg2 = ImVec4(0.04f, 0.04f, 0.05f, 1.00f);
 
     style->WindowBorderSize = 1.f;
     style->ChildBorderSize = 1.f;

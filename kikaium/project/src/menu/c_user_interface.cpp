@@ -9,18 +9,18 @@
 #include <cmath>
 
 namespace stux_ui {
-// xxxpastuxxx — graphite + mint (not copper rail, not Halalium grey)
-static constexpr ImU32 kAccent = IM_COL32(61, 255, 181, 255);
-static constexpr ImU32 kAccentDim = IM_COL32(61, 255, 181, 45);
-static constexpr ImU32 kAccentSoft = IM_COL32(61, 255, 181, 100);
-static constexpr ImU32 kBg0 = IM_COL32(8, 12, 14, 250);
-static constexpr ImU32 kBg1 = IM_COL32(12, 16, 18, 255);
-static constexpr ImU32 kBg2 = IM_COL32(16, 22, 24, 255);
-static constexpr ImU32 kBgHeader = IM_COL32(10, 14, 16, 255);
-static constexpr ImU32 kLine = IM_COL32(36, 48, 44, 255);
-static constexpr ImU32 kLineSoft = IM_COL32(28, 40, 36, 180);
-static constexpr ImU32 kText = IM_COL32(220, 235, 228, 255);
-static constexpr ImU32 kMuted = IM_COL32(100, 120, 112, 255);
+// xxxpastuxxx v3 — ink + amber, RIGHT drawer (not Halalium purple bottom tabs)
+static constexpr ImU32 kAccent = IM_COL32(255, 196, 72, 255);
+static constexpr ImU32 kAccentDim = IM_COL32(255, 196, 72, 40);
+static constexpr ImU32 kAccentSoft = IM_COL32(255, 196, 72, 90);
+static constexpr ImU32 kBg0 = IM_COL32(6, 6, 8, 250);
+static constexpr ImU32 kBg1 = IM_COL32(10, 10, 12, 255);
+static constexpr ImU32 kBg2 = IM_COL32(14, 14, 16, 255);
+static constexpr ImU32 kBgHeader = IM_COL32(8, 8, 10, 255);
+static constexpr ImU32 kLine = IM_COL32(48, 42, 28, 255);
+static constexpr ImU32 kLineSoft = IM_COL32(40, 34, 22, 180);
+static constexpr ImU32 kText = IM_COL32(240, 236, 228, 255);
+static constexpr ImU32 kMuted = IM_COL32(120, 110, 90, 255);
 
 inline void panel_title(const char *str_id, char *out, size_t out_n)
 {
@@ -68,8 +68,8 @@ void C_UserInterface::endWindow()
 
 bool C_UserInterface::beginChild(const char *str_id, const ImVec2 &size_arg, ImGuiChildFlags child_flags, ImGuiWindowFlags window_flags)
 {
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.045f, 0.065f, 0.070f, 0.98f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.14f, 0.19f, 0.17f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.04f, 0.04f, 0.05f, 0.98f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.22f, 0.18f, 0.10f, 1.f));
     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.f);
     ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.f, 14.f));
@@ -509,102 +509,85 @@ void C_UserInterface::render()
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f);
     ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.f);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.f);
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(12.f, 11.f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.f, 10.f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
 
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.86f, 0.92f, 0.89f, 1.f));
-    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.10f, 0.35f, 0.28f, 0.45f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.15f, 0.55f, 0.42f, 0.55f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.24f, 1.f, 0.71f, 0.35f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.06f, 0.09f, 0.10f, 1.f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.09f, 0.14f, 0.13f, 1.f));
-    ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(0.24f, 1.f, 0.71f, 1.f));
-    ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.24f, 1.f, 0.71f, 1.f));
-    ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.55f, 1.f, 0.82f, 1.f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.14f, 0.19f, 0.17f, 1.f));
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.07f, 0.10f, 0.11f, 1.f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.10f, 0.18f, 0.16f, 1.f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.28f, 0.22f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.94f, 0.92f, 0.88f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.55f, 0.40f, 0.10f, 0.40f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.70f, 0.50f, 0.12f, 0.50f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(1.f, 0.77f, 0.28f, 0.35f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.08f, 0.08f, 0.09f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.12f, 0.11f, 0.09f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(1.f, 0.77f, 0.28f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(1.f, 0.77f, 0.28f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(1.f, 0.88f, 0.50f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.22f, 0.18f, 0.10f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.08f, 0.08f, 0.09f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.14f, 0.12f, 0.08f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.22f, 0.16f, 0.06f, 1.f));
 
     if (c_egl && c_egl->width > 0)
     {
-        const float ww = 920.f, wh = 560.f;
+        const float ww = 860.f, wh = 520.f;
         ImGui::SetNextWindowPos(ImVec2((c_egl->width - ww) * 0.5f, (c_egl->heigth - wh) * 0.5f), ImGuiCond_Once);
         ImGui::SetNextWindowSize(ImVec2(ww, wh), ImGuiCond_Once);
     }
 
+    // RIGHT-side nav drawer — opposite of Halalium left-rail / bottom icons
     if (this->beginWindow("xxxpastuxxx_shell", nullptr, ImGuiWindowFlags_NoScrollbar))
     {
         ImVec2 win = ImGui::GetWindowSize();
         ImDrawList *dl = ImGui::GetWindowDrawList();
         ImVec2 wp = ImGui::GetWindowPos();
 
-        const float header_h = 52.f;
-        const float tab_h = 40.f;
+        const float rail_w = 120.f;
+        const float rail_x = win.x - rail_w;
 
-        // Header strip
-        dl->AddRectFilled(ImVec2(wp.x, wp.y + 2.f), ImVec2(wp.x + win.x, wp.y + header_h), stux_ui::kBgHeader);
-        dl->AddRectFilled(ImVec2(wp.x, wp.y + header_h - 1.f), ImVec2(wp.x + win.x, wp.y + header_h), stux_ui::kLineSoft);
+        // Right rail
+        dl->AddRectFilled(ImVec2(wp.x + rail_x, wp.y + 2.f), ImVec2(wp.x + win.x, wp.y + win.y), stux_ui::kBgHeader);
+        dl->AddRectFilled(ImVec2(wp.x + rail_x, wp.y + 2.f), ImVec2(wp.x + rail_x + 2.f, wp.y + win.y), stux_ui::kAccent);
 
-        ImGui::SetCursorPos(ImVec2(18.f, 14.f));
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.24f, 1.f, 0.71f, 1.f));
-        ImGui::TextUnformatted("xxxpastuxxx");
-        ImGui::PopStyleColor();
-        ImGui::SameLine(0, 16.f);
-        ImGui::SetCursorPosY(16.f);
-        ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.50f, 1.f), "t.me/xxxstuxxx");
-        ImGui::SameLine();
-        {
-            const char *ver = "0.39.2";
-            ImVec2 vs = ImGui::CalcTextSize(ver);
-            ImGui::SetCursorPos(ImVec2(win.x - vs.x - 18.f, 16.f));
-            ImGui::TextColored(ImVec4(0.35f, 0.42f, 0.38f, 1.f), "%s", ver);
-        }
+        // Brand strip top of content
+        dl->AddRectFilled(ImVec2(wp.x, wp.y + 2.f), ImVec2(wp.x + rail_x, wp.y + 44.f), stux_ui::kBg1);
+        dl->AddText(ImVec2(wp.x + 16.f, wp.y + 14.f), stux_ui::kAccent, "xxx");
+        dl->AddText(ImVec2(wp.x + 48.f, wp.y + 16.f), stux_ui::kMuted, "pastuxxx");
 
-        // Top horizontal tabs (NOT left rail)
-        static const char *tabs[] = {"Combat", "Sight", "Utility", "Skins", "System"};
-        const float tab_pad = 12.f;
-        const float tab_w = (win.x - tab_pad * 2.f) / 5.f;
-        ImGui::SetCursorPos(ImVec2(tab_pad, header_h + 4.f));
+        // Tabs on RIGHT
+        static const char *tabs[] = {"01 AIM", "02 ESP", "03 MORE", "04 SKIN", "05 CFG"};
+        ImGui::SetCursorPos(ImVec2(rail_x + 8.f, 56.f));
         for (int i = 0; i < 5; i++)
         {
             ImGui::PushID(i);
+            ImGui::SetCursorPosX(rail_x + 8.f);
             bool selected = (m_iCurrentTab == i);
             ImVec2 p0 = ImGui::GetCursorScreenPos();
-            ImGui::PushStyleColor(ImGuiCol_Button, selected ? ImVec4(0.24f, 1.f, 0.71f, 0.12f) : ImVec4(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_Button, selected ? ImVec4(1.f, 0.77f, 0.28f, 0.14f) : ImVec4(0, 0, 0, 0));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.f, 1.f, 1.f, 0.05f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.24f, 1.f, 0.71f, 0.20f));
-            if (ImGui::Button("##stux_tab", ImVec2(tab_w - 4.f, tab_h - 6.f)))
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.f, 0.77f, 0.28f, 0.22f));
+            if (ImGui::Button("##r", ImVec2(rail_w - 16.f, 48.f)))
                 m_iCurrentTab = i;
             ImGui::PopStyleColor(3);
 
-            ImDrawList *tdl = ImGui::GetWindowDrawList();
+            ImU32 col = selected ? stux_ui::kAccent : (ImGui::IsItemHovered() ? IM_COL32(230, 220, 200, 255) : stux_ui::kMuted);
             ImVec2 ts = ImGui::CalcTextSize(tabs[i]);
-            ImU32 col = selected ? stux_ui::kAccent : (ImGui::IsItemHovered() ? IM_COL32(210, 230, 220, 255) : stux_ui::kMuted);
-            tdl->AddText(ImVec2(p0.x + (tab_w - 4.f - ts.x) * 0.5f, p0.y + (tab_h - 6.f - ts.y) * 0.5f), col, tabs[i]);
+            dl->AddText(ImVec2(p0.x + 8.f, p0.y + (48.f - ts.y) * 0.5f), col, tabs[i]);
             if (selected)
-                tdl->AddRectFilled(ImVec2(p0.x + 8.f, p0.y + tab_h - 8.f),
-                                   ImVec2(p0.x + tab_w - 12.f, p0.y + tab_h - 6.f), stux_ui::kAccent);
-
-            ImGui::SameLine(0, 4.f);
+                dl->AddRectFilled(ImVec2(wp.x + rail_x, p0.y + 10.f), ImVec2(wp.x + rail_x + 2.f, p0.y + 38.f), stux_ui::kAccent);
+            ImGui::Dummy(ImVec2(0, 4.f));
             ImGui::PopID();
         }
 
-        // Content body — full width under tabs
-        const float body_y = header_h + tab_h + 4.f;
-        dl->AddLine(ImVec2(wp.x + 12.f, wp.y + body_y - 2.f),
-                    ImVec2(wp.x + win.x - 12.f, wp.y + body_y - 2.f), stux_ui::kLineSoft);
-
-        ImGui::SetCursorPos(ImVec2(16.f, body_y));
-        ImGui::BeginChild("##stux_body", ImVec2(win.x - 32.f, win.y - body_y - 16.f), ImGuiChildFlags_None);
+        // Content LEFT of rail
+        ImGui::SetCursorPos(ImVec2(14.f, 52.f));
+        ImGui::BeginChild("##stux_body", ImVec2(rail_x - 28.f, win.y - 66.f), ImGuiChildFlags_None);
         {
             switch (m_iCurrentTab)
             {
-            case 0: visuals(); break; // Combat
-            case 1: rage(); break;    // Sight
-            case 2: misc(); break;    // Utility
-            case 3: exploits(); break;// Skins
-            case 4: config(); break;  // System
+            case 0: visuals(); break;
+            case 1: rage(); break;
+            case 2: misc(); break;
+            case 3: exploits(); break;
+            case 4: config(); break;
             }
         }
         ImGui::EndChild();
@@ -621,20 +604,20 @@ auto color_flags = ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoToo
 
 static void stux_section(const char *title)
 {
-    ImGui::Dummy(ImVec2(0, 4.f));
+    ImGui::Dummy(ImVec2(0, 2.f));
     ImVec2 p = ImGui::GetCursorScreenPos();
     ImDrawList *dl = ImGui::GetWindowDrawList();
     dl->AddText(p, stux_ui::kAccent, title);
     ImVec2 ts = ImGui::CalcTextSize(title);
     ImGui::Dummy(ImVec2(0, ts.y + 2.f));
     p = ImGui::GetCursorScreenPos();
-    dl->AddRectFilled(p, ImVec2(p.x + 48.f, p.y + 2.f), stux_ui::kAccentSoft);
+    dl->AddRectFilled(p, ImVec2(p.x + 36.f, p.y + 2.f), stux_ui::kAccentSoft);
     ImGui::Dummy(ImVec2(0, 10.f));
 }
 
 static void stux_two_col(float &left, float &right, float &h)
 {
-    const float gap = 14.f;
+    const float gap = 12.f;
     const float avail_x = ImGui::GetContentRegionAvail().x;
     const float avail_y = ImGui::GetContentRegionAvail().y;
     left = (avail_x - gap) * 0.52f;
@@ -643,7 +626,6 @@ static void stux_two_col(float &left, float &right, float &h)
     if (left < 160.f) { left = avail_x; right = 0.f; }
 }
 
-// Combat tab
 void C_UserInterface::visuals()
 {
     float L = 0.f, R = 0.f, h = 0.f;
@@ -666,7 +648,7 @@ void C_UserInterface::visuals()
     this->endChild();
     if (R > 40.f)
     {
-        ImGui::SameLine(0, 14.f);
+        ImGui::SameLine(0, 12.f);
         if (this->beginChild("##stux_combat_b", ImVec2(R, h), ImGuiChildFlags_Borders))
         {
             stux_section("ANGLE");
@@ -692,7 +674,6 @@ void C_UserInterface::visuals()
     }
 }
 
-// Sight tab
 void C_UserInterface::rage()
 {
     float L = 0.f, R = 0.f, h = 0.f;
@@ -721,7 +702,7 @@ void C_UserInterface::rage()
     this->endChild();
     if (R > 40.f)
     {
-        ImGui::SameLine(0, 14.f);
+        ImGui::SameLine(0, 12.f);
         if (this->beginChild("##stux_sight_b", ImVec2(R, h), ImGuiChildFlags_Borders))
         {
             stux_section("MATERIALS");
@@ -764,7 +745,7 @@ void C_UserInterface::misc()
     this->endChild();
     if (R > 40.f)
     {
-        ImGui::SameLine(0, 14.f);
+        ImGui::SameLine(0, 12.f);
         if (this->beginChild("##stux_util_b", ImVec2(R, h), ImGuiChildFlags_Borders))
         {
             stux_section("WEAPON");
@@ -805,14 +786,14 @@ void C_UserInterface::config()
     this->endChild();
     if (R > 40.f)
     {
-        ImGui::SameLine(0, 14.f);
+        ImGui::SameLine(0, 12.f);
         if (this->beginChild(oxorany("##stux_sys_b"), ImVec2(R, h), ImGuiChildFlags_Borders))
         {
             stux_section("OVERLAY");
             checkbox(oxorany("Watermark"), &g.b_watermark);
             ImGui::Dummy(ImVec2(0, 12.f));
-            ImGui::TextColored(ImVec4(0.24f, 1.f, 0.71f, 1.f), "xxxpastuxxx");
-            ImGui::TextColored(ImVec4(0.55f, 0.65f, 0.60f, 1.f), "t.me/xxxstuxxx");
+            ImGui::TextColored(ImVec4(1.f, 0.77f, 0.28f, 1.f), "xxx");
+            ImGui::TextColored(ImVec4(0.55f, 0.50f, 0.40f, 1.f), "t.me/xxxstuxxx");
         }
         this->endChild();
     }

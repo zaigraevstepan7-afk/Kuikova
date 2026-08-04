@@ -294,7 +294,7 @@ inline struct g_
     bool b_skeleton;          // Halalium "Bone" (visual)
     bool b_distance = true;   // Halalium "Distance"
     float m_distance[4] = {1.f, 1.f, 1.f, 1.f};
-    float m_accent[4] = {0.24f, 1.00f, 0.71f, 1.f}; // Halalium "Accent Color"
+    float m_accent[4] = {1.00f, 0.77f, 0.28f, 1.f}; // Halalium "Accent Color"
     // Melodium-only leftovers — forced OFF, no UI
     bool b_name = false;
     bool b_ammo = false;
