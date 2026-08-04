@@ -44,7 +44,7 @@ namespace GameController {
 
 namespace Hook {
     // Halalium: DobbyHook(dlsym(eglSwapBuffers))
-    // Melodium: GOT swap of same symbol
+    // Melodium: A64 inline hook of same symbol (GOT fallback)
     constexpr bool use_egl_swap_buffers = true;
     constexpr bool open_menu_via_watermark_click = true;
 }

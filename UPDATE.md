@@ -13,7 +13,7 @@ Melodium is **not** a full decompile of Halalium. It is a Halalium-compatible sh
 
 ## Memory (Halalium-style)
 
-Halalium does **not** use `process_vm_readv` / `process_vm_writev`. After inject it reads/writes the game address space directly (`ldr [base, TypeInfo]`, `ldr [player, #0x160]`, `strb …`) with null / maps checks.
+Halalium does **not** use `process_vm_readv` / `process_vm_writev`. After inject it reads/writes the game address space directly (`ldr [base, TypeInfo]`, `ldr [player, #0x160]`, `strb …`) with null checks. Maps (`/proc/self/maps`) are for module base / soft validity — Melodium refreshes the maps cache on miss so heap growth after inject does not silently fail reads.
 
 Melodium mirrors that via `hmem::read` / `hmem::write` / `hmem::typeinfo` / `hmem::field`. The old `memory::` API is a thin wrapper over the same path.
 
