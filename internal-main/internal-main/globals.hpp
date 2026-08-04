@@ -9,9 +9,12 @@
 #include "includes/Obfuscate.hpp"
 #include "includes/halalium_mem.h"
 #include <vector>
+#include <atomic>
 #include "sdk/OffsetsBridge.h"
 using namespace structs;
 inline uintptr_t base;
+// Wired once after soft update::init — egl must not call game APIs before this.
+inline std::atomic<bool> g_sdk_ready{false};
 
 #define str_(text) \
     []() noexcept { \

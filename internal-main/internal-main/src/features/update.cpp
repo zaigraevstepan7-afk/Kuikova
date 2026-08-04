@@ -487,11 +487,11 @@ static bool hook_rva(uintptr_t rva, void *hook, void **out_orig, const char *tag
 
 void update::init()
 {
-    LOGI("update::init begin (soft)");
+    LOGI("update::init begin (menu-only)");
 
-    for (int i = 0; i < 8 && !loadedlib(oxorany("libsigner.so")) && !loadedlib(oxorany("lib/arm64/libsigner.so")); i++)
-        sleep(1);
+    // No libsigner wait — it only delayed us into races with the GL thread.
 
+    LOGI("update::init resolve base...");
     auto try_bases = [&]() {
         uintptr_t candidates[2] = {
             find_module_base_rx("libil2cpp.so"),
@@ -510,15 +510,23 @@ void update::init()
         }
         if (!base)
             base = resolve_il2cpp_base();
+        if (base)
+            LOGI("fallback game base %p", (void *)base);
         return base != 0;
     };
-    try_bases();
+    if (!try_bases())
+    {
+        LOGI("update::init no game base — menu draw only");
+        return;
+    }
 
-    // Resolve Unity input/screen helpers for touch — no game method patches yet.
-    ::init();
-    LOGI("il2cpp/unity helpers resolved");
+    // Wire touch/screen function pointers by RVA only — DO NOT call ::init()/
+    // img_to_asm/il2cpp_domain_get (that was crashing on the GL thread).
+    LOGI("update::init wire touch RVAs...");
+    if (c_globals)
+        c_globals->init();
+    LOGI("update::init touch RVAs wired");
 
-    // Hard game hooks (A64 RVA / VMT slot writes / ray icall) deferred:
-    // they were crashing right after ImGui inited. Menu+watermark only for now.
-    LOGI("update::init soft done — game feature hooks deferred (menu-only stable)");
+    g_sdk_ready.store(true, std::memory_order_release);
+    LOGI("update::init menu-only done (no il2cpp domain / no VMT / no ray)");
 }

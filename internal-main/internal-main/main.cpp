@@ -32,7 +32,11 @@
 // Do NOT include <fcntl.h> here — globals.hpp defines `bool open`, which collides.
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/syscall.h>
+#include <sys/stat.h>
 #include <errno.h>
+#include <signal.h>
+#include <stdlib.h>
 #include "src/menu/gui.h"
 #include "includes/fonts/verdana.h"
 #include "includes/fonts/smallest_pixel.h"
@@ -193,13 +197,9 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
     c_egl->width = w;
     c_egl->heigth = h;
 
-    // Game SDK init is best-effort — never block overlay draw.
-    if (base)
-    {
-        init();
-        if (c_globals)
-            c_globals->init();
-    }
+    // NEVER call ::init()/img_to_asm from the GL thread every frame — that was
+    // crashing right after ImGui inited (il2cpp_domain_get via bad/racy base).
+    // Touch/SDK pointers are wired once from update::init (soft).
 
     if (!egl_inited)
     {
@@ -220,17 +220,13 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
     ImGui_ImplAndroid_NewFrame(w, h);
 
     NewFrame();
-    if (c_methods)
+    if (g_sdk_ready.load(std::memory_order_acquire) && c_methods)
         handle_touch();
     gui::render();
 
-    if (c_visual)
-    {
-        c_visual->draw_hits();
-        c_visual->hitmarker();
-    }
-    if (c_esp)
-        c_esp->render();
+    // Feature overlays deferred until hooks are re-enabled safely.
+    (void)c_visual;
+    (void)c_esp;
 
     if (cmi)
     {
@@ -491,8 +487,15 @@ void init_render_hook()
         return;
     }
 
+    // Another SO copy already inline-hooked — do NOT GOT-fallback (would dual-hook).
+    if (a64hook::already_patched(sym))
+    {
+        LOGI("eglSwapBuffers already patched — leave existing hook alone");
+        egl_hooked = true;
+        return;
+    }
+
     // Primary: inline-hook the real symbol (Halalium Dobby path).
-    // GOT-only often "succeeds" on dead slots while the game never hits our draw path → blank menu.
     void *tramp = nullptr;
     if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &tramp))
     {
@@ -514,6 +517,12 @@ void init_render_hook()
     std::thread([sym]() {
         for (int i = 0; i < 40; i++)
         {
+            if (a64hook::already_patched(sym))
+            {
+                LOGI("eglSwapBuffers already patched (delayed) — stop retry");
+                egl_hooked = true;
+                break;
+            }
             void *tramp2 = nullptr;
             if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &tramp2))
             {
@@ -731,23 +740,112 @@ void *entry()
 // REGISTER_ZYGISK_MODULE(tenmi_zygisk)
 #include "jni.h"
 
-// Process-wide once: AndKitty/memfd can dlopen multiple SO copies; each has its
-// own static `started`, which double-hooks egl and crashes after ImGui inits.
-// Abstract UNIX bind — no storage permission; auto-clears on process death.
-// (Cannot use flock/open here: globals.hpp defines `bool open`.)
-static bool claim_process_once()
+// Manual openat flags — cannot include <fcntl.h> (collides with globals.hpp `bool open`).
+#ifndef MELO_AT_FDCWD
+#define MELO_AT_FDCWD (-100)
+#define MELO_O_RDONLY 0
+#define MELO_O_RDWR 2
+#define MELO_O_CREAT 0100
+#define MELO_O_EXCL 0200
+#define MELO_O_TRUNC 01000
+#endif
+
+static int melo_openat(const char *path, int flags, int mode = 0)
 {
-    int s = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
-    if (s < 0)
+    return (int)syscall(__NR_openat, MELO_AT_FDCWD, path, flags, mode);
+}
+
+static void melo_truncate_log()
+{
+    const char *paths[] = {
+        "/sdcard/Download/melodium.log",
+        "/sdcard/melodium.log",
+        "/storage/emulated/0/Download/melodium.log",
+        "/storage/emulated/0/melodium.log",
+    };
+    for (const char *p : paths)
     {
-        LOGI("process lock socket failed errno=%d — refuse start", errno);
-        return false;
+        int fd = melo_openat(p, MELO_O_RDWR | MELO_O_CREAT | MELO_O_TRUNC, 0666);
+        if (fd >= 0)
+        {
+            close(fd);
+            break;
+        }
     }
+}
+
+static bool egl_already_owned()
+{
+    void *egl = dlopen(oxorany("libEGL.so"), RTLD_NOW);
+    void *sym = egl ? dlsym(egl, oxorany("eglSwapBuffers")) : nullptr;
+    return sym && a64hook::already_patched(sym);
+}
+
+// Durable same-process once: PID file survives injector FD sweeps that kill abstract sockets.
+// Returns: 1 = claimed, 0 = already held (skip), -1 = no usable path.
+static int claim_via_pidfile()
+{
+    static const char *paths[] = {
+        "/data/local/tmp/melodium.once",
+        "/sdcard/Download/melodium.once",
+        "/sdcard/melodium.once",
+        "/storage/emulated/0/Download/melodium.once",
+    };
+
+    const pid_t me = getpid();
+    bool saw_path = false;
+    for (const char *p : paths)
+    {
+        for (int attempt = 0; attempt < 3; ++attempt)
+        {
+            int fd = melo_openat(p, MELO_O_RDWR | MELO_O_CREAT | MELO_O_EXCL, 0666);
+            if (fd >= 0)
+            {
+                char buf[32];
+                int n = snprintf(buf, sizeof(buf), "%d\n", (int)me);
+                if (n > 0)
+                    (void)write(fd, buf, (size_t)n);
+                close(fd);
+                LOGI("claimed process lock (pidfile %s pid=%d)", p, (int)me);
+                return 1;
+            }
+            if (errno != EEXIST)
+                break;
+
+            saw_path = true;
+            fd = melo_openat(p, MELO_O_RDONLY);
+            if (fd < 0)
+                break;
+            char buf[64]{};
+            ssize_t n = read(fd, buf, sizeof(buf) - 1);
+            close(fd);
+            pid_t other = (n > 0) ? (pid_t)atoi(buf) : 0;
+            if (other == me)
+            {
+                LOGI("pidfile %s already ours (pid=%d) — skip start", p, (int)me);
+                return 0;
+            }
+            if (other > 0 && kill(other, 0) == 0)
+            {
+                LOGI("pidfile %s held by live pid=%d — skip start", p, (int)other);
+                return 0;
+            }
+            unlink(p);
+            LOGI("pidfile %s stale (pid=%d) — retry", p, (int)other);
+        }
+    }
+    return saw_path ? 0 : -1;
+}
+
+static bool claim_via_abstract_unix()
+{
+    int s = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (s < 0)
+        return false;
 
     sockaddr_un addr{};
     addr.sun_family = AF_UNIX;
-    // Abstract namespace: sun_path[0] == '\0', then name bytes (no trailing NUL in length).
-    static const char name[] = "melodium_once_v2";
+    static const char name[] = "melodium_once_v3";
     const size_t name_len = sizeof(name) - 1;
     addr.sun_path[0] = '\0';
     memcpy(addr.sun_path + 1, name, name_len);
@@ -755,19 +853,40 @@ static bool claim_process_once()
 
     if (bind(s, reinterpret_cast<sockaddr *>(&addr), len) == 0)
     {
-        // Leak socket for process lifetime — holds the abstract name.
-        LOGI("claimed process lock (abstract unix)");
-        return true;
+        LOGI("claimed process lock (abstract unix v3)");
+        return true; // leak fd
     }
-
     const int err = errno;
     close(s);
     if (err == EADDRINUSE)
+        LOGI("abstract unix v3 busy — skip start");
+    return false;
+}
+
+static bool claim_process_once()
+{
+    if (egl_already_owned())
     {
-        LOGI("another melodium instance holds abstract lock — skip start");
+        LOGI("egl already hooked by another copy — skip start");
         return false;
     }
-    LOGI("abstract lock bind failed errno=%d — refuse start", err);
+
+    const int pf = claim_via_pidfile();
+    if (pf == 1)
+        return true;
+    if (pf == 0)
+        return false; // held by us or another live process
+
+    if (egl_already_owned())
+    {
+        LOGI("egl already hooked after pidfile miss — skip start");
+        return false;
+    }
+
+    if (claim_via_abstract_unix())
+        return true;
+
+    LOGI("all process locks failed — refuse start to avoid double-hook");
     return false;
 }
 
@@ -779,7 +898,8 @@ static void start_melodium_once()
         return;
     if (!claim_process_once())
         return;
-    LOGI("start_melodium_once");
+    melo_truncate_log();
+    LOGI("start_melodium_once pid=%d", (int)getpid());
     std::thread(entry).detach();
 }
 
