@@ -1,12 +1,12 @@
 #include "gui.h"
 #include <globals.hpp>
 #include "c_user_interface.hpp"
+#include <cmath>
 
 float alpha = 0.0f;
 inline C_UserInterface ui;
 namespace gui
 {
-    // Plaintext build/contract marker (oxorany hides ##wm_click in the SO).
     __attribute__((used, retain)) static const char k_kikaium_contract[] =
         "kikaium_contract:wm_click+egl+vmt+esp";
 
@@ -45,8 +45,8 @@ namespace gui
         float originalLength = c_egl->heigth / 4.0f;
         float lineLength = originalLength / 2.f;
         float startThickness = 3.0f;
-        ImU32 startColor = IM_COL32(232, 168, 88, 160);
-        ImU32 endColor = IM_COL32(232, 168, 88, 20);
+        ImU32 startColor = IM_COL32(236, 164, 72, 160);
+        ImU32 endColor = IM_COL32(236, 164, 72, 20);
         float gap = 40.0f;
 
         DrawGradientLine(drawList, ImVec2(center.x, center.y - lineLength), ImVec2(center.x, center.y - gap), startThickness, startColor, endColor);
@@ -59,13 +59,20 @@ namespace gui
     {
         if (!g.b_watermark)
             return;
-        (void)k_kikaium_contract; // keep contract string in .rodata for build verify
+        (void)k_kikaium_contract;
         const char *brand = oxorany("Kikaium");
-        const char *line = oxorany("private  |  0.39.2");
+        const char *line = open ? oxorany("tap to close") : oxorany("private  0.39.2");
 
-        ImGui::SetNextWindowPos(ImVec2(18.f, 18.f), ImGuiCond_Always);
+        // Soft breathing pulse on accent edge
+        const float t = (float)ImGui::GetTime();
+        const int pulse_a = 180 + (int)(40.f * sinf(t * 2.2f));
+
+        ImGui::SetNextWindowPos(ImVec2(16.f, 16.f), ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(0.0f);
-        ImGui::SetNextWindowFocus();
+        // Do NOT focus when menu is open - steals tab clicks
+        if (!open)
+            ImGui::SetNextWindowFocus();
+
         ImGui::Begin(oxorany("##kik_wm"), nullptr,
                      ImGuiWindowFlags_NoTitleBar |
                          ImGuiWindowFlags_NoResize |
@@ -80,41 +87,41 @@ namespace gui
 
         ImVec2 brand_sz = ImGui::CalcTextSize(brand);
         ImVec2 line_sz = ImGui::CalcTextSize(line);
-        float width = (brand_sz.x > line_sz.x ? brand_sz.x : line_sz.x) + 36.f;
-        float height = brand_sz.y + line_sz.y + 22.f;
+        float width = (brand_sz.x > line_sz.x ? brand_sz.x : line_sz.x) + 44.f;
+        float height = brand_sz.y + line_sz.y + 26.f;
 
         ImVec2 p = ImGui::GetCursorScreenPos();
         ImDrawList *dl = ImGui::GetWindowDrawList();
         ImVec2 rmin = p;
         ImVec2 rmax = ImVec2(p.x + width, p.y + height);
 
-        // Glass bar + copper edge (distinct from Halalium pill).
+        // Layered glass plate
+        dl->AddRectFilled(rmin, rmax, IM_COL32(10, 11, 13, 220), 8.f);
         dl->AddRectFilledMultiColor(rmin, rmax,
-                                    IM_COL32(18, 18, 20, 210), IM_COL32(22, 20, 18, 210),
-                                    IM_COL32(22, 20, 18, 210), IM_COL32(18, 18, 20, 210));
-        dl->AddRect(rmin, rmax, IM_COL32(55, 50, 42, 200), 0.f, 0, 1.0f);
-        dl->AddRectFilled(ImVec2(rmin.x, rmax.y - 2.f), rmax, IM_COL32(232, 168, 88, 255));
-        dl->AddRectFilled(rmin, ImVec2(rmin.x + 3.f, rmax.y), IM_COL32(232, 168, 88, 220));
+                                    IM_COL32(28, 26, 22, 40), IM_COL32(18, 18, 20, 10),
+                                    IM_COL32(18, 18, 20, 10), IM_COL32(28, 26, 22, 40));
+        dl->AddRect(rmin, rmax, IM_COL32(60, 56, 48, 200), 8.f, 0, 1.0f);
+        // Copper left spine
+        dl->AddRectFilled(ImVec2(rmin.x, rmin.y + 6.f), ImVec2(rmin.x + 3.f, rmax.y - 6.f),
+                          IM_COL32(236, 164, 72, pulse_a), 2.f);
+        // Bottom accent hairline
+        dl->AddRectFilled(ImVec2(rmin.x + 10.f, rmax.y - 2.f), ImVec2(rmax.x - 10.f, rmax.y),
+                          IM_COL32(236, 164, 72, 200), 1.f);
 
-        ImVec2 brand_pos = ImVec2(p.x + 16.f, p.y + 6.f);
-        ImVec2 line_pos = ImVec2(p.x + 16.f, p.y + 6.f + brand_sz.y + 2.f);
-        dl->AddText(brand_pos, IM_COL32(245, 240, 232, 255), brand);
-        dl->AddText(line_pos, IM_COL32(180, 140, 90, 255), line);
+        ImVec2 brand_pos = ImVec2(p.x + 18.f, p.y + 8.f);
+        ImVec2 line_pos = ImVec2(p.x + 18.f, p.y + 8.f + brand_sz.y + 3.f);
+        dl->AddText(brand_pos, IM_COL32(248, 242, 232, 255), brand);
+        dl->AddText(line_pos, IM_COL32(190, 145, 90, 255), line);
 
         ImGui::Dummy(ImVec2(width, height));
         ImGui::SetCursorScreenPos(rmin);
-        // Halalium contract id ##wm_click (brand chrome is Kikaium).
         bool clicked = ImGui::InvisibleButton(oxorany("##wm_click"), ImVec2(width, height));
 
-        // Manual edge-detect fallback (Android touch / event race with InvisibleButton)
         ImGuiIO &io = ImGui::GetIO();
         const bool hovered = io.MousePos.x >= rmin.x && io.MousePos.x <= rmax.x &&
                              io.MousePos.y >= rmin.y && io.MousePos.y <= rmax.y;
-        static bool prev_down = false;
-        const bool down = io.MouseDown[0];
-        if (!clicked && hovered && down && !prev_down)
+        if (!clicked && hovered && ImGui::IsMouseClicked(0))
             clicked = true;
-        prev_down = down;
 
         if (clicked)
             open = !open;
@@ -128,7 +135,6 @@ namespace gui
 
         ImGui::SetNextWindowPos(pos, ImGuiCond_Once);
         ImGui::SetNextWindowSize(size, ImGuiCond_Always);
-        // NoInputs - fullscreen overlay must NOT steal ##wm_click hits
         ImGui::Begin(oxorany("##kik_overlay"), nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground |
                          ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus |
@@ -136,7 +142,7 @@ namespace gui
                          ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoNav);
 
         if (g.b_scope && c_player->local && c_player->weapon_parameters && c_globals->is_scoped())
-            cross(); // Melodium remove-scope cross - flag forced off
+            cross();
 
         ImGui::End();
         DrawWatermark();
@@ -148,9 +154,9 @@ namespace gui
         ui.render();
 
         if (open && alpha < 1.f)
-            alpha += 0.04f;
+            alpha += 0.06f;
         else if (!open && alpha > 0.02f)
-            alpha -= 0.04f;
+            alpha -= 0.06f;
         if (alpha > 1.f)
             alpha = 1.f;
         if (alpha < 0.f)

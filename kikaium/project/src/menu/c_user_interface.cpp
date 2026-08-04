@@ -5,18 +5,29 @@
 #include "globals.hpp"
 #include "gui.h"
 #include <cstring>
+#include <cmath>
 
 namespace kik_ui {
-static constexpr ImU32 kAccent = IM_COL32(232, 168, 88, 255);
-static constexpr ImU32 kAccentSoft = IM_COL32(232, 168, 88, 90);
-static constexpr ImU32 kBg0 = IM_COL32(14, 15, 17, 245);
-static constexpr ImU32 kBg1 = IM_COL32(20, 22, 25, 255);
-static constexpr ImU32 kBg2 = IM_COL32(26, 28, 32, 255);
-static constexpr ImU32 kLine = IM_COL32(48, 52, 58, 255);
-static constexpr ImU32 kText = IM_COL32(236, 232, 226, 255);
-static constexpr ImU32 kMuted = IM_COL32(140, 138, 132, 255);
+static constexpr ImU32 kAccent = IM_COL32(236, 164, 72, 255);
+static constexpr ImU32 kAccentDim = IM_COL32(236, 164, 72, 55);
+static constexpr ImU32 kAccentSoft = IM_COL32(236, 164, 72, 110);
+static constexpr ImU32 kBg0 = IM_COL32(12, 13, 15, 248);
+static constexpr ImU32 kBg1 = IM_COL32(18, 19, 22, 255);
+static constexpr ImU32 kBg2 = IM_COL32(24, 26, 30, 255);
+static constexpr ImU32 kBgRail = IM_COL32(15, 16, 18, 255);
+static constexpr ImU32 kLine = IM_COL32(52, 54, 60, 255);
+static constexpr ImU32 kLineSoft = IM_COL32(40, 42, 48, 180);
+static constexpr ImU32 kText = IM_COL32(240, 236, 228, 255);
+static constexpr ImU32 kMuted = IM_COL32(130, 128, 122, 255);
 
-// Display title: strip "##id" suffix from child ids.
+inline bool press_edge(const ImVec2 &rmin, const ImVec2 &rmax)
+{
+    ImGuiIO &io = ImGui::GetIO();
+    const bool inside = io.MousePos.x >= rmin.x && io.MousePos.x <= rmax.x &&
+                        io.MousePos.y >= rmin.y && io.MousePos.y <= rmax.y;
+    return inside && ImGui::IsMouseClicked(0);
+}
+
 inline void panel_title(const char *str_id, char *out, size_t out_n)
 {
     if (!str_id || !out_n)
@@ -41,18 +52,22 @@ bool C_UserInterface::beginWindow(const char *name, bool *p_open, ImGuiWindowFla
 
     if (!ImGui::Begin(name ? name : "kikaium_shell", nullptr,
                       flags | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar |
-                          ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoCollapse))
+                          ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoCollapse |
+                          ImGuiWindowFlags_NoNav))
         return false;
 
     ImVec2 wp = ImGui::GetWindowPos();
     ImVec2 ws = ImGui::GetWindowSize();
     ImDrawList *dl = ImGui::GetWindowDrawList();
 
-    // Soft vertical wash + copper hairline (not Halalium nested black frames).
+    // Deep charcoal wash + copper top bar
     dl->AddRectFilledMultiColor(wp, ImVec2(wp.x + ws.x, wp.y + ws.y),
                                 kik_ui::kBg0, kik_ui::kBg0, kik_ui::kBg1, kik_ui::kBg1);
-    dl->AddRect(wp, ImVec2(wp.x + ws.x, wp.y + ws.y), kik_ui::kLine, 0.f, 0, 1.0f);
-    dl->AddRectFilled(wp, ImVec2(wp.x + ws.x, wp.y + 3.f), kik_ui::kAccent);
+    dl->AddRect(wp, ImVec2(wp.x + ws.x, wp.y + ws.y), kik_ui::kLine, 6.f, 0, 1.0f);
+    dl->AddRectFilled(wp, ImVec2(wp.x + ws.x, wp.y + 3.f), kik_ui::kAccent, 0.f);
+    // soft inner top highlight
+    dl->AddRectFilled(ImVec2(wp.x + 1.f, wp.y + 3.f), ImVec2(wp.x + ws.x - 1.f, wp.y + 4.f),
+                      IM_COL32(255, 210, 140, 35));
     return true;
 }
 
@@ -63,33 +78,17 @@ void C_UserInterface::endWindow()
 
 bool C_UserInterface::beginChild(const char *str_id, const ImVec2 &size_arg, ImGuiChildFlags child_flags, ImGuiWindowFlags window_flags)
 {
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.08f, 0.09f, 0.10f, 0.92f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.20f, 0.21f, 0.23f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.075f, 0.080f, 0.090f, 0.96f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.22f, 0.23f, 0.26f, 1.f));
     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.f, 18.f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 4.f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.f, 16.f));
 
     if (!ImGui::BeginChild(str_id, size_arg, child_flags | ImGuiChildFlags_Borders, window_flags))
     {
-        ImGui::PopStyleVar(2);
+        ImGui::PopStyleVar(3);
         ImGui::PopStyleColor(2);
         return false;
-    }
-
-    char title[64]{};
-    kik_ui::panel_title(str_id, title, sizeof(title));
-    if (title[0])
-    {
-        ImVec2 wp = ImGui::GetWindowPos();
-        ImDrawList *dl = ImGui::GetWindowDrawList();
-        ImVec2 ts = ImGui::CalcTextSize(title);
-        // Title chip sitting on the top border.
-        float chip_w = ts.x + 16.f;
-        ImVec2 c0(wp.x + 12.f, wp.y - ts.y * 0.5f - 2.f);
-        ImVec2 c1(c0.x + chip_w, c0.y + ts.y + 4.f);
-        dl->AddRectFilled(c0, c1, kik_ui::kBg2);
-        dl->AddRect(c0, c1, kik_ui::kLine);
-        dl->AddText(ImVec2(c0.x + 8.f, c0.y + 2.f), kik_ui::kAccent, title);
-        ImGui::Dummy(ImVec2(0, 6.f));
     }
     return true;
 }
@@ -97,7 +96,7 @@ bool C_UserInterface::beginChild(const char *str_id, const ImVec2 &size_arg, ImG
 void C_UserInterface::endChild()
 {
     ImGui::EndChild();
-    ImGui::PopStyleVar(2);
+    ImGui::PopStyleVar(3);
     ImGui::PopStyleColor(2);
 }
 
@@ -112,16 +111,18 @@ bool C_UserInterface::checkbox(const char *label, bool *v)
     const ImGuiID id = window->GetID(label);
     const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
 
-    const float square_sz = 18.f;
+    const float square_sz = 20.f;
     const ImVec2 pos = window->DC.CursorPos;
-    const ImRect total_bb(pos, ImVec2(pos.x + square_sz + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f) + 8.f,
-                                      pos.y + ImMax(square_sz, label_size.y) + style.FramePadding.y));
+    const ImRect total_bb(pos, ImVec2(pos.x + square_sz + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f) + 12.f,
+                                      pos.y + ImMax(square_sz, label_size.y) + style.FramePadding.y + 4.f));
     ImGui::ItemSize(total_bb, style.FramePadding.y);
     if (!ImGui::ItemAdd(total_bb, id))
         return false;
 
     bool hovered = false, held = false;
     bool pressed = ImGui::ButtonBehavior(total_bb, id, &hovered, &held);
+    if (!pressed && kik_ui::press_edge(total_bb.Min, total_bb.Max))
+        pressed = true;
     if (pressed)
     {
         *v = !*v;
@@ -130,19 +131,19 @@ bool C_UserInterface::checkbox(const char *label, bool *v)
 
     const ImRect check_bb(pos, ImVec2(pos.x + square_sz, pos.y + square_sz));
     ImDrawList *dl = window->DrawList;
-    ImU32 frame = hovered ? IM_COL32(40, 42, 46, 255) : IM_COL32(28, 30, 34, 255);
-    dl->AddRectFilled(check_bb.Min, check_bb.Max, frame, 2.f);
-    dl->AddRect(check_bb.Min, check_bb.Max, hovered ? kik_ui::kAccent : kik_ui::kLine, 2.f, 0, 1.0f);
+    ImU32 frame = hovered ? IM_COL32(42, 44, 50, 255) : IM_COL32(30, 32, 36, 255);
+    dl->AddRectFilled(check_bb.Min, check_bb.Max, frame, 3.f);
+    dl->AddRect(check_bb.Min, check_bb.Max, hovered || *v ? kik_ui::kAccent : kik_ui::kLine, 3.f, 0, 1.0f);
     if (*v)
     {
-        dl->AddRectFilled(ImVec2(check_bb.Min.x + 3, check_bb.Min.y + 3),
-                          ImVec2(check_bb.Max.x - 3, check_bb.Max.y - 3),
-                          kik_ui::kAccent, 1.5f);
+        dl->AddRectFilled(ImVec2(check_bb.Min.x + 4, check_bb.Min.y + 4),
+                          ImVec2(check_bb.Max.x - 4, check_bb.Max.y - 4),
+                          kik_ui::kAccent, 2.f);
     }
 
     if (label_size.x > 0.0f)
     {
-        ImVec2 lp(check_bb.Max.x + style.ItemInnerSpacing.x + 6.f,
+        ImVec2 lp(check_bb.Max.x + style.ItemInnerSpacing.x + 8.f,
                   check_bb.Min.y + (square_sz - label_size.y) * 0.5f);
         dl->AddText(lp, kik_ui::kText, label);
     }
@@ -506,122 +507,128 @@ void C_UserInterface::render()
     extern float alpha;
     const float a = alpha > 0.02f ? alpha : 1.f;
 
+    // Bigger touch targets for Android
+    ImGui::GetStyle().TouchExtraPadding = ImVec2(14.f, 14.f);
+
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, a);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f);
-    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.f);
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(12.f, 11.f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 4.f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.f, 10.f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
 
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.93f, 0.91f, 0.88f, 1.f));
-    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.55f, 0.38f, 0.18f, 0.45f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.70f, 0.48f, 0.22f, 0.55f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.90f, 0.62f, 0.28f, 0.65f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.11f, 0.12f, 0.14f, 1.f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.15f, 0.13f, 1.f));
-    ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(0.91f, 0.66f, 0.35f, 1.f));
-    ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.91f, 0.66f, 0.35f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.94f, 0.92f, 0.88f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.55f, 0.38f, 0.16f, 0.40f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.72f, 0.48f, 0.20f, 0.50f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.90f, 0.62f, 0.28f, 0.60f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.10f, 0.11f, 0.13f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.15f, 0.14f, 0.12f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(0.93f, 0.64f, 0.28f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.93f, 0.64f, 0.28f, 1.f));
     ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(1.f, 0.78f, 0.45f, 1.f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.22f, 0.23f, 0.25f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.22f, 0.23f, 0.26f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.13f, 0.15f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.16f, 0.14f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.28f, 0.20f, 0.12f, 1.f));
+
+    // Center menu on first open
+    if (c_egl && c_egl->width > 0)
+    {
+        const float ww = 980.f, wh = 600.f;
+        ImGui::SetNextWindowPos(ImVec2((c_egl->width - ww) * 0.5f, (c_egl->heigth - wh) * 0.5f), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(ww, wh), ImGuiCond_Once);
+    }
 
     if (this->beginWindow("kikaium_shell", nullptr, ImGuiWindowFlags_NoScrollbar))
     {
-        ImGui::SetWindowSize(ImVec2(1020, 640), ImGuiCond_Once);
-
-        const float rail_w = 178.f;
+        const float rail_w = 168.f;
         ImVec2 win = ImGui::GetWindowSize();
         ImDrawList *dl = ImGui::GetWindowDrawList();
         ImVec2 wp = ImGui::GetWindowPos();
 
-        // Left rail background
-        dl->AddRectFilled(ImVec2(wp.x, wp.y + 3.f), ImVec2(wp.x + rail_w, wp.y + win.y), IM_COL32(16, 17, 19, 255));
-        dl->AddRectFilled(ImVec2(wp.x + rail_w - 1.f, wp.y + 3.f), ImVec2(wp.x + rail_w, wp.y + win.y), IM_COL32(48, 52, 58, 255));
+        // Left rail
+        dl->AddRectFilled(ImVec2(wp.x, wp.y + 3.f), ImVec2(wp.x + rail_w, wp.y + win.y), kik_ui::kBgRail, 0.f);
+        dl->AddRectFilled(ImVec2(wp.x + rail_w - 1.f, wp.y + 3.f), ImVec2(wp.x + rail_w, wp.y + win.y), kik_ui::kLineSoft);
 
-        ImGui::SetCursorPos(ImVec2(0, 3.f));
-        ImGui::BeginChild("##kik_rail", ImVec2(rail_w, win.y - 3.f), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
+        ImGui::SetCursorPos(ImVec2(0, 0));
+        ImGui::BeginChild("##kik_rail", ImVec2(rail_w, win.y), ImGuiChildFlags_None,
+                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         {
-            ImGui::Dummy(ImVec2(0, 18.f));
-            ImGui::SetCursorPosX(18.f);
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.90f, 0.82f, 1.f));
+            ImGui::Dummy(ImVec2(0, 22.f));
+            ImGui::SetCursorPosX(20.f);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.96f, 0.90f, 0.80f, 1.f));
             ImGui::TextUnformatted("KIKAIUM");
             ImGui::PopStyleColor();
-            ImGui::SetCursorPosX(18.f);
-            ImGui::TextColored(ImVec4(0.70f, 0.52f, 0.28f, 1.f), "private  ·  0.39.2");
-            ImGui::Dummy(ImVec2(0, 10.f));
-            ImGui::SetCursorPosX(18.f);
+            ImGui::SetCursorPosX(20.f);
+            ImGui::TextColored(ImVec4(0.72f, 0.52f, 0.26f, 1.f), "private  0.39.2");
+
+            ImGui::Dummy(ImVec2(0, 8.f));
+            ImGui::SetCursorPosX(20.f);
             ImDrawList *rdl = ImGui::GetWindowDrawList();
             ImVec2 lp = ImGui::GetCursorScreenPos();
-            rdl->AddRectFilled(lp, ImVec2(lp.x + rail_w - 36.f, lp.y + 1.f), IM_COL32(232, 168, 88, 160));
-            ImGui::Dummy(ImVec2(0, 14.f));
+            rdl->AddRectFilled(lp, ImVec2(lp.x + rail_w - 40.f, lp.y + 2.f), kik_ui::kAccentSoft, 1.f);
+            ImGui::Dummy(ImVec2(0, 16.f));
 
             static const char *tabs[] = {"Rage", "Visuals", "Misc", "Settings", "Skins"};
             for (int i = 0; i < 5; i++)
             {
-                bool selected = (m_iCurrentTab == i);
                 ImGui::PushID(i);
-                ImGui::SetCursorPosX(10.f);
+                ImGui::SetCursorPosX(12.f);
+                const ImVec2 btn_sz(rail_w - 24.f, 44.f);
+                const ImVec2 p0 = ImGui::GetCursorScreenPos();
+                const ImVec2 p1(p0.x + btn_sz.x, p0.y + btn_sz.y);
 
-                ImVec2 btn_sz(rail_w - 20.f, 40.f);
-                ImVec2 p0 = ImGui::GetCursorScreenPos();
-                bool hovered = false;
-                if (ImGui::InvisibleButton("##tabbtn", btn_sz))
+                // Real Button — reliable on Android touch (InvisibleButton was flaky)
+                bool selected = (m_iCurrentTab == i);
+                ImGui::PushStyleColor(ImGuiCol_Button, selected ? ImVec4(0.93f, 0.64f, 0.28f, 0.14f)
+                                                                : ImVec4(0, 0, 0, 0));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.f, 1.f, 1.f, 0.06f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.93f, 0.64f, 0.28f, 0.22f));
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.f);
+                if (ImGui::Button("##tab", btn_sz) || kik_ui::press_edge(p0, p1))
                     m_iCurrentTab = i;
-                hovered = ImGui::IsItemHovered();
-                ImVec2 p1 = ImGui::GetItemRectMax();
-                ImDrawList *tdl = ImGui::GetWindowDrawList();
+                ImGui::PopStyleVar();
+                ImGui::PopStyleColor(3);
 
+                const bool hovered = ImGui::IsItemHovered();
+                ImDrawList *tdl = ImGui::GetWindowDrawList();
                 if (selected)
-                {
-                    tdl->AddRectFilled(p0, p1, IM_COL32(232, 168, 88, 28));
-                    tdl->AddRectFilled(ImVec2(p0.x, p0.y + 6.f), ImVec2(p0.x + 3.f, p1.y - 6.f), IM_COL32(232, 168, 88, 255));
-                }
-                else if (hovered)
-                {
-                    tdl->AddRectFilled(p0, p1, IM_COL32(255, 255, 255, 10));
-                }
+                    tdl->AddRectFilled(ImVec2(p0.x, p0.y + 8.f), ImVec2(p0.x + 3.f, p1.y - 8.f),
+                                       kik_ui::kAccent, 1.f);
 
                 ImVec2 ts = ImGui::CalcTextSize(tabs[i]);
-                ImU32 col = selected ? IM_COL32(232, 168, 88, 255)
-                                     : (hovered ? IM_COL32(220, 216, 208, 255) : IM_COL32(150, 148, 142, 255));
+                ImU32 col = selected ? kik_ui::kAccent
+                                     : (hovered ? IM_COL32(230, 226, 218, 255) : kik_ui::kMuted);
                 tdl->AddText(ImVec2(p0.x + 18.f, p0.y + (btn_sz.y - ts.y) * 0.5f), col, tabs[i]);
                 ImGui::PopID();
-                ImGui::Dummy(ImVec2(0, 2.f));
+                ImGui::Dummy(ImVec2(0, 4.f));
             }
 
-            ImGui::SetCursorPosY(win.y - 48.f);
-            ImGui::SetCursorPosX(18.f);
-            ImGui::TextColored(ImVec4(0.40f, 0.40f, 0.38f, 1.f), "tap watermark");
+            ImGui::SetCursorPosY(win.y - 40.f);
+            ImGui::SetCursorPosX(20.f);
+            ImGui::TextColored(ImVec4(0.38f, 0.38f, 0.36f, 1.f), "tap wm to close");
         }
         ImGui::EndChild();
 
-        ImGui::SameLine(0, 0);
-        ImGui::SetCursorPos(ImVec2(rail_w + 14.f, 16.f));
-        ImGui::BeginChild("##kik_body", ImVec2(win.x - rail_w - 28.f, win.y - 28.f), ImGuiChildFlags_None);
+        // Content body
+        ImGui::SetCursorPos(ImVec2(rail_w + 16.f, 16.f));
+        ImGui::BeginChild("##kik_body", ImVec2(win.x - rail_w - 32.f, win.y - 32.f), ImGuiChildFlags_None,
+                          ImGuiWindowFlags_NoScrollbar);
         {
             switch (m_iCurrentTab)
             {
-            case 0: // Rage — Halalium aim / AA surface
-                visuals();
-                break;
-            case 1: // Visuals — ESP / chams / world
-                rage();
-                break;
-            case 2: // Misc
-                misc();
-                break;
-            case 3: // Settings
-                config();
-                break;
-            case 4: // Skins
-                exploits();
-                break;
+            case 0: visuals(); break; // Rage panels
+            case 1: rage(); break;    // Visuals panels
+            case 2: misc(); break;
+            case 3: config(); break;
+            case 4: exploits(); break;
             }
         }
         ImGui::EndChild();
     }
     this->endWindow();
 
-    ImGui::PopStyleColor(10);
+    ImGui::PopStyleColor(13);
     ImGui::PopStyleVar(6);
 }
 
@@ -629,18 +636,29 @@ float asdasd;
 int aasdd;
 auto color_flags = ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_NoDragDrop | ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_NoBorder;
 
+static void kik_two_col_metrics(float &half, float &h, float &half_h)
+{
+    const float gap = ImGui::GetStyle().ItemSpacing.x;
+    const float avail_x = ImGui::GetContentRegionAvail().x;
+    const float avail_y = ImGui::GetContentRegionAvail().y;
+    half = (avail_x - gap) * 0.5f;
+    h = avail_y;
+    half_h = (h - ImGui::GetStyle().ItemSpacing.y) * 0.5f;
+    if (half < 120.f)
+        half = avail_x;
+    if (half_h < 80.f)
+        half_h = h * 0.45f;
+}
+
 // HALALIUM-ONLY UI (from menu_body decompile @0x1db874). Zero Melodium extras.
 
 void C_UserInterface::rage()
 {
     // == Visuals == (Halalium menu_body ##vis_left | ##vis_right_top / ##vis_right_bottom)
-    float half = (ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2;
-    float h = ImGui::GetContentRegionAvail().y - (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2);
-    float half_h = (h - ImGui::GetStyle().ItemSpacing.y) * 0.5f;
+    float half = 0.f, h = 0.f, half_h = 0.f;
+    kik_two_col_metrics(half, h, half_h);
     if (this->beginChild("##vis_left", ImVec2(half, h), ImGuiChildFlags_Borders))
     {
-        // menu_body ADRP order: Enable Esp, Box, Box Type, Box Color, Corner Size,
-        // Health Bar, Distance, Distance Color
         checkbox(oxorany("Enable Esp"), &g.b_esp);
         checkbox(oxorany("Box"), &g.b_rect);
         {
@@ -660,11 +678,10 @@ void C_UserInterface::rage()
         ImGui::ColorEdit4(oxorany("Distance Color"), g.m_distance, color_flags);
     }
     this->endChild();
-    ImGui::SameLine();
+    ImGui::SameLine(0, ImGui::GetStyle().ItemSpacing.x);
     ImGui::BeginChild("##vis_right_col", ImVec2(half, h), ImGuiChildFlags_None);
     if (this->beginChild("##vis_right_top", ImVec2(0, half_h), ImGuiChildFlags_Borders))
     {
-        // menu_body: Chams, Enemy Chams, Enemy Color, Through Walls
         checkbox(oxorany("Chams"), &g.b_players);
         if (g.b_players)
         {
@@ -679,8 +696,6 @@ void C_UserInterface::rage()
     this->endChild();
     if (this->beginChild("##vis_right_bottom", ImVec2(0, 0), ImGuiChildFlags_Borders))
     {
-        // menu_body: World, World Color, Solid World Color, Apply World Color, Spin Speed, Reverse Spin
-        // Spin toggle gates Spin Speed (allowlist); not a separate ADRP string in SO
         checkbox(oxorany("World"), &g.b_world);
         ImGui::SameLine();
         ImGui::ColorEdit4(oxorany("World Color"), g.m_world, color_flags);
@@ -697,9 +712,8 @@ void C_UserInterface::rage()
 void C_UserInterface::visuals()
 {
     // == Rage == (Halalium ##rage_left | ##rage_right_top / ##rage_right_bottom)
-    float half = (ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2;
-    float h = ImGui::GetContentRegionAvail().y - (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2);
-    float half_h = (h - ImGui::GetStyle().ItemSpacing.y) * 0.5f;
+    float half = 0.f, h = 0.f, half_h = 0.f;
+    kik_two_col_metrics(half, h, half_h);
     if (this->beginChild(oxorany("##rage_left"), ImVec2(half, h), ImGuiChildFlags_Borders))
     {
         checkbox(oxorany("Silent Aim"), &g.b_silent);
@@ -715,7 +729,7 @@ void C_UserInterface::visuals()
         checkbox(oxorany("No spread"), &g.b_nospread);
     }
     this->endChild();
-    ImGui::SameLine();
+    ImGui::SameLine(0, ImGui::GetStyle().ItemSpacing.x);
     ImGui::BeginChild("##rage_right_col", ImVec2(half, h), ImGuiChildFlags_None);
     if (this->beginChild("##rage_right_top", ImVec2(0, half_h), ImGuiChildFlags_Borders))
     {
@@ -745,19 +759,16 @@ void C_UserInterface::visuals()
 
 void C_UserInterface::misc()
 {
-    // == Misc == (Halalium ##misc_left | ##misc_right_top / ##misc_right_bottom)
-    float half = (ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2;
-    float h = ImGui::GetContentRegionAvail().y - (ImGui::GetStyle().WindowPadding.y * 2 + ImGui::GetStyle().ItemSpacing.y * 2);
-    float half_h = (h - ImGui::GetStyle().ItemSpacing.y) * 0.5f;
+    float half = 0.f, h = 0.f, half_h = 0.f;
+    kik_two_col_metrics(half, h, half_h);
     if (this->beginChild(oxorany("##misc_left"), ImVec2(half, h), ImGuiChildFlags_Borders))
     {
-        // menu_body ##misc_left: Third Person only (Distance label is ESP vis_left)
         checkbox(oxorany("Third Person"), &g.b_third);
         if (g.b_third)
             slider_float(oxorany("##tps_dist"), &g.mom, 2, 3);
     }
     this->endChild();
-    ImGui::SameLine();
+    ImGui::SameLine(0, ImGui::GetStyle().ItemSpacing.x);
     ImGui::BeginChild("##misc_right_col", ImVec2(half, h), ImGuiChildFlags_None);
     if (this->beginChild("##misc_right_top", ImVec2(0, half_h), ImGuiChildFlags_Borders))
     {
@@ -768,7 +779,6 @@ void C_UserInterface::misc()
     this->endChild();
     if (this->beginChild("##misc_right_bottom", ImVec2(0, 0), ImGuiChildFlags_Borders))
     {
-        // Halalium child present (menu_body); reserved / empty in SO
         ImGui::Dummy(ImVec2(0, 1));
     }
     this->endChild();
@@ -777,15 +787,14 @@ void C_UserInterface::misc()
 
 void C_UserInterface::exploits()
 {
-    // == Skins == (Halalium ##skins_panel / ##weapons_list / ##skins_list)
-    float w = ImGui::GetWindowSize().x - ImGui::GetStyle().WindowPadding.x * 2;
-    float h = ImGui::GetContentRegionAvail().y - ImGui::GetStyle().WindowPadding.y * 2 - ImGui::GetStyle().ItemSpacing.y * 2;
+    float w = ImGui::GetContentRegionAvail().x;
+    float h = ImGui::GetContentRegionAvail().y;
     if (this->beginChild(oxorany("##skins_panel"), ImVec2(w, h), ImGuiChildFlags_Borders))
     {
         checkbox(oxorany("Skin Changer"), &g.b_skin_changer);
         if (g.b_skin_changer)
         {
-            ImGui::BeginChild("##weapons_list", ImVec2(0, 80.f), ImGuiChildFlags_Borders);
+            ImGui::BeginChild("##weapons_list", ImVec2(0, 90.f), ImGuiChildFlags_Borders);
             slider_int(oxorany("weapon id"), &g.i_skin_weapon, 0, 64);
             ImGui::EndChild();
             ImGui::BeginChild("##skins_list", ImVec2(0, 0), ImGuiChildFlags_Borders);
@@ -798,14 +807,14 @@ void C_UserInterface::exploits()
 
 void C_UserInterface::config()
 {
-    float half = (ImGui::GetWindowSize().x - (ImGui::GetStyle().WindowPadding.x * 2 + ImGui::GetStyle().ItemSpacing.x)) / 2;
-    float h = ImGui::GetContentRegionAvail().y - ImGui::GetStyle().WindowPadding.y * 2 - ImGui::GetStyle().ItemSpacing.y * 2;
+    float half = 0.f, h = 0.f, half_h = 0.f;
+    kik_two_col_metrics(half, h, half_h);
     if (this->beginChild(oxorany("##settings_left"), ImVec2(half, h), ImGuiChildFlags_Borders))
     {
         ImGui::ColorEdit4(oxorany("Accent Color"), g.m_accent, color_flags);
     }
     this->endChild();
-    ImGui::SameLine();
+    ImGui::SameLine(0, ImGui::GetStyle().ItemSpacing.x);
     if (this->beginChild(oxorany("##settings_watermark"), ImVec2(half, h), ImGuiChildFlags_Borders))
     {
         checkbox(oxorany("Watermark"), &g.b_watermark);
