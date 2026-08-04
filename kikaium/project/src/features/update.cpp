@@ -81,15 +81,12 @@ void new_update(c_player_controller *player)
                 // func with local player
 
                 c_misc->init(c_player->local);
-                // Melodium hitmarkers off unless Halalium adds them later
-                if (g.b_marker || g.b_dmarker || g.b_tracer)
-                    c_visual->hits(c_player->local);
+                // Melodium hitmarkers — never (not in Halalium allowlist)
                 c_antiaim->update();
-                if (g.b_world || g.b_fog || g.b_sky || g.b_solid)
+                if (g.b_world || g.b_apply_world)
                     c_world->init(c_player->local);
                 c_chams->local(c_player->local);
-                if (g.weapon_chams)
-                    c_chams->weapon(c_player->local);
+                // Melodium weapon_chams — off
             }
 
             if (c_globals->is_enemy(c_player->local, player))
@@ -281,11 +278,13 @@ bool hook_raycast(void *scene, ray_t *ray, float max_distance, raycast_hit_t *hi
                         int count;
                     };
 
+                    // Halalium rage "Bone" → head priority; else Melodium-style hitbox[] (defaults head)
+                    const bool bone_aim = g.b_silent_bone;
                     hitbox_group groups[] = {
-                        {g.hitbox[1], _body, (int)(sizeof(_body) / sizeof(_body[0]))},
-                        {g.hitbox[0], _head, (int)(sizeof(_head) / sizeof(_head[0]))},
-                        {g.hitbox[2], _arms, (int)(sizeof(_arms) / sizeof(_arms[0]))},
-                        {g.hitbox[3], _legs, (int)(sizeof(_legs) / sizeof(_legs[0]))},
+                        {!bone_aim && g.hitbox[1], _body, (int)(sizeof(_body) / sizeof(_body[0]))},
+                        {bone_aim || g.hitbox[0], _head, (int)(sizeof(_head) / sizeof(_head[0]))},
+                        {!bone_aim && g.hitbox[2], _arms, (int)(sizeof(_arms) / sizeof(_arms[0]))},
+                        {!bone_aim && g.hitbox[3], _legs, (int)(sizeof(_legs) / sizeof(_legs[0]))},
                     };
 
                     for (int w{}; w < 4; w++)
@@ -299,7 +298,8 @@ bool hook_raycast(void *scene, ray_t *ray, float max_distance, raycast_hit_t *hi
                                 continue;
 
                             bonepos = bone->get_position();
-                            if (!c_globals->is_bone_visible(camera_pos, bonepos))
+                            // Halalium Auto Wall — skip visibility gate
+                            if (!g.b_autowall && !c_globals->is_bone_visible(camera_pos, bonepos))
                                 continue;
 
                             float dist = (bonepos - camera_pos).length();

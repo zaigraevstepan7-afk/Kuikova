@@ -1,0 +1,56 @@
+# Authoritative Halalium UI labels from menu_body 2-pass decompile @0x1db874
+# (ADRP+ADD resolved strings only). ZERO Melodium extras.
+
+Enable Esp
+Box
+Box Type
+Box Color
+Corner Size
+Health Bar
+Distance
+Distance Color
+Bone
+Fov Check
+Fov
+Fov Color
+Chams
+Enemy Chams
+Enemy Color
+Local Chams
+Local Color
+Through Walls
+World
+World Color
+Solid World Color
+Apply World Color
+Silent Aim
+Auto Fire
+Auto Wall
+No spread
+Inf Ammo
+Fire Rate
+Wallshot
+Anti Aim
+Anti Aim Pitch
+Enable Anti Aim first
+Spin
+Spin Speed
+Reverse Spin
+Skin Changer
+Third Person
+Watermark
+Accent Color
+
+# Child IDs
+##vis_left
+##vis_right_top
+##vis_right_bottom
+##rage_left
+##rage_right_top
+##rage_right_bottom
+##misc_left
+##misc_right_top
+##settings_left
+##settings_watermark
+##skins_panel
+##wm_click

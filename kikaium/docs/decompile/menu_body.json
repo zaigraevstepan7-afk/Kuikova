@@ -1,0 +1,480 @@
+{
+  "name": "menu_body",
+  "va": "0x1db874",
+  "size": "0x1600",
+  "insn": 1408,
+  "fields": {
+    "0xc": 4,
+    "0x10": 22,
+    "0x14": 14,
+    "0x18": 3,
+    "0x28": 5,
+    "0x2c": 1,
+    "0x30": 2,
+    "0x60": 16,
+    "0x64": 2,
+    "0x68": 1,
+    "0x70": 4,
+    "0xce": 11,
+    "0xe0": 1,
+    "0x2c8": 11,
+    "0x2d8": 11
+  },
+  "rvas": [],
+  "strings": [
+    "##settings_left",
+    "Accent Color",
+    "##settings_watermark",
+    "Watermark",
+    "##vis_left",
+    "Enable Esp",
+    "Box",
+    "Box Type",
+    "Box Color",
+    "Corner Size",
+    "Health Bar",
+    "Distance",
+    "Distance Color",
+    "##vis_right_top",
+    "Chams",
+    "Enemy Chams",
+    "Enemy Color",
+    "Through Walls",
+    "##misc_left",
+    "Third Person",
+    "##misc_right_top",
+    "Inf Ammo",
+    "Fire Rate",
+    "Wallshot",
+    "##misc_right_bottom",
+    "##skins_panel",
+    "Skin Changer",
+    "##weapons_list",
+    "##skins_list",
+    "##rage_left",
+    "Silent Aim",
+    "Bone",
+    "Fov Check",
+    "Fov",
+    "Fov Color",
+    "Auto Fire",
+    "Auto Wall",
+    "No spread",
+    "##rage_right_top",
+    "Anti Aim",
+    "Local Chams",
+    "Local Color",
+    "##vis_right_bottom",
+    "World",
+    "World Color",
+    "Solid World Color",
+    "Apply World Color",
+    "Spin Speed",
+    "Reverse Spin",
+    "##rage_right_bottom",
+    "Anti Aim Pitch",
+    "Enable Anti Aim first"
+  ],
+  "calls": [
+    {
+      "at": "0x1db8b0",
+      "kind": "bl",
+      "target": "0x1dcd64"
+    },
+    {
+      "at": "0x1db8b4",
+      "kind": "bl",
+      "target": "0x1fc534"
+    },
+    {
+      "at": "0x1db8bc",
+      "kind": "bl",
+      "target": "0x1fc534"
+    },
+    {
+      "at": "0x1db920",
+      "kind": "bl",
+      "target": "0x1db6e8"
+    },
+    {
+      "at": "0x1db924",
+      "kind": "bl",
+      "target": "0x217e14"
+    },
+    {
+      "at": "0x1db94c",
+      "kind": "bl",
+      "target": "0x1ff434"
+    },
+    {
+      "at": "0x1db974",
+      "kind": "bl",
+      "target": "0x1edacc"
+    },
+    {
+      "at": "0x1db9a0",
+      "kind": "bl",
+      "target": "0x209124"
+    },
+    {
+      "at": "0x1db9b8",
+      "kind": "bl",
+      "target": "0x217e84"
+    },
+    {
+      "at": "0x1db9bc",
+      "kind": "bl",
+      "target": "0x217e14"
+    },
+    {
+      "at": "0x1db9cc",
+      "kind": "bl",
+      "target": "0x1dda38"
+    },
+    {
+      "at": "0x1db9d0",
+      "kind": "bl",
+      "target": "0x217e14"
+    },
+    {
+      "at": "0x1db9e8",
+      "kind": "bl",
+      "target": "0x21512c"
+    },
+    {
+      "at": "0x1db9f8",
+      "kind": "bl",
+      "target": "0x21512c"
+    },
+    {
+      "at": "0x1db9fc",
+      "kind": "bl",
+      "target": "0x1db7e8"
+    },
+    {
+      "at": "0x1dba08",
+      "kind": "bl",
+      "target": "0x200d64"
+    },
+    {
+      "at": "0x1dba1c",
+      "kind": "bl",
+      "target": "0x1db6e8"
+    },
+    {
+      "at": "0x1dba20",
+      "kind": "bl",
+      "target": "0x217e14"
+    },
+    {
+      "at": "0x1dba38",
+      "kind": "bl",
+      "target": "0x1ff434"
+    },
+    {
+      "at": "0x1dba58",
+      "kind": "bl",
+      "target": "0x1edacc"
+    },
+    {
+      "at": "0x1dba84",
+      "kind": "bl",
+      "target": "0x209124"
+    },
+    {
+      "at": "0x1dba98",
+      "kind": "bl",
+      "target": "0x217e84"
+    },
+    {
+      "at": "0x1dba9c",
+      "kind": "bl",
+      "target": "0x217e14"
+    },
+    {
+      "at": "0x1dbab4",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbad0",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbae4",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbaf8",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbb0c",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbb30",
+      "kind": "bl",
+      "target": "0x1db6e8"
+    },
+    {
+      "at": "0x1dbb34",
+      "kind": "bl",
+      "target": "0x217e14"
+    },
+    {
+      "at": "0x1dbb5c",
+      "kind": "bl",
+      "target": "0x1ff434"
+    },
+    {
+      "at": "0x1dbb80",
+      "kind": "bl",
+      "target": "0x1edacc"
+    },
+    {
+      "at": "0x1dbbac",
+      "kind": "bl",
+      "target": "0x209124"
+    },
+    {
+      "at": "0x1dbbc4",
+      "kind": "bl",
+      "target": "0x217e84"
+    },
+    {
+      "at": "0x1dbbc8",
+      "kind": "bl",
+      "target": "0x217e14"
+    },
+    {
+      "at": "0x1dbbdc",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbbf4",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbc20",
+      "kind": "bl",
+      "target": "0x1dd3cc"
+    },
+    {
+      "at": "0x1dbc34",
+      "kind": "bl",
+      "target": "0x1dda38"
+    },
+    {
+      "at": "0x1dbc50",
+      "kind": "bl",
+      "target": "0x1dd6e0"
+    },
+    {
+      "at": "0x1dbc7c",
+      "kind": "bl",
+      "target": "0x1dd6e0"
+    },
+    {
+      "at": "0x1dbc90",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbca8",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbccc",
+      "kind": "bl",
+      "target": "0x1dd6e0"
+    },
+    {
+      "at": "0x1dbce4",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbd00",
+      "kind": "bl",
+      "target": "0x1dda38"
+    },
+    {
+      "at": "0x1dbd14",
+      "kind": "bl",
+      "target": "0x1dda38"
+    },
+    {
+      "at": "0x1dbd28",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbd40",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbd5c",
+      "kind": "bl",
+      "target": "0x1dda38"
+    },
+    {
+      "at": "0x1dbd74",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbd90",
+      "kind": "bl",
+      "target": "0x1dda38"
+    },
+    {
+      "at": "0x1dbda8",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbdd0",
+      "kind": "bl",
+      "target": "0x1dd3cc"
+    },
+    {
+      "at": "0x1dbde4",
+      "kind": "bl",
+      "target": "0x1dda38"
+    },
+    {
+      "at": "0x1dbe00",
+      "kind": "bl",
+      "target": "0x1dd6e0"
+    },
+    {
+      "at": "0x1dbe14",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbe2c",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbe48",
+      "kind": "bl",
+      "target": "0x1dda38"
+    },
+    {
+      "at": "0x1dbe64",
+      "kind": "bl",
+      "target": "0x1dd6e0"
+    },
+    {
+      "at": "0x1dbe78",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbe7c",
+      "kind": "bl",
+      "target": "0x1db7e8"
+    },
+    {
+      "at": "0x1dbe88",
+      "kind": "bl",
+      "target": "0x200d64"
+    },
+    {
+      "at": "0x1dbe8c",
+      "kind": "bl",
+      "target": "0x2011c8"
+    },
+    {
+      "at": "0x1dbea0",
+      "kind": "bl",
+      "target": "0x1db6e8"
+    },
+    {
+      "at": "0x1dbea4",
+      "kind": "bl",
+      "target": "0x217e14"
+    },
+    {
+      "at": "0x1dbec0",
+      "kind": "bl",
+      "target": "0x1ff434"
+    },
+    {
+      "at": "0x1dbee0",
+      "kind": "bl",
+      "target": "0x1edacc"
+    },
+    {
+      "at": "0x1dbf0c",
+      "kind": "bl",
+      "target": "0x209124"
+    },
+    {
+      "at": "0x1dbf24",
+      "kind": "bl",
+      "target": "0x217e84"
+    },
+    {
+      "at": "0x1dbf28",
+      "kind": "bl",
+      "target": "0x217e14"
+    },
+    {
+      "at": "0x1dbf3c",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbf60",
+      "kind": "bl",
+      "target": "0x1dd3cc"
+    },
+    {
+      "at": "0x1dbf74",
+      "kind": "bl",
+      "target": "0x1dda38"
+    },
+    {
+      "at": "0x1dbf88",
+      "kind": "bl",
+      "target": "0x1dd198"
+    },
+    {
+      "at": "0x1dbfc8",
+      "kind": "bl",
+      "target": "0x21512c"
+    },
+    {
+      "at": "0x1dbfe0",
+      "kind": "bl",
+      "target": "0x1db6e8"
+    },
+    {
+      "at": "0x1dbfe4",
+      "kind": "bl",
+      "target": "0x217e14"
+    },
+    {
+      "at": "0x1dc00c",
+      "kind": "bl",
+      "target": "0x1ff434"
+    },
+    {
+      "at": "0x1dc030",
+      "kind": "bl",
+      "target": "0x1edacc"
+    }
+  ]
+}

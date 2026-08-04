@@ -1,0 +1,154 @@
+{
+  "name": "LateUpdate_cb",
+  "va": "0x1d7ec4",
+  "size": "0x340",
+  "insn": 208,
+  "fields": {
+    "0x10": 3,
+    "0x14": 1,
+    "0x18": 3,
+    "0x1c": 1,
+    "0x20": 1,
+    "0x28": 2,
+    "0x38": 1,
+    "0x40": 1,
+    "0x98": 1,
+    "0xc0": 1,
+    "0x150": 1,
+    "0x160": 2,
+    "0x190": 1,
+    "0x2b0": 1
+  },
+  "rvas": [
+    {
+      "reg": "w24",
+      "rva": "0x8c7be04",
+      "at": "0x1d8078"
+    },
+    {
+      "reg": "w28",
+      "rva": "0x5caafc4",
+      "at": "0x1d80b4"
+    },
+    {
+      "reg": "w9",
+      "rva": "0x5deada4",
+      "at": "0x1d817c"
+    }
+  ],
+  "strings": [
+    "InstantiateViaServer"
+  ],
+  "calls": [
+    {
+      "at": "0x1d7f08",
+      "kind": "blr",
+      "target": "x8"
+    },
+    {
+      "at": "0x1d7f60",
+      "kind": "bl",
+      "target": "0x1e0bcc"
+    },
+    {
+      "at": "0x1d7f78",
+      "kind": "bl",
+      "target": "0x1d88fc"
+    },
+    {
+      "at": "0x1d7f8c",
+      "kind": "bl",
+      "target": "0x1d8ee4"
+    },
+    {
+      "at": "0x1d7f90",
+      "kind": "bl",
+      "target": "0x1d8f2c"
+    },
+    {
+      "at": "0x1d7f9c",
+      "kind": "bl",
+      "target": "0x1d8f48"
+    },
+    {
+      "at": "0x1d7fb4",
+      "kind": "bl",
+      "target": "0x1d8f74"
+    },
+    {
+      "at": "0x1d7fc4",
+      "kind": "bl",
+      "target": "0x1d8f08"
+    },
+    {
+      "at": "0x1d7fdc",
+      "kind": "bl",
+      "target": "0x1d9c7c"
+    },
+    {
+      "at": "0x1d800c",
+      "kind": "bl",
+      "target": "0x1d8858"
+    },
+    {
+      "at": "0x1d8020",
+      "kind": "bl",
+      "target": "0x1d8858"
+    },
+    {
+      "at": "0x1d8034",
+      "kind": "bl",
+      "target": "0x1d8858"
+    },
+    {
+      "at": "0x1d8084",
+      "kind": "blr",
+      "target": "x8"
+    },
+    {
+      "at": "0x1d80d0",
+      "kind": "blr",
+      "target": "x8"
+    },
+    {
+      "at": "0x1d8114",
+      "kind": "blr",
+      "target": "x28"
+    },
+    {
+      "at": "0x1d8124",
+      "kind": "blr",
+      "target": "x28"
+    },
+    {
+      "at": "0x1d8134",
+      "kind": "blr",
+      "target": "x28"
+    },
+    {
+      "at": "0x1d8144",
+      "kind": "blr",
+      "target": "x28"
+    },
+    {
+      "at": "0x1d8154",
+      "kind": "blr",
+      "target": "x28"
+    },
+    {
+      "at": "0x1d8188",
+      "kind": "blr",
+      "target": "x8"
+    },
+    {
+      "at": "0x1d81b0",
+      "kind": "blr",
+      "target": "x8"
+    },
+    {
+      "at": "0x1d81b8",
+      "kind": "bl",
+      "target": "0x26c3b0"
+    }
+  ]
+}

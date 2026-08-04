@@ -1,0 +1,91 @@
+{
+  "name": "secondary_hook_cb",
+  "va": "0x1d81fc",
+  "size": "0x200",
+  "insn": 128,
+  "fields": {
+    "0x10": 6,
+    "0x30": 1,
+    "0x50": 1,
+    "0x70": 1,
+    "0x79": 2,
+    "0xa8": 1,
+    "0xb8": 1,
+    "0x2b0": 1
+  },
+  "rvas": [
+    {
+      "reg": "w8",
+      "rva": "0x5ffaefc",
+      "at": "0x1d8250"
+    },
+    {
+      "reg": "w8",
+      "rva": "0x6009294",
+      "at": "0x1d826c"
+    }
+  ],
+  "strings": [],
+  "calls": [
+    {
+      "at": "0x1d820c",
+      "kind": "bl",
+      "target": "0x1d81bc"
+    },
+    {
+      "at": "0x1d8258",
+      "kind": "blr",
+      "target": "x8"
+    },
+    {
+      "at": "0x1d8274",
+      "kind": "blr",
+      "target": "x8"
+    },
+    {
+      "at": "0x1d8328",
+      "kind": "bl",
+      "target": "0x1d833c"
+    },
+    {
+      "at": "0x1d8334",
+      "kind": "bl",
+      "target": "0x1eb09c"
+    },
+    {
+      "at": "0x1d8374",
+      "kind": "bl",
+      "target": "0x26c300"
+    },
+    {
+      "at": "0x1d8384",
+      "kind": "bl",
+      "target": "0x1ea9f4"
+    },
+    {
+      "at": "0x1d83a0",
+      "kind": "bl",
+      "target": "0x26c2e0"
+    },
+    {
+      "at": "0x1d83ac",
+      "kind": "bl",
+      "target": "0x26c310"
+    },
+    {
+      "at": "0x1d83c0",
+      "kind": "bl",
+      "target": "0x26c480"
+    },
+    {
+      "at": "0x1d83c8",
+      "kind": "bl",
+      "target": "0x26841c"
+    },
+    {
+      "at": "0x1d83e4",
+      "kind": "blr",
+      "target": "x8"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "name": "Bypass_getrr",
+  "va": "0x1d90b8",
+  "size": "0x100",
+  "insn": 64,
+  "fields": {
+    "0x10": 3
+  },
+  "rvas": [],
+  "strings": [
+    "Halalium_Bypass",
+    "got call from getrr.",
+    "bypas hok result %d"
+  ],
+  "calls": [
+    {
+      "at": "0x1d90e4",
+      "kind": "bl",
+      "target": "0x26c540"
+    },
+    {
+      "at": "0x1d9100",
+      "kind": "bl",
+      "target": "0x26c590"
+    },
+    {
+      "at": "0x1d9114",
+      "kind": "blr",
+      "target": "x8"
+    },
+    {
+      "at": "0x1d9140",
+      "kind": "bl",
+      "target": "0x26c560"
+    },
+    {
+      "at": "0x1d9154",
+      "kind": "bl",
+      "target": "0x26c540"
+    }
+  ]
+}

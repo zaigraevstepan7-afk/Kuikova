@@ -194,12 +194,14 @@ void antiaim::init(c_player_controller *local, c_player_inputs *inputs)
         base_yaw = static_cast<float>(rand() % 360);
     }
 
-    if (g.f_speed != 0.f)
+    if (g.b_spin)
     {
         if (stop)
             return;
         static float spin_angle = 0.f;
-        spin_angle += g.f_speed;
+        // Halalium "Reverse Spin" — negate Spin Speed
+        const float step = g.b_reverse_spin ? -g.f_speed : g.f_speed;
+        spin_angle += step;
         if (spin_angle >= 360.f)
             spin_angle -= 360.f;
         else if (spin_angle < 0.f)

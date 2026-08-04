@@ -332,30 +332,37 @@ inline const char *knifes[] = {"m9", "karambit", "jkommando", "butterfly", "flip
 
 inline struct g_
 {
-    // esp
+    // esp — Halalium menu_body @0x1db874 only
     bool b_esp;
     bool b_line;
     bool b_rect;
+    int i_box_type = 0;       // Halalium "Box Type" 0=Full 1=Corner
+    float f_corner_size = 10.f; // Halalium "Corner Size"
     bool b_health;
-    bool b_skeleton;
-    bool b_name = false;      // Melodium-only — kept off
+    bool b_skeleton;          // Halalium "Bone" (visual)
+    bool b_distance = true;   // Halalium "Distance"
+    float m_distance[4] = {1.f, 1.f, 1.f, 1.f};
+    float m_accent[4] = {0.91f, 0.66f, 0.35f, 1.f}; // Halalium "Accent Color"
+    // Melodium-only leftovers — forced OFF, no UI
+    bool b_name = false;
     bool b_ammo = false;
     bool b_eweapon = false;
     float m_ammo[4] = {0.077f, 0.251f, 0.605f, 1.0f};
     float m_health[4] = {0.025f, 0.560f, 0.025f, 1.0f};
     float m_rect[4] = {1.0f, 0.0f, 0.0f, 1.0f};
     float m_skeleton[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-    bool b_tracer = false;    // Melodium-only
+    bool b_tracer = false;
     float m_tracer[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     bool b_marker = false;
     float m_marker[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     bool b_dmarker = false;
-    bool b_sk;
+    bool b_sk = false;
     float m_sk[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-    bool b_watermark = true;  // Halalium Watermark
+    bool b_watermark = true;
 
-    // ragebot (Halalium surface: Silent Aim / Auto Fire / Auto Wall / Through Walls / Wallshot / No spread / Inf Ammo)
+    // rage — Halalium: Silent Aim / Bone / Auto Fire / Auto Wall / No spread / Wallshot / Inf Ammo / Fire Rate
     bool b_silent;
+    bool b_silent_bone = true; // Halalium rage "Bone" (prefer head)
     bool b_fire;
     bool b_endless;       // Inf Ammo
     bool b_nospread;      // No spread
@@ -365,10 +372,10 @@ inline struct g_
     bool b_fov_check;     // Fov Check
     float f_fov_check = 120.f;
     float m_fov_color[4] = {1.f, 0.2f, 0.2f, 0.35f};
-    bool b_duck = false;      // Melodium-only
+    bool b_duck = false;
     bool b_stop = false;
     int hitchance = 75;
-    bool hitbox[4] = {true, false, false, false}; // head default for silent
+    bool hitbox[4] = {true, false, false, false};
     bool b_dt = false;
     bool predict = false;
     float factor = 1;
@@ -376,24 +383,25 @@ inline struct g_
     float dist = 1.65;
     float mom = 2.5;
 
-    // skins (Halalium Skin Changer)
+    // skins
     bool b_skin_changer;
     int i_skin_weapon = 0;
     int i_skin_id = 0;
 
-    // anti aim (Halalium: Anti Aim / Anti Aim Pitch / Spin)
+    // anti aim — Halalium: Anti Aim / Pitch / Spin / Reverse Spin
     bool b_antiaim;
     bool b_spin;
+    bool b_reverse_spin = false;
     int i_pitch = 0;
     int i_yaw = 0;
-    bool b_jitter = false;    // Melodium-only
+    bool b_jitter = false;
     int i_range = 0;
-    float f_speed;
+    float f_speed = 10.f;
     bool b_chaos = false;
     float f_jitter_speed = 0.3f;
     int frames = 1;
 
-    // misc — Melodium-only flags forced off (no UI)
+    // misc — Melodium-only forced off
     bool b_strafer = false;
     bool b_walk = false;
     bool b_third;
@@ -421,9 +429,10 @@ inline struct g_
     bool hit_chams = false;
     bool weapon_chams = false;
 
-    // world — Halalium has World Color; Melodium fog/sky/solid off
+    // world — Halalium World / Solid / Apply (no Melodium fog/sky)
     bool b_world;
     bool b_solid = false;
+    bool b_apply_world = false;
     bool b_fog = false;
     float m_world[4] = {0.500f, 0.500f, 0.500f, 0.700f};
     float m_fog[4] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -433,7 +442,7 @@ inline struct g_
     float m_sky[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     int c_flags = 2;
 
-    // exploits — Melodium-only, forced off
+    // exploits — Melodium god/OHK off; Fire Rate is Halalium
     bool b_onehit = false;
     bool b_frate = false;
     bool b_god = false;
@@ -443,7 +452,7 @@ inline struct g_
     bool b_bomb = false;
 
     int steps = 2500;
-    bool update_matrix = true; // internal ESP matrix, not a Melodium menu toggle
+    bool update_matrix = true;
 
 } g;
 enum class team_t : uint8_t;

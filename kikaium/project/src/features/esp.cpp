@@ -1,6 +1,8 @@
 #include "esp.h"
 #include <imgui.h>
 #include <map>
+#include <algorithm>
+#include <cstdio>
 #include <src/menu/gui.h>
 
 Matrix esp::matrix()
@@ -323,20 +325,59 @@ void esp::render()
                 float x2 = x + width;
                 float y2 = y + height;
 
-                draw->AddRectFilledMultiColor({x1 - 1, y1 - 1}, {x2 + 1, y1}, col_shadow, col_shadow, col_shadow, col_shadow);
-                draw->AddRectFilledMultiColor({x1 - 1, y2}, {x2 + 1, y2 + 1}, col_shadow, col_shadow, col_shadow, col_shadow);
-                draw->AddRectFilledMultiColor({x1 - 1, y1}, {x1, y2}, col_shadow, col_shadow, col_shadow, col_shadow);
-                draw->AddRectFilledMultiColor({x2, y1}, {x2 + 1, y2}, col_shadow, col_shadow, col_shadow, col_shadow);
+                if (g.i_box_type == 1)
+                {
+                    // Halalium "Box Type" = Corner
+                    const float cs = std::clamp(g.f_corner_size, 2.f, 40.f);
+                    auto corner = [&](float ax, float ay, float dx, float dy) {
+                        draw->AddLine(ImVec2(ax, ay), ImVec2(ax + dx, ay), col_shadow, 3.f);
+                        draw->AddLine(ImVec2(ax, ay), ImVec2(ax, ay + dy), col_shadow, 3.f);
+                        draw->AddLine(ImVec2(ax, ay), ImVec2(ax + dx, ay), col_box, 1.5f);
+                        draw->AddLine(ImVec2(ax, ay), ImVec2(ax, ay + dy), col_box, 1.5f);
+                    };
+                    corner(x1, y1, cs, cs);
+                    corner(x2, y1, -cs, cs);
+                    corner(x1, y2, cs, -cs);
+                    corner(x2, y2, -cs, -cs);
+                }
+                else
+                {
+                    draw->AddRectFilledMultiColor({x1 - 1, y1 - 1}, {x2 + 1, y1}, col_shadow, col_shadow, col_shadow, col_shadow);
+                    draw->AddRectFilledMultiColor({x1 - 1, y2}, {x2 + 1, y2 + 1}, col_shadow, col_shadow, col_shadow, col_shadow);
+                    draw->AddRectFilledMultiColor({x1 - 1, y1}, {x1, y2}, col_shadow, col_shadow, col_shadow, col_shadow);
+                    draw->AddRectFilledMultiColor({x2, y1}, {x2 + 1, y2}, col_shadow, col_shadow, col_shadow, col_shadow);
 
-                draw->AddRectFilledMultiColor(ImVec2(x1, y1 + 1), ImVec2(x2, y1 + 2), col_shadow, col_shadow, col_shadow, col_shadow);
-                draw->AddRectFilledMultiColor(ImVec2(x1, y2 - 2), ImVec2(x2, y2 - 1), col_shadow, col_shadow, col_shadow, col_shadow);
-                draw->AddRectFilledMultiColor(ImVec2(x1 + 1, y1), ImVec2(x1 + 2, y2), col_shadow, col_shadow, col_shadow, col_shadow);
-                draw->AddRectFilledMultiColor(ImVec2(x2 - 2, y1), ImVec2(x2 - 1, y2), col_shadow, col_shadow, col_shadow, col_shadow);
+                    draw->AddRectFilledMultiColor(ImVec2(x1, y1 + 1), ImVec2(x2, y1 + 2), col_shadow, col_shadow, col_shadow, col_shadow);
+                    draw->AddRectFilledMultiColor(ImVec2(x1, y2 - 2), ImVec2(x2, y2 - 1), col_shadow, col_shadow, col_shadow, col_shadow);
+                    draw->AddRectFilledMultiColor(ImVec2(x1 + 1, y1), ImVec2(x1 + 2, y2), col_shadow, col_shadow, col_shadow, col_shadow);
+                    draw->AddRectFilledMultiColor(ImVec2(x2 - 2, y1), ImVec2(x2 - 1, y2), col_shadow, col_shadow, col_shadow, col_shadow);
 
-                draw->AddRectFilledMultiColor({x1, y1}, {x2, y1 + 1}, col_box, col_box, col_box, col_box);
-                draw->AddRectFilledMultiColor({x1, y2 - 1}, {x2, y2}, col_box, col_box, col_box, col_box);
-                draw->AddRectFilledMultiColor({x1, y1}, {x1 + 1, y2}, col_box, col_box, col_box, col_box);
-                draw->AddRectFilledMultiColor({x2 - 1, y1}, {x2, y2}, col_box, col_box, col_box, col_box);
+                    draw->AddRectFilledMultiColor({x1, y1}, {x2, y1 + 1}, col_box, col_box, col_box, col_box);
+                    draw->AddRectFilledMultiColor({x1, y2 - 1}, {x2, y2}, col_box, col_box, col_box, col_box);
+                    draw->AddRectFilledMultiColor({x1, y1}, {x1 + 1, y2}, col_box, col_box, col_box, col_box);
+                    draw->AddRectFilledMultiColor({x2 - 1, y1}, {x2, y2}, col_box, col_box, col_box, col_box);
+                }
+            }
+
+            if (g.b_distance)
+            {
+                Vector3 cam_pos{};
+                if (c_player->local && c_player->local->m_pMainCameraHolder)
+                    cam_pos = c_player->local->m_pMainCameraHolder->get_position();
+                const float distm = (cam_pos == Vector3{}) ? 0.f : Vector3::Distance(cam_pos, foot);
+                char dbuf[24]{};
+                std::snprintf(dbuf, sizeof(dbuf), "%.0fm", distm);
+                const float fontSize = 14.f;
+                ImVec2 text_size = gui::font ? gui::font->CalcTextSizeA(fontSize, FLT_MAX, 0.f, dbuf)
+                                            : ImGui::CalcTextSize(dbuf);
+                float textX = x + (width * 0.5f) - (text_size.x * 0.5f);
+                float textY = y + height + 2.f;
+                ImU32 dcol = ApplyAlpha(ImGui::ColorConvertFloat4ToU32(
+                    ImVec4(g.m_distance[0], g.m_distance[1], g.m_distance[2], g.m_distance[3])));
+                if (gui::font)
+                    text(gui::font, fontSize, ImVec2(textX, textY), dcol, dbuf, false, true);
+                else
+                    draw->AddText(ImVec2(textX, textY), dcol, dbuf);
             }
 
             if (g.b_name)
