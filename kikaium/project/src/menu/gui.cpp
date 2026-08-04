@@ -46,7 +46,6 @@ namespace gui
 
     void DrawWatermark()
     {
-        // Keep watermark alive while menu is open so user can always close it
         if (!g.b_watermark && !open)
             return;
         (void)k_stux_contract;
@@ -55,17 +54,13 @@ namespace gui
 
         ImGui::SetNextWindowPos(ImVec2(16.f, 16.f), ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(0.0f);
-        // NEVER SetNextWindowFocus every frame — steals focus from menu tabs/checkboxes
-        if (!open)
-            ImGui::SetNextWindowFocus();
 
         ImGui::Begin(oxorany("##stux_wm"), nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse |
                          ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings |
                          ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_AlwaysAutoResize |
-                         ImGuiWindowFlags_NoNav |
-                         (open ? ImGuiWindowFlags_NoBringToFrontOnFocus : 0));
+                         ImGuiWindowFlags_NoNav);
 
         ImVec2 ts = ImGui::CalcTextSize(brand);
         float pad = 14.f;
@@ -83,13 +78,13 @@ namespace gui
 
         ImGui::Dummy(ImVec2(width, height));
         ImGui::SetCursorScreenPos(rmin);
-        // Single click path only (InvisibleButton = release). Do NOT also use
-        // consume_tap_in_rect — that fired on press → double toggle (open/close flicker).
         if (ImGui::InvisibleButton(oxorany("##wm_click"), ImVec2(width, height)))
         {
             open = !open;
-            g_menu_input_lock.store(6, std::memory_order_release);
+            g_menu_input_lock.store(4, std::memory_order_release);
         }
+        // Keep watermark topmost for hit-test so it can close the menu
+        ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
         ImGui::End();
     }
 
@@ -106,7 +101,6 @@ namespace gui
         if (g.b_scope && c_player->local && c_player->weapon_parameters && c_globals->is_scoped())
             cross();
         ImGui::End();
-        DrawWatermark();
     }
 
     void render()
@@ -120,6 +114,8 @@ namespace gui
             alpha = 1.f;
         if (alpha < 0.f)
             alpha = 0.f;
+        // Menu first, watermark last → watermark stays clickable to close
         ui.render();
+        DrawWatermark();
     }
 }

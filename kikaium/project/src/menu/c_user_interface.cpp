@@ -533,7 +533,7 @@ void C_UserInterface::render()
         ImGui::SetNextWindowPos(ImVec2((c_egl->width - ww) * 0.5f, (c_egl->heigth - wh) * 0.5f), ImGuiCond_Once);
         ImGui::SetNextWindowSize(ImVec2(ww, wh), ImGuiCond_Once);
     }
-    ImGui::SetNextWindowFocus();
+    // Do NOT SetNextWindowFocus every frame — blocks watermark close clicks
 
     // xxx — new internal: ESP + Bypass only (SO2 0.39.2)
     if (this->beginWindow("xxx_shell", nullptr, ImGuiWindowFlags_NoScrollbar))
@@ -552,6 +552,18 @@ void C_UserInterface::render()
         dl->AddText(ImVec2(wp.x + 16.f, wp.y + 14.f), stux_ui::kAccent, "xxx");
         dl->AddText(ImVec2(wp.x + 48.f, wp.y + 16.f), stux_ui::kMuted, "0.39.2");
 
+        // Close button in header (always works even if watermark is blocked)
+        {
+            ImGui::SetCursorPos(ImVec2(rail_x - 72.f, 8.f));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.10f, 0.08f, 1.f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.55f, 0.20f, 0.12f, 1.f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.75f, 0.25f, 0.12f, 1.f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.94f, 0.92f, 0.88f, 1.f));
+            if (ImGui::Button("CLOSE", ImVec2(64.f, 28.f)))
+                open = false;
+            ImGui::PopStyleColor(4);
+        }
+
         static const char *tabs[] = {"01 ESP", "02 BYP"};
         ImGui::SetCursorPos(ImVec2(rail_x + 8.f, 56.f));
         for (int i = 0; i < 2; i++)
@@ -564,7 +576,6 @@ void C_UserInterface::render()
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.f, 0.77f, 0.28f, 0.28f));
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.f, 0.77f, 0.28f, 0.40f));
             ImGui::PushStyleColor(ImGuiCol_Text, selected ? ImVec4(1.f, 0.77f, 0.28f, 1.f) : ImVec4(0.70f, 0.66f, 0.58f, 1.f));
-            // Use labeled button so hit-test + click are the same control (more reliable on touch)
             if (ImGui::Button(tabs[i], ImVec2(rail_w - 16.f, 52.f)))
                 m_iCurrentTab = i;
             ImGui::PopStyleColor(4);
@@ -580,8 +591,8 @@ void C_UserInterface::render()
         {
             switch (m_iCurrentTab)
             {
-            case 0: rage(); break;     // ESP panel
-            case 1: config(); break;   // Bypass panel
+            case 0: rage(); break;
+            case 1: config(); break;
             default: m_iCurrentTab = 0; rage(); break;
             }
         }
