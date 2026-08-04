@@ -39,12 +39,10 @@ namespace gui
         ImDrawList *drawList = ImGui::GetForegroundDrawList();
 
         float originalLength = c_egl->heigth / 4.0f;
-
         float lineLength = originalLength / 2.f;
-        float startThickness = 4.0f;
-        ImU32 startColor = IM_COL32(255, 255, 255, 150);
-        ImU32 endColor = IM_COL32(220, 220, 220, 150);
-
+        float startThickness = 3.0f;
+        ImU32 startColor = IM_COL32(232, 168, 88, 160);
+        ImU32 endColor = IM_COL32(232, 168, 88, 20);
         float gap = 40.0f;
 
         DrawGradientLine(drawList, ImVec2(center.x, center.y - lineLength), ImVec2(center.x, center.y - gap), startThickness, startColor, endColor);
@@ -53,13 +51,12 @@ namespace gui
         DrawGradientLine(drawList, ImVec2(center.x + lineLength, center.y), ImVec2(center.x + gap, center.y), startThickness, startColor, endColor);
     }
 
-    // Kikaium watermark — distinct from Halalium pill layout.
     void DrawWatermark()
     {
         const char *brand = oxorany("Kikaium");
-        const char *line = oxorany("Kikaium | private | 0392");
+        const char *line = oxorany("private  ·  0.39.2");
 
-        ImGui::SetNextWindowPos(ImVec2(16.f, 16.f), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(18.f, 18.f), ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(0.0f);
         ImGui::Begin(oxorany("##kik_wm"), nullptr,
                      ImGuiWindowFlags_NoTitleBar |
@@ -74,22 +71,26 @@ namespace gui
 
         ImVec2 brand_sz = ImGui::CalcTextSize(brand);
         ImVec2 line_sz = ImGui::CalcTextSize(line);
-        float width = (brand_sz.x > line_sz.x ? brand_sz.x : line_sz.x) + 28.f;
-        float height = brand_sz.y + line_sz.y + 20.f;
+        float width = (brand_sz.x > line_sz.x ? brand_sz.x : line_sz.x) + 36.f;
+        float height = brand_sz.y + line_sz.y + 22.f;
 
         ImVec2 p = ImGui::GetCursorScreenPos();
         ImDrawList *dl = ImGui::GetWindowDrawList();
         ImVec2 rmin = p;
         ImVec2 rmax = ImVec2(p.x + width, p.y + height);
 
-        // Flat bar + teal underline (not Halalium dark pill + left accent).
-        dl->AddRectFilled(rmin, rmax, IM_COL32(12, 16, 18, 200), 0.0f);
-        dl->AddRectFilled(ImVec2(rmin.x, rmax.y - 2.f), rmax, IM_COL32(45, 180, 160, 255), 0.0f);
+        // Glass bar + copper edge (distinct from Halalium pill).
+        dl->AddRectFilledMultiColor(rmin, rmax,
+                                    IM_COL32(18, 18, 20, 210), IM_COL32(22, 20, 18, 210),
+                                    IM_COL32(22, 20, 18, 210), IM_COL32(18, 18, 20, 210));
+        dl->AddRect(rmin, rmax, IM_COL32(55, 50, 42, 200), 0.f, 0, 1.0f);
+        dl->AddRectFilled(ImVec2(rmin.x, rmax.y - 2.f), rmax, IM_COL32(232, 168, 88, 255));
+        dl->AddRectFilled(rmin, ImVec2(rmin.x + 3.f, rmax.y), IM_COL32(232, 168, 88, 220));
 
-        ImVec2 brand_pos = ImVec2(p.x + 14.f, p.y + 5.f);
-        ImVec2 line_pos = ImVec2(p.x + 14.f, p.y + 5.f + brand_sz.y + 2.f);
-        dl->AddText(brand_pos, IM_COL32(240, 244, 242, 255), brand);
-        dl->AddText(line_pos, IM_COL32(120, 160, 150, 255), line);
+        ImVec2 brand_pos = ImVec2(p.x + 16.f, p.y + 6.f);
+        ImVec2 line_pos = ImVec2(p.x + 16.f, p.y + 6.f + brand_sz.y + 2.f);
+        dl->AddText(brand_pos, IM_COL32(245, 240, 232, 255), brand);
+        dl->AddText(line_pos, IM_COL32(180, 140, 90, 255), line);
 
         ImGui::Dummy(ImVec2(width, height));
         ImGui::SetCursorScreenPos(rmin);
@@ -105,13 +106,15 @@ namespace gui
 
         ImGui::SetNextWindowPos(pos, ImGuiCond_Once);
         ImGui::SetNextWindowSize(size, ImGuiCond_Always);
-        ImGui::Begin(oxorany("1488"), nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
+        ImGui::Begin(oxorany("##kik_overlay"), nullptr,
+                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground |
+                         ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus |
+                         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
         if (g.b_scope && c_player->local && c_player->weapon_parameters && c_globals->is_scoped())
             cross();
 
         ImGui::End();
-
         DrawWatermark();
     }
 
@@ -121,8 +124,12 @@ namespace gui
         ui.render();
 
         if (open && alpha < 1.f)
-            alpha += 0.025f;
-        else if (!open && alpha > 0.025f)
-            alpha -= 0.025f;
+            alpha += 0.04f;
+        else if (!open && alpha > 0.02f)
+            alpha -= 0.04f;
+        if (alpha > 1.f)
+            alpha = 1.f;
+        if (alpha < 0.f)
+            alpha = 0.f;
     }
 }

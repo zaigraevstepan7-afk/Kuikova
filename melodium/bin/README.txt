@@ -1,9 +1,8 @@
-# Melodium / Kikaium builds
+# Melodium / Kikaium — OUR binary
 
-| File | Notes |
-|------|------|
-| **`libkikaium.so`** | **Preferred** — Halalium engine, Kikaium brand (stable) |
-| `libmelodium.so` | Experimental Melodium shell (can crash on inject) |
-| `libmelodium-halalium-emu.so` | Same as latest Melodium build |
+| File | Use |
+|------|-----|
+| **libmelodium.so** | **Inject this** — our menu (copper theme, left rail) |
+| libkikaium.so | Halalium rebrand only (stock Halalium layout) |
 
-See `/kikaium/README.md` and `/UPDATE.md`.
+Watermark: tap **Kikaium** to open menu.
