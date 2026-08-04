@@ -80,6 +80,11 @@ struct raycast_hit_t
 template <typename T>
 struct safe_t
 {
+    // Halalium Safe helpers @0x1d8c30 (int) / @0x1d8c54 (float):
+    //   layout: salt@+0, raw@+4 (8 bytes)
+    //   encode: if (salt&1)==0 → raw = salt ^ value
+    //           else           → raw = byte-swap form (BFI/BFXIL)
+    //   Inf Ammo writes capacity/ammo Safe = 0x45 via int helper.
     int salt;
     int raw;
 
@@ -89,14 +94,45 @@ struct safe_t
         if ((salt & 1) == std::is_same_v<T, float>)
             result = raw ^ salt;
         else
-            result = (*((uint8_t *)&raw + 2)) | raw & 0xFF00FF00 | ((*(uint8_t *)&raw) << 16);
+            result = (*((uint8_t *)&raw + 2)) | (raw & 0xFF00FF00) | ((*(uint8_t *)&raw) << 16);
         return *(T *)&result;
     }
 
     void set(T v)
     {
-        salt = std::is_same_v<T, float>;
-        raw = *(int *)&v;
+        int val = *reinterpret_cast<int *>(&v);
+        if constexpr (std::is_same_v<T, float>)
+        {
+            // Match get() XOR path: salt bit0 must equal is_float (1)
+            if ((salt & 1) == 0)
+                salt = 1;
+            raw = salt ^ val;
+        }
+        else if constexpr (std::is_same_v<T, bool>)
+        {
+            int iv = v ? 1 : 0;
+            // Prefer XOR path (salt even) like Halalium Inf Ammo helper when salt==0
+            if ((salt & 1) == 0)
+                raw = salt ^ iv;
+            else
+            {
+                uint32_t u = (uint32_t)iv;
+                uint32_t swapped = (u & 0xFF00FF00u) | ((u & 0xFFu) << 16) | ((u >> 16) & 0xFFu);
+                raw = (int)swapped;
+            }
+        }
+        else
+        {
+            // int: Halalium @0x1d8c30
+            if ((salt & 1) == 0)
+                raw = salt ^ val;
+            else
+            {
+                uint32_t u = (uint32_t)val;
+                uint32_t swapped = (u & 0xFF00FF00u) | ((u & 0xFFu) << 16) | ((u >> 16) & 0xFFu);
+                raw = (int)swapped;
+            }
+        }
     }
 };
 

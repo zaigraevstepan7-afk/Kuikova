@@ -112,3 +112,32 @@ Weapon `parameters@0xA8`, id`@0x18`, skin cache`@0xE0` — from SkinChanger RE n
 ## Bootstrap note
 
 `il2cpp_*` APIs are **not** embedded in Halalium SO. Kikaium uses **`dlsym("libil2cpp.so")`** so we do not hardcode community Api RVAs.
+
+---
+
+## Read / Write model (Halalium → Kikaium)
+
+Halalium after inject is **in-process**: plain `LDR`/`LDRB`/`STR`/`STRB` + `cbz` null checks.
+`/proc/self/maps` only for **module base** (`libunity.so`) — **not** `process_vm_*`.
+
+| Primitive | Halalium | Kikaium |
+|---|---|---|
+| Module base | maps → `libunity` | `unity_base` + `base`(il2cpp) |
+| TypeInfo | `*(il2cpp + RVA)` | `hmem::typeinfo(base, RVA)` |
+| Singleton | klass`+0x90` → statics → inst | `hmem::typeinfo_instance` |
+| Field read | `ldr [obj,#off]` | `hmem::field` / `safe_type` / struct |
+| Field write | `strb`/`str` | `hmem::set_field` / `safe_t::set` |
+| Safe int/float | helpers `@0x1d8c30`/`@0x1d8c54` | `safe_t` XOR / byte-swap |
+| Chains | Update nests | `includes/halalium_chains.h` |
+
+### Feature write sites (Update RE)
+
+| Feature | Halalium write | Kikaium |
+|---|---|---|
+| Through Walls | `strb 1 → player+0xD8` | `hmem::set_field` |
+| Inf Ammo | SafeInt `weapon+0x120/0x128 = 0x45` | `m_iCapacitySafe`/`m_iAmmoSafe` |
+| Fire Rate | SafeFloat `weapon+0x108` | `m_fTimeFiredSafe` + interval |
+| Wallshot | Safe `params+0x2DC/0x264/0x258` | same + named dump fields |
+| No spread | ExtraB clear + accuracy | accuracy params zeroed |
+| Skins | Create/Mid/Equip RVAs | `unity_base + Skin_*` |
+| FOV | `blr unity+0x5FB7BC0` | `c_fn->set_fov` |

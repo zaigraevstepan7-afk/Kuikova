@@ -14,6 +14,8 @@
 #include <imgui_internal.h>
 #include "esp.h"
 #include "globals.hpp"
+#include "includes/halalium_mem.h"
+#include "sdk/OffsetsBridge.h"
 #include <unordered_map>
 
 void (*old_strict_hit)(void* _this, void* hit_data, void* player_hit_controller);
@@ -62,11 +64,14 @@ void new_update(c_player_controller *player)
         {
             if (g.b_through_walls)
             {
+                // Halalium Update: strb #1 → [player,#0xd8]
+                hmem::set_field<uint8_t>(player, Offsets::Player::character_visible, 1);
                 player->m_bCharacterVisible = true;
                 player->set_visible();
             }
             else if (g.b_esp)
             {
+                hmem::set_field<uint8_t>(player, Offsets::Player::character_visible, 1);
                 player->m_bCharacterVisible = true;
             }
         }
