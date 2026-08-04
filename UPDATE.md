@@ -1,23 +1,17 @@
-# UPDATE — Kikaium (Halalium engine)
+# Kikaium = Halalium RE + our Melodium-style source
 
-Primary product is now **Kikaium** = Halalium `.so` with brand strings renamed.
-
-```bash
-# Drop new Halalium SO, then:
-cp /path/to/libhalalium.so halalium/bin/libhalalium.so
-python3 tools/kikaium/rebrand_halalium.py
-# → kikaium/bin/libkikaium.so
-```
-
-Cheat feature names are left untouched. Melodium source under `internal-main/`
-remains for porting extras (god mode / OHK / DT / …) later — do not inject
-`libmelodium.so` together with `libkikaium.so`.
-
-Offset emulator (optional, for Melodium source):
+Primary product: **Kikaium** built from source (`kikaium/project`), mapped from Halalium reverse.
 
 ```bash
+# Full RE + offsets refresh
 bash tools/halalium_emu/update.sh \
   halalium/bin/libhalalium.so \
   okak/okaakka/script.json \
   "okak/okaakka/dump (1).cs"
+
+# Build (verify 3x)
+bash kikaium/build.sh --verify
+# → kikaium/bin/libkikaium.so
 ```
+
+Docs: `kikaium/README.md`, `kikaium/docs/HALALIUM_FULL_RE.md`.

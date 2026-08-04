@@ -5,3 +5,8 @@ okak/
 **/.vscode/
 **/cmake-build-*/
 **/build/
+
+# Kikaium build trees
+kikaium/project/build/
+internal-main/internal-main/build/
+
