@@ -4,7 +4,6 @@
 #include <cstring>
 #include <unistd.h>
 #include <stdio.h>
-#include <thread>
 #include "visual.h"
 #include "antiaim.h"
 #include "world.h"
@@ -458,13 +457,13 @@ void vmtHook(uintptr_t object, int method, void* news, void** old) {
 }
 
 #include "includes/a64_inline_hook.h"
-#include "includes/halalium_hooks.h"
 #include "includes/module_base.h"
 
 // Halalium hooks PlayerController.Update by absolute RVA (Dobby), not by name.
 // Feng 0.39.2 dump: Update=0x8E7C40C LateUpdate=0x8E7CF50 — matches Halalium install immediates.
-// Tracked hooks enter the getrr destroy/reinstall list (Halalium vector @ stride 0x18).
-static bool hook_rva(uintptr_t rva, void *hook, void **out_orig, const char *tag, bool track_for_bypass = true)
+// NOTE: getrr (OnStart@0x8B9579C) bypass DISABLED — inline patch crashed on inject;
+// Halalium uses Dobby reloc which we don't have yet.
+static bool hook_rva(uintptr_t rva, void *hook, void **out_orig, const char *tag)
 {
     if (!base || !rva || !hook)
         return false;
@@ -474,22 +473,15 @@ static bool hook_rva(uintptr_t rva, void *hook, void **out_orig, const char *tag
         LOGD("hook_rva %s target %p not executable (wrong base?)", tag, target);
         return false;
     }
-    bool ok = false;
-    if (track_for_bypass)
-        ok = hhooks::install_tracked(target, hook, out_orig);
-    else
-    {
-        void *tramp = nullptr;
-        ok = a64hook::install(target, hook, &tramp);
-        if (ok && out_orig)
-            *out_orig = tramp;
-    }
-    if (!ok)
+    void *tramp = nullptr;
+    if (!a64hook::install(target, hook, &tramp))
     {
         LOGD("hook_rva %s a64 install failed @%p", tag, target);
         return false;
     }
-    LOGD("hook_rva %s OK rva=0x%lx target=%p tracked=%d", tag, (unsigned long)rva, target, (int)track_for_bypass);
+    if (out_orig)
+        *out_orig = tramp;
+    LOGD("hook_rva %s OK rva=0x%lx target=%p tramp=%p", tag, (unsigned long)rva, target, tramp);
     return true;
 }
 
@@ -524,31 +516,10 @@ void update::init()
 
     ::init(); // resolve il2cpp APIs against current base
 
-    // --- Halalium path: direct method hooks (tracked → getrr bypass list) ---
+    // --- Halalium path: direct method hooks ---
     bool hooked_pc = hook_rva(oxorany(0x8E7C40C), (void *)new_update, (void **)&old_update, "PlayerController.Update");
     hook_rva(oxorany(0x8E7CF50), (void *)new_lateupdate, (void **)&old_lateupdate, "PlayerController.LateUpdate");
-
-    // Halalium getrr bypass: OnStart @ 0x8B9579C.
-    // Deferred slightly so inject/load is stable; install only on libil2cpp-style base.
-    // Uses restore→call→rehook (no stolen-byte trampoline) to avoid PC-relative crashes.
-    if (hooked_pc && base && maps_contains_exec(base + hhooks::kGetrrRva))
-    {
-        std::thread([]() {
-            sleep(3);
-            if (!base)
-                return;
-            if (!maps_contains_exec(base + hhooks::kGetrrRva))
-            {
-                LOGD("getrr deferred: RVA not executable");
-                return;
-            }
-            hhooks::install_getrr_bypass(base);
-        }).detach();
-    }
-    else
-    {
-        LOGD("getrr OnStart bypass deferred/skipped (hooked_pc=%d)", (int)hooked_pc);
-    }
+    LOGD("getrr bypass OFF (inject-stable); Update/LateUpdate hooked_pc=%d", (int)hooked_pc);
 
     // --- Fallback: name VMT if il2cpp APIs work ---
     Il2CppClass *game_controller = nullptr;

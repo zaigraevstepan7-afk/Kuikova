@@ -10,19 +10,11 @@ Melodium is **not** a full decompile of Halalium. It is a Halalium-compatible sh
 | Offsets buried in LDR / runtime | `Offsets_generated.h` from emulator |
 | Closed features | Melodium ESP / silent / AA / chams / world / misc |
 | In-process `LDR`/`STR` (+ maps null checks) | `includes/halalium_mem.h` + `egl/memory.cpp` (no `process_vm_*`) |
-| getrr bypass (`OnStart` @ `0x8B9579C`) | `includes/halalium_hooks.h` — destroy tracked hooks → orig → reinstall |
+| getrr bypass (`OnStart` @ `0x8B9579C`) | **disabled** — needs Dobby-class reloc; patch crashed on inject |
 
 ## Bypass (Halalium-style)
 
-When AC hits obfuscated `OnStart` (`0x8B9579C`), Melodium mirrors Halalium:
-
-1. log `got call from getrr.` (tag `Halalium_Bypass`)
-2. restore every **tracked** game inline hook (Update / LateUpdate, …)
-3. call original `OnStart`
-4. re-install tracked hooks
-5. log `bypas hok result %d`
-
-`eglSwapBuffers` stays permanently hooked (not in the destroy list), same as Halalium.
+Halalium temporarily destroys hooks around obfuscated `OnStart` (`0x8B9579C`). Melodium keeps the registry helper in `halalium_hooks.h` but **does not arm it** until a relocating hooker exists (`use_getrr_bypass = false`).
 
 ## Memory (Halalium-style)
 
