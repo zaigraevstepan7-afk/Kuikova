@@ -48,6 +48,10 @@ bash kikaium/build_xxx.sh
 
 `dumpmmm.7z` на GitHub проверен: TypeInfo совпадают с `Offsets_0.39.2.h` (см. `xxx/TYPEINFO_0.39.2.txt`).
 
+## Скрытие (как Halalium / Lemming)
+
+См. [HIDE.md](HIDE.md): getrr destroy→OnStart→reinstall, egl+InputConsumer untracked, memfd inject.
+
 ## Исходники
 
 Логика чита: `kikaium/project/` (egl hook, ESP, getrr bypass, меню xxx).

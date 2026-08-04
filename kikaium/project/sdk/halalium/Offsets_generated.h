@@ -101,10 +101,8 @@ namespace Hook {
     constexpr bool use_egl_swap_buffers = true;
     constexpr bool open_menu_via_watermark_click = true;
     constexpr bool use_vmt_update_hooks = true;
-    constexpr bool use_getrr_bypass = false;
-    // Halalium Silent (Tertiary) + No spread (ExtraB)
-    constexpr bool use_secondary_hooks = true;
-    // Halalium path: InputConsumer::consume + AInputEvent_getType/AMotionEvent_getX/Y
+    constexpr bool use_getrr_bypass = true;
+    constexpr bool use_secondary_hooks = false;
     constexpr bool use_input_consume = true;
 }
 

@@ -170,7 +170,8 @@ inline void *hk_getrr(void *self, int32_t p, void *method)
     }
     getrr_reentrant() = true;
 
-    __android_log_print(ANDROID_LOG_INFO, "xxx_Bypass", "got call from getrr.");
+    // Prefer soft log during AC scan window (Halalium still logs, but keep noise low)
+    // __android_log_print(ANDROID_LOG_INFO, "xxx_Bypass", "got call from getrr.");
 
     // 1) Hide tracked game hooks from AC scan
     destroy_all();

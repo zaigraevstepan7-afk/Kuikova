@@ -589,6 +589,9 @@ void update::init()
         LOGD("GameController=%p PlayerController=%p", game_controller, player_controller);
     }
 
+    // Halalium: prefer tracked Dobby/a64 RVAs. VMT patches stay visible during OnStart —
+    // only use VMT fallback when tracked RVA failed. Skip gun/hit VMT for ESP build
+    // (those are rage paths; permanent VMT is not destroyed by getrr).
     if (Offsets::Hook::use_vmt_update_hooks && game_controller)
         vmt(game_controller, oxorany("Update"), (void *)new_game_update, (void **)&old_game_update);
 
@@ -597,30 +600,34 @@ void update::init()
     if (!hooked_late && player_controller)
         vmt(player_controller, oxorany("LateUpdate"), (void *)new_lateupdate, (void **)&old_lateupdate);
 
-    Il2CppClass *hit_controller = nullptr;
-    Il2CppClass *gun_controller = nullptr;
-    if (il2cpp_class_from_name && dll::charp)
+    // Rage VMT only if silent/fire UI paths are armed later — not for ESP+bypass hide profile
+    if (g.b_silent || g.b_fire)
     {
-        hit_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Player.Hit"), oxorany("PlayerHitController"));
-        gun_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Inventory.Gun"), oxorany("GunController"));
+        Il2CppClass *hit_controller = nullptr;
+        Il2CppClass *gun_controller = nullptr;
+        if (il2cpp_class_from_name && dll::charp)
+        {
+            hit_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Player.Hit"), oxorany("PlayerHitController"));
+            gun_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Inventory.Gun"), oxorany("GunController"));
+        }
+
+        if (hit_controller)
+            vmt(hit_controller, oxorany("ACHHGEDAEGBBHFB"), (void *)strict_hit, (void **)&old_strict_hit);
+        if (gun_controller)
+            vmt(gun_controller, oxorany("FEEBGAGHGGCGACA"), (void *)hook_executecommands, (void **)&old_executecommands);
     }
 
-    if (hit_controller)
-        vmt(hit_controller, oxorany("ACHHGEDAEGBBHFB"), (void *)strict_hit, (void **)&old_strict_hit);
-    if (gun_controller)
-        vmt(gun_controller, oxorany("FEEBGAGHGGCGACA"), (void *)hook_executecommands, (void **)&old_executecommands);
-
-    // Silent Aim primary path: Halalium Tertiary (use_secondary_hooks).
-
-    // xxx: runtime bypass toggle (safe restore-call path)
-    if (g.b_bypass && unity_base)
+    // Halalium Bypass_getrr: hide tracked game hooks while AntiCheat OnStart runs
+    if ((Offsets::Hook::use_getrr_bypass || g.b_bypass) && unity_base)
     {
+        g.b_bypass = true;
         bool ok = hhooks::install_getrr_bypass(unity_base);
-        LOGI("xxx getrr bypass %s", ok ? "ON" : "FAIL");
+        LOGI("xxx getrr bypass %s (tracked=%d)", ok ? "ON" : "FAIL", hhooks::tracked_count());
     }
 
     g_sdk_ready.store(true, std::memory_order_release);
-    LOGI("xxx reconstruct done; VMT ready");
+    LOGI("xxx hide profile: egl+input UNTRACKED, game RVAs TRACKED, getrr=%d",
+         (int)hhooks::getrr_is_armed());
     LOGI("xxx update::init done pc=%d late=%d il2cpp=%p unity=%p",
          (int)hooked_pc, (int)hooked_late, (void *)base, (void *)unity_base);
 }

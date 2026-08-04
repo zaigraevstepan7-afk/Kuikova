@@ -201,9 +201,12 @@ static bool install_input_consume_hook()
         LOGI("InputConsumer::consume symbol missing");
         return false;
     }
-    if (hhooks::install_tracked(sym, (void *)hk_input_consume, (void **)&old_input_consume))
+    // Halalium: egl + InputConsumer are UNTRACKED — getrr destroy must NOT tear them down
+    void *tramp = nullptr;
+    if (a64hook::install(sym, (void *)hk_input_consume, &tramp))
     {
-        LOGI("InputConsumer::consume hooked @%p (Halalium AInput path)", sym);
+        old_input_consume = (decltype(old_input_consume))tramp;
+        LOGI("InputConsumer::consume hooked @%p (Halalium untracked)", sym);
         return true;
     }
     LOGI("InputConsumer::consume hook failed @%p", sym);
@@ -920,6 +923,8 @@ static bool address_in_maps(uintptr_t addr)
 
 void *entry()
 {
+    // Match Halalium thread naming (Hooks / Bypass style)
+    pthread_setname_np(pthread_self(), "xxx_Hooks");
     LOGI("entry()");
 
     // Hook render ASAP - overlay must not wait on il2cpp/base.
