@@ -46,7 +46,7 @@ bash kikaium/build_xxx.sh
 
 ## Дампы
 
-`dumpmmm.7z` на GitHub проверен: TypeInfo совпадают с `Offsets_0.39.2.h` (см. `xxx/dumps/TYPEINFO_0.39.2.txt`).
+`dumpmmm.7z` на GitHub проверен: TypeInfo совпадают с `Offsets_0.39.2.h` (см. `xxx/TYPEINFO_0.39.2.txt`).
 
 ## Исходники
 

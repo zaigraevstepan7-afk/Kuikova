@@ -1,0 +1,20 @@
+xxx dumpmmm verify — Standoff 2 0.39.2 (arm64)
+Source: dumpmmm.7z / script.json ScriptMetadata
+
+PlayerManager     0xAC5E190
+GameController    0xAC58BB0
+PhotonNetwork     0xAC5DE18
+BombManager       0xAC4FAC0
+InventoryManager  0xAC5C018
+PlayerControls    0xAC5E0E0
+PlayerController  0xAC5E0D8
+WeaponController  0xAC61A18
+WeaponManager     0xAC61A78
+GameManager       0xAC58C00
+TouchController   0xAC60B48
+
+Il2CppClass.static_fields = 0x90
+PlayerController.Weaponry @ 0x88
+PlayerController.Photon   @ 0x160 (Halalium LDR confirmed)
+
+MATCH Melodium/Halalium Offsets_0.39.2.h
