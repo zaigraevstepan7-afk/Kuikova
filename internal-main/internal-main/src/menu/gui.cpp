@@ -53,15 +53,15 @@ namespace gui
         DrawGradientLine(drawList, ImVec2(center.x + lineLength, center.y), ImVec2(center.x + gap, center.y), startThickness, startColor, endColor);
     }
 
-    // Halalium watermark: always-on overlay, click ##wm_click toggles menu open.
+    // Kikaium watermark — distinct from Halalium pill layout.
     void DrawWatermark()
     {
         const char *brand = oxorany("Kikaium");
-        const char *line = oxorany("t.me/kikaiumhack, 0.39.2");
+        const char *line = oxorany("Kikaium | private | 0392");
 
         ImGui::SetNextWindowPos(ImVec2(16.f, 16.f), ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(0.0f);
-        ImGui::Begin(oxorany("##watermark"), nullptr,
+        ImGui::Begin(oxorany("##kik_wm"), nullptr,
                      ImGuiWindowFlags_NoTitleBar |
                          ImGuiWindowFlags_NoResize |
                          ImGuiWindowFlags_NoMove |
@@ -74,29 +74,26 @@ namespace gui
 
         ImVec2 brand_sz = ImGui::CalcTextSize(brand);
         ImVec2 line_sz = ImGui::CalcTextSize(line);
-        float width = (brand_sz.x > line_sz.x ? brand_sz.x : line_sz.x) + 24.f;
-        float height = brand_sz.y + line_sz.y + 18.f;
+        float width = (brand_sz.x > line_sz.x ? brand_sz.x : line_sz.x) + 28.f;
+        float height = brand_sz.y + line_sz.y + 20.f;
 
         ImVec2 p = ImGui::GetCursorScreenPos();
         ImDrawList *dl = ImGui::GetWindowDrawList();
         ImVec2 rmin = p;
         ImVec2 rmax = ImVec2(p.x + width, p.y + height);
 
-        dl->AddRectFilled(rmin, rmax, IM_COL32(18, 18, 18, 170), 6.0f);
-        dl->AddRect(rmin, rmax, IM_COL32(70, 70, 70, 180), 6.0f, 0, 1.2f);
-        // accent bar like Halalium pill watermark
-        dl->AddRectFilled(ImVec2(rmin.x, rmin.y), ImVec2(rmin.x + 3.f, rmax.y), IM_COL32(220, 220, 220, 220), 2.0f);
+        // Flat bar + teal underline (not Halalium dark pill + left accent).
+        dl->AddRectFilled(rmin, rmax, IM_COL32(12, 16, 18, 200), 0.0f);
+        dl->AddRectFilled(ImVec2(rmin.x, rmax.y - 2.f), rmax, IM_COL32(45, 180, 160, 255), 0.0f);
 
-        ImVec2 brand_pos = ImVec2(p.x + 12.f, p.y + 5.f);
-        ImVec2 line_pos = ImVec2(p.x + 12.f, p.y + 5.f + brand_sz.y + 2.f);
-        dl->AddText(ImVec2(brand_pos.x + 1, brand_pos.y + 1), IM_COL32(0, 0, 0, 160), brand);
-        dl->AddText(brand_pos, IM_COL32(235, 235, 235, 255), brand);
-        dl->AddText(ImVec2(line_pos.x + 1, line_pos.y + 1), IM_COL32(0, 0, 0, 140), line);
-        dl->AddText(line_pos, IM_COL32(180, 180, 180, 240), line);
+        ImVec2 brand_pos = ImVec2(p.x + 14.f, p.y + 5.f);
+        ImVec2 line_pos = ImVec2(p.x + 14.f, p.y + 5.f + brand_sz.y + 2.f);
+        dl->AddText(brand_pos, IM_COL32(240, 244, 242, 255), brand);
+        dl->AddText(line_pos, IM_COL32(120, 160, 150, 255), line);
 
         ImGui::Dummy(ImVec2(width, height));
         ImGui::SetCursorScreenPos(rmin);
-        if (ImGui::InvisibleButton(oxorany("##wm_click"), ImVec2(width, height)))
+        if (ImGui::InvisibleButton(oxorany("##kik_wm_click"), ImVec2(width, height)))
             open = !open;
 
         ImGui::End();

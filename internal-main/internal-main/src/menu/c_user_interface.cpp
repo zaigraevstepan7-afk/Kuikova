@@ -530,19 +530,19 @@ void C_UserInterface::render()
                     switch (i)
                     {
                     case 0:
-                        snprintf(tabName, sizeof(tabName), oxorany("visuals##%i"), i);
+                        snprintf(tabName, sizeof(tabName), oxorany("drawing##%i"), i);
                         break;
                     case 1:
-                        snprintf(tabName, sizeof(tabName), oxorany("ragebot##%i"), i);
+                        snprintf(tabName, sizeof(tabName), oxorany("nova##%i"), i);
                         break;
                     case 2:
-                        snprintf(tabName, sizeof(tabName), oxorany("exploits##%i"), i);
+                        snprintf(tabName, sizeof(tabName), oxorany("tools##%i"), i);
                         break;
                     case 3:
-                        snprintf(tabName, sizeof(tabName), oxorany("misc##%i"), i);
+                        snprintf(tabName, sizeof(tabName), oxorany("more##%i"), i);
                         break;
                     case 4:
-                        snprintf(tabName, sizeof(tabName), oxorany("config##%i"), i);
+                        snprintf(tabName, sizeof(tabName), oxorany("controls##%i"), i);
                         break;
                     }
 

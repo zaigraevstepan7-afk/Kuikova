@@ -1,47 +1,37 @@
 # Kikaium
 
-**Kikaium** = Halalium engine (stable inject) with our branding.
+**Kikaium** = Halalium engine with our brand + renamed menu chrome.
 
-## Inject this
+## Inject
 
-| File | What |
-|------|------|
-| `kikaium/bin/libkikaium.so` | Halalium SO, rebranded — **use this** |
-| `melodium/bin/libkikaium.so` | Same copy |
+https://github.com/zaigraevstepan7-afk/Kuikova/raw/cursor/halalium-emu-melodium-07f1/kikaium/bin/libkikaium.so
 
-Rebuild from Halalium:
+Watermark must show **`Kikaium`** and **`Kikaium | private | 0392`** — if you still see Lemming, you have an old SO cached; re-download and force-stop the game.
 
-```bash
-python3 tools/kikaium/rebrand_halalium.py \
-  --src halalium/bin/libhalalium.so \
-  --dst kikaium/bin/libkikaium.so
-```
-
-## What was renamed (brand only)
+## Brand
 
 | Before | After |
 |--------|--------|
-| `Lemming` | `Kikaium` |
-| `t.me/lemminghack, 0.39.2` | `t.me/kikaiumhack, 0.39.2` |
-| `Halalium_Bypass` | `Kikaium_Bypass` |
-| `Halalium_Hooks` | `Kikaium_Hooks` |
-| `libhalalium.so` (SONAME) | `libkikaium.so` |
+| Lemming | Kikaium |
+| t.me/lemminghack, 0.39.2 | Kikaium \| private \| 0392 |
+| Halalium_Bypass / Hooks | Kikaium_Bypass / Hooks |
+| libhalalium.so | libkikaium.so |
 
-## What was NOT renamed (cheat functions)
+## Menu tabs (so it is not a Halalium clone)
 
-Silent Aim, Anti Aim, Enable Esp, Auto Wall, Chams, Inf Ammo, Through Walls, Wallshot, …
+| Before | After |
+|--------|--------|
+| Rage | Nova |
+| Visuals | Drawing |
+| Misc | More |
+| Settings | Controls |
+| Skins | Items |
+| Weapons | Loadout |
+| World | Scene |
+| Watermark | Hud Label |
 
-## Our Melodium features
+Cheat labels kept: Silent Aim, Anti Aim, Enable Esp, …
 
-Halalium/Kikaium already includes the main rage/visual set. Extra Melodium toggles
-(god mode, one hit kill, double tap, autostop, …) live in source:
-
-`internal-main/internal-main/src/features/`
-
-They are **not** binary-patched into `libkikaium.so` (closed Halalium). Port them
-into a future open Kikaium build; until then inject **libkikaium.so** only — do not
-stack `libmelodium.so` on top (double egl hooks / crashes).
-
-## Download
-
-https://github.com/zaigraevstepan7-afk/Kuikova/raw/cursor/halalium-emu-melodium-07f1/kikaium/bin/libkikaium.so
+```bash
+python3 tools/kikaium/rebrand_halalium.py
+```
