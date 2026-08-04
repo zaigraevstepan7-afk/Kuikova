@@ -1,6 +1,7 @@
 #include "globals.hpp"
 #include "includes/halalium_mem.h"
 #include "includes/halalium_chains.h"
+#include "includes/module_base.h"
 #include "sdk/game/il2cpp/api.h"
 #include <unistd.h>
 #include <thread>
@@ -307,6 +308,9 @@ void globals::updateTarget() {
     c_transform *main_camera = local->m_pMainCameraHolder;
     if (!main_camera)
         return;
+    // Melodium: holder must have cached native transform @+0x10
+    if (!*(void **)((uintptr_t)main_camera + 0x10))
+        return;
 
     Vector3 camera_pos = main_camera->get_position();
     if (camera_pos == Vector3{})
@@ -372,16 +376,57 @@ void globals::updateTarget() {
 
 void globals::init()
 {
-    // Halalium-proven UnityMethod RVAs (libunity)
+    auto bind_u = [](uintptr_t rva) -> void * {
+        if (!unity_base || !rva)
+            return nullptr;
+        void *p = (void *)(unity_base + rva);
+        return maps_contains_exec((uintptr_t)p) ? p : nullptr;
+    };
+
     if (unity_base)
     {
         c_fn->set_active = (decltype(c_fn->set_active))(unity_base + Offsets::UnityMethod::set_active);
         c_fn->set_fov = (decltype(c_fn->set_fov))(unity_base + Offsets::UnityMethod::set_fov);
         c_fn->get_game_object = (decltype(c_fn->get_game_object))(unity_base + Offsets::UnityMethod::get_game_object);
         c_methods->set_active = c_fn->set_active;
+
+        // Melodium 0.39.2 Transform/Camera/Physics/TPS — proven working on device
+        c_fn->get_position = (decltype(c_fn->get_position))bind_u(0x6005138);
+        c_fn->set_position = (decltype(c_fn->set_position))bind_u(0x6009694);
+        c_fn->get_forward = (decltype(c_fn->get_forward))bind_u(0x60062E0);
+        c_fn->get_up = (decltype(c_fn->get_up))bind_u(0x6002608);
+        c_fn->get_euler_angles = (decltype(c_fn->get_euler_angles))bind_u(0x6006BF0);
+        c_fn->set_euler_angles = (decltype(c_fn->set_euler_angles))bind_u(0x5FEC6CC);
+        c_fn->get_rotation = (decltype(c_fn->get_rotation))bind_u(0x5FF2184);
+        c_fn->get_transform = (decltype(c_fn->get_transform))bind_u(0x5FF113C);
+        c_fn->camera_get_main = (decltype(c_fn->camera_get_main))bind_u(0x5FACE04);
+        c_fn->get_w2c_injected = (decltype(c_fn->get_w2c_injected))bind_u(0x5FBA5F4);
+        c_fn->shader_find = (decltype(c_fn->shader_find))bind_u(0x6A95144);
+        c_fn->mat_get_texture = (decltype(c_fn->mat_get_texture))bind_u(0x6A92FA4);
+        c_fn->mat_set_texture = (decltype(c_fn->mat_set_texture))bind_u(0x6A81174);
+        c_fn->mat_get_shader = (decltype(c_fn->mat_get_shader))bind_u(0x6A82020);
+        c_fn->mat_set_shader = (decltype(c_fn->mat_set_shader))bind_u(0x6A88CA8);
+        c_fn->mat_ctor_shader = (decltype(c_fn->mat_ctor_shader))bind_u(0x6A98518);
+        c_fn->mat_set_color = (decltype(c_fn->mat_set_color))bind_u(0x6A96904);
+        c_fn->mat_set_int = (decltype(c_fn->mat_set_int))bind_u(0x6A84BE4);
+        c_fn->mat_set_float = (decltype(c_fn->mat_set_float))bind_u(0x6A8BF28);
+        c_fn->renderer_get_material = (decltype(c_fn->renderer_get_material))bind_u(0x6A962B4);
+        c_fn->renderer_set_material = (decltype(c_fn->renderer_set_material))bind_u(0x6A91498);
+        c_fn->renderer_get_materials = (decltype(c_fn->renderer_get_materials))bind_u(0x6A9149C);
+        c_fn->renderer_set_materials = (decltype(c_fn->renderer_set_materials))bind_u(0x6A8EFD8);
+        c_fn->find_objects_of_type = (decltype(c_fn->find_objects_of_type))bind_u(0x5FF2770);
+        c_fn->set_tps = (decltype(c_fn->set_tps))bind_u(0x8E7E63C);
+        c_fn->set_fps = (decltype(c_fn->set_fps))bind_u(0x8E7EC48);
+        c_fn->set_visible = (decltype(c_fn->set_visible))bind_u(0x8E880E4);
+        c_fn->get_velocity = (decltype(c_fn->get_velocity))bind_u(0x7A05344);
+
+        c_methods->linecast = (decltype(c_methods->linecast))bind_u(0x7A020F4);
+        c_methods->sphere_cast = (decltype(c_methods->sphere_cast))bind_u(0x79FFF6C);
+        c_methods->get_count = (decltype(c_methods->get_count))bind_u(0x684E370);
+        c_methods->get_touch = (decltype(c_methods->get_touch))bind_u(0x684EDAC);
     }
 
-    // Everything else: MethodInfo resolve (no Melodium hardcoded RVAs)
+    // MethodInfo fill-ins for anything Melodium RVA missed
     auto mp = [](Il2CppClass *clz, const char *name, uint8_t argc) -> void * {
         MethodInfo *m = GetMethodFromClass(clz, name, argc);
         return m ? (void *)m->methodPointer : nullptr;
@@ -398,105 +443,98 @@ void globals::init()
         return nullptr;
     };
 
+    auto fill = [&](auto &dst, auto src) { if (!dst && src) dst = src; };
+
     auto *tr = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Transform"));
     if (tr)
     {
-        c_fn->get_position = (decltype(c_fn->get_position))mp(tr, oxorany("get_position"), 0);
-        c_fn->set_position = (decltype(c_fn->set_position))mp(tr, oxorany("set_position"), 1);
-        c_fn->get_forward = (decltype(c_fn->get_forward))mp(tr, oxorany("get_forward"), 0);
-        c_fn->get_up = (decltype(c_fn->get_up))mp(tr, oxorany("get_up"), 0);
-        c_fn->get_euler_angles = (decltype(c_fn->get_euler_angles))mp(tr, oxorany("get_eulerAngles"), 0);
-        c_fn->set_euler_angles = (decltype(c_fn->set_euler_angles))mp(tr, oxorany("set_eulerAngles"), 1);
-        c_fn->get_rotation = (decltype(c_fn->get_rotation))mp(tr, oxorany("get_rotation"), 0);
+        fill(c_fn->get_position, (decltype(c_fn->get_position))mp(tr, oxorany("get_position"), 0));
+        fill(c_fn->set_position, (decltype(c_fn->set_position))mp(tr, oxorany("set_position"), 1));
+        fill(c_fn->get_forward, (decltype(c_fn->get_forward))mp(tr, oxorany("get_forward"), 0));
+        fill(c_fn->get_up, (decltype(c_fn->get_up))mp(tr, oxorany("get_up"), 0));
+        fill(c_fn->get_euler_angles, (decltype(c_fn->get_euler_angles))mp(tr, oxorany("get_eulerAngles"), 0));
+        fill(c_fn->set_euler_angles, (decltype(c_fn->set_euler_angles))mp(tr, oxorany("set_eulerAngles"), 1));
+        fill(c_fn->get_rotation, (decltype(c_fn->get_rotation))mp(tr, oxorany("get_rotation"), 0));
     }
 
     auto *comp = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Component"));
     if (comp)
-        c_fn->get_transform = (decltype(c_fn->get_transform))mp(comp, oxorany("get_transform"), 0);
+        fill(c_fn->get_transform, (decltype(c_fn->get_transform))mp(comp, oxorany("get_transform"), 0));
 
     auto *go = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("GameObject"));
-    if (go && !c_fn->set_active)
-        c_fn->set_active = (decltype(c_fn->set_active))mp(go, oxorany("SetActive"), 1);
+    if (go)
+        fill(c_fn->set_active, (decltype(c_fn->set_active))mp(go, oxorany("SetActive"), 1));
 
     auto *cam = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Camera"));
     if (cam)
     {
-        c_fn->camera_get_main = (decltype(c_fn->camera_get_main))mp(cam, oxorany("get_main"), 0);
-        if (!c_fn->set_fov)
-            c_fn->set_fov = (decltype(c_fn->set_fov))mp(cam, oxorany("set_fieldOfView"), 1);
-        c_fn->get_w2c_injected = (decltype(c_fn->get_w2c_injected))mp_any(cam, oxorany("get_worldToCameraMatrix_Injected"));
+        fill(c_fn->camera_get_main, (decltype(c_fn->camera_get_main))mp(cam, oxorany("get_main"), 0));
+        fill(c_fn->set_fov, (decltype(c_fn->set_fov))mp(cam, oxorany("set_fieldOfView"), 1));
+        fill(c_fn->get_w2c_injected, (decltype(c_fn->get_w2c_injected))mp_any(cam, oxorany("get_worldToCameraMatrix_Injected")));
     }
 
-    // Input lives in UnityEngine.InputModule / Core — try both
     auto *inp = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Input"));
     if (inp)
     {
-        c_methods->get_count = (decltype(c_methods->get_count))mp(inp, oxorany("get_touchCount"), 0);
-        c_methods->get_touch = (decltype(c_methods->get_touch))mp(inp, oxorany("GetTouch"), 1);
+        fill(c_methods->get_count, (decltype(c_methods->get_count))mp(inp, oxorany("get_touchCount"), 0));
+        fill(c_methods->get_touch, (decltype(c_methods->get_touch))mp(inp, oxorany("GetTouch"), 1));
     }
 
     auto *phys = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Physics"));
     if (phys)
     {
-        c_methods->linecast = (decltype(c_methods->linecast))mp_any(phys, oxorany("Linecast"));
-        c_methods->sphere_cast = (decltype(c_methods->sphere_cast))mp_any(phys, oxorany("SphereCast"));
+        fill(c_methods->linecast, (decltype(c_methods->linecast))mp_any(phys, oxorany("Linecast")));
+        fill(c_methods->sphere_cast, (decltype(c_methods->sphere_cast))mp_any(phys, oxorany("SphereCast")));
     }
 
     auto *str = (Il2CppClass *)il2cpp_class_from_name(dll::charp ? dll::charp : dll::unity,
                                                      oxorany("System"), oxorany("String"));
     if (!str && dll::unity)
         str = (Il2CppClass *)clazz_unity(oxorany("System"), oxorany("String"));
-    // String is in mscorlib — try domain open if needed later; CreateString via any match
     if (str)
         c_methods->create_string = (decltype(c_methods->create_string))mp_any(str, oxorany("CreateString"));
 
     auto *sh = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Shader"));
     if (sh)
-        c_fn->shader_find = (decltype(c_fn->shader_find))mp(sh, oxorany("Find"), 1);
+        fill(c_fn->shader_find, (decltype(c_fn->shader_find))mp(sh, oxorany("Find"), 1));
 
     auto *mat = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Material"));
     if (mat)
     {
-        c_fn->mat_get_texture = (decltype(c_fn->mat_get_texture))mp(mat, oxorany("get_mainTexture"), 0);
-        c_fn->mat_set_texture = (decltype(c_fn->mat_set_texture))mp(mat, oxorany("set_mainTexture"), 1);
-        c_fn->mat_get_shader = (decltype(c_fn->mat_get_shader))mp(mat, oxorany("get_shader"), 0);
-        c_fn->mat_set_shader = (decltype(c_fn->mat_set_shader))mp(mat, oxorany("set_shader"), 1);
-        c_fn->mat_ctor_shader = (decltype(c_fn->mat_ctor_shader))mp(mat, oxorany(".ctor"), 1);
-        c_fn->mat_set_color = (decltype(c_fn->mat_set_color))mp_any(mat, oxorany("set_color"));
-        c_fn->mat_set_int = (decltype(c_fn->mat_set_int))mp_any(mat, oxorany("SetInt"));
-        c_fn->mat_set_float = (decltype(c_fn->mat_set_float))mp_any(mat, oxorany("SetFloat"));
+        fill(c_fn->mat_get_texture, (decltype(c_fn->mat_get_texture))mp(mat, oxorany("get_mainTexture"), 0));
+        fill(c_fn->mat_set_texture, (decltype(c_fn->mat_set_texture))mp(mat, oxorany("set_mainTexture"), 1));
+        fill(c_fn->mat_get_shader, (decltype(c_fn->mat_get_shader))mp(mat, oxorany("get_shader"), 0));
+        fill(c_fn->mat_set_shader, (decltype(c_fn->mat_set_shader))mp(mat, oxorany("set_shader"), 1));
+        fill(c_fn->mat_ctor_shader, (decltype(c_fn->mat_ctor_shader))mp(mat, oxorany(".ctor"), 1));
+        fill(c_fn->mat_set_color, (decltype(c_fn->mat_set_color))mp_any(mat, oxorany("set_color")));
+        fill(c_fn->mat_set_int, (decltype(c_fn->mat_set_int))mp_any(mat, oxorany("SetInt")));
+        fill(c_fn->mat_set_float, (decltype(c_fn->mat_set_float))mp_any(mat, oxorany("SetFloat")));
     }
 
     auto *rend = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Renderer"));
     if (rend)
     {
-        c_fn->renderer_get_material = (decltype(c_fn->renderer_get_material))mp(rend, oxorany("get_material"), 0);
-        c_fn->renderer_set_material = (decltype(c_fn->renderer_set_material))mp(rend, oxorany("set_material"), 1);
-        c_fn->renderer_get_materials = (decltype(c_fn->renderer_get_materials))mp(rend, oxorany("get_materials"), 0);
-        c_fn->renderer_set_materials = (decltype(c_fn->renderer_set_materials))mp_any(rend, oxorany("SetMaterialArray"));
-        if (!c_fn->renderer_set_materials)
-            c_fn->renderer_set_materials = (decltype(c_fn->renderer_set_materials))mp(rend, oxorany("set_materials"), 1);
+        fill(c_fn->renderer_get_material, (decltype(c_fn->renderer_get_material))mp(rend, oxorany("get_material"), 0));
+        fill(c_fn->renderer_set_material, (decltype(c_fn->renderer_set_material))mp(rend, oxorany("set_material"), 1));
+        fill(c_fn->renderer_get_materials, (decltype(c_fn->renderer_get_materials))mp(rend, oxorany("get_materials"), 0));
+        fill(c_fn->renderer_set_materials, (decltype(c_fn->renderer_set_materials))mp_any(rend, oxorany("SetMaterialArray")));
+        fill(c_fn->renderer_set_materials, (decltype(c_fn->renderer_set_materials))mp(rend, oxorany("set_materials"), 1));
     }
-
-    auto *ty = (Il2CppClass *)il2cpp_class_from_name(
-        dll::unity, oxorany("System"), oxorany("Type"));
-    // Type is mscorlib — skip if null; chams may no-op FindObjects
-    (void)ty;
 
     auto *obj = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Object"));
     if (obj)
-        c_fn->find_objects_of_type = (decltype(c_fn->find_objects_of_type))mp_any(obj, oxorany("FindObjectsOfType"));
+        fill(c_fn->find_objects_of_type, (decltype(c_fn->find_objects_of_type))mp_any(obj, oxorany("FindObjectsOfType")));
 
-    // TPS / visible — Halalium uses field 0xD8; method optional via name scan on PlayerController
     auto *pc = (Il2CppClass *)clazz_def(oxorany("Axlebolt.Standoff.Player"), oxorany("PlayerController"));
     if (pc)
     {
-        c_fn->set_tps = (decltype(c_fn->set_tps))mp_any(pc, oxorany("SetThirdPerson"));
-        c_fn->set_fps = (decltype(c_fn->set_fps))mp_any(pc, oxorany("SetFirstPerson"));
-        c_fn->set_visible = (decltype(c_fn->set_visible))mp_any(pc, oxorany("RefreshVisibility"));
+        fill(c_fn->set_tps, (decltype(c_fn->set_tps))mp_any(pc, oxorany("SetThirdPerson")));
+        fill(c_fn->set_fps, (decltype(c_fn->set_fps))mp_any(pc, oxorany("SetFirstPerson")));
+        fill(c_fn->set_visible, (decltype(c_fn->set_visible))mp_any(pc, oxorany("RefreshVisibility")));
     }
 
-    LOGI("halalium resolve: pos=%p fov=%p active=%p touch=%p linecast=%p shader=%p",
-         (void *)c_fn->get_position, (void *)c_fn->set_fov, (void *)c_fn->set_active,
-         (void *)c_methods->get_touch, (void *)c_methods->linecast, (void *)c_fn->shader_find);
+    LOGI("resolve: pos=%p fov=%p touch=%p linecast=%p shader=%p tps=%p",
+         (void *)c_fn->get_position, (void *)c_fn->set_fov,
+         (void *)c_methods->get_touch, (void *)c_methods->linecast,
+         (void *)c_fn->shader_find, (void *)c_fn->set_tps);
 }

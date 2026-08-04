@@ -115,9 +115,9 @@ class methods
 public:
     int (*get_width)();
     int (*get_heigth)();
-    // Il2Cpp static Input — MethodInfo* last arg (IL2CPP ABI); pass nullptr for icalls
-    int (*get_count)(const void *method);
-    UnityEngine_Touch_o (*get_touch)(int id, const void *method);
+    // Melodium libunity Input RVAs — no MethodInfo (icall-style)
+    int (*get_count)();
+    UnityEngine_Touch_o (*get_touch)(int id);
     void *(*game_controller)();
     bool (*linecast)(Vector3 start, Vector3 end, raycast_hit_t *hitInfo, int layerMask);
     bool (*sphere_cast)(ray_t ray, float radius, raycast_hit_t *hit, float max, int layer);
@@ -414,6 +414,9 @@ inline struct abc
 {
     void *player{};
 } abcd;
+// Swallow menu clicks for N frames after watermark open/close (click-through fix).
+inline std::atomic<int> g_menu_input_lock{0};
+
 // Halalium: menu starts CLOSED; open only via ##wm_click on watermark.
 inline bool open = false;
 #include "sdk/game/include.h"

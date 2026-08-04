@@ -1,3 +1,4 @@
+#include <cfloat>
 #include "c_user_interface.hpp"
 
 #include "includes/fonts/bold.hpp"
@@ -19,14 +20,6 @@ static constexpr ImU32 kLine = IM_COL32(52, 54, 60, 255);
 static constexpr ImU32 kLineSoft = IM_COL32(40, 42, 48, 180);
 static constexpr ImU32 kText = IM_COL32(240, 236, 228, 255);
 static constexpr ImU32 kMuted = IM_COL32(130, 128, 122, 255);
-
-inline bool press_edge(const ImVec2 &rmin, const ImVec2 &rmax)
-{
-    ImGuiIO &io = ImGui::GetIO();
-    const bool inside = io.MousePos.x >= rmin.x && io.MousePos.x <= rmax.x &&
-                        io.MousePos.y >= rmin.y && io.MousePos.y <= rmax.y;
-    return inside && ImGui::IsMouseClicked(0);
-}
 
 inline void panel_title(const char *str_id, char *out, size_t out_n)
 {
@@ -102,27 +95,26 @@ void C_UserInterface::endChild()
 
 bool C_UserInterface::checkbox(const char *label, bool *v)
 {
+    // Melodium-style: one ButtonBehavior path only (no press_edge double-toggle)
     ImGuiWindow *window = ImGui::GetCurrentWindow();
     if (window->SkipItems)
         return false;
 
-    ImGuiContext &g = *GImGui;
-    const ImGuiStyle &style = g.Style;
+    ImGuiContext &gctx = *GImGui;
+    const ImGuiStyle &style = gctx.Style;
     const ImGuiID id = window->GetID(label);
     const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
 
-    const float square_sz = 20.f;
+    const float square_sz = 22.f;
     const ImVec2 pos = window->DC.CursorPos;
-    const ImRect total_bb(pos, ImVec2(pos.x + square_sz + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f) + 12.f,
-                                      pos.y + ImMax(square_sz, label_size.y) + style.FramePadding.y + 4.f));
+    const ImRect total_bb(pos, ImVec2(pos.x + square_sz + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f) + 10.f,
+                                      pos.y + ImMax(square_sz, label_size.y) + style.FramePadding.y + 6.f));
     ImGui::ItemSize(total_bb, style.FramePadding.y);
     if (!ImGui::ItemAdd(total_bb, id))
         return false;
 
     bool hovered = false, held = false;
-    bool pressed = ImGui::ButtonBehavior(total_bb, id, &hovered, &held);
-    if (!pressed && kik_ui::press_edge(total_bb.Min, total_bb.Max))
-        pressed = true;
+    const bool pressed = ImGui::ButtonBehavior(total_bb, id, &hovered, &held);
     if (pressed)
     {
         *v = !*v;
@@ -504,11 +496,20 @@ void C_UserInterface::render()
     if (!open)
         return;
 
+    // After watermark open/close — ignore menu hits so the same tap cannot flip features
+    int lock = g_menu_input_lock.load(std::memory_order_acquire);
+    if (lock > 0)
+    {
+        g_menu_input_lock.store(lock - 1, std::memory_order_release);
+        ImGui::GetIO().AddMouseButtonEvent(0, false);
+        ImGui::GetIO().MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
+    }
+
     extern float alpha;
     const float a = alpha > 0.02f ? alpha : 1.f;
 
-    // Bigger touch targets for Android
-    ImGui::GetStyle().TouchExtraPadding = ImVec2(14.f, 14.f);
+    // Modest padding — large values made neighbouring checkboxes steal taps
+    ImGui::GetStyle().TouchExtraPadding = ImVec2(6.f, 6.f);
 
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, a);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.f);
@@ -585,7 +586,7 @@ void C_UserInterface::render()
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.f, 1.f, 1.f, 0.06f));
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.93f, 0.64f, 0.28f, 0.22f));
                 ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.f);
-                if (ImGui::Button("##tab", btn_sz) || kik_ui::press_edge(p0, p1))
+                if (ImGui::Button("##tab", btn_sz))
                     m_iCurrentTab = i;
                 ImGui::PopStyleVar();
                 ImGui::PopStyleColor(3);

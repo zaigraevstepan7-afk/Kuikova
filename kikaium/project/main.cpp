@@ -241,7 +241,7 @@ void handle_touch()
         return;
 
     int touch_count = 0;
-    touch_count = c_methods->get_count(nullptr);
+    touch_count = c_methods->get_count();
     static bool touch_active = false;
 
     if (touch_count <= 0)
@@ -267,7 +267,7 @@ void handle_touch()
 
     for (int i = 0; i < touch_count; i++)
     {
-        auto it = c_methods->get_touch(i, nullptr);
+        auto it = c_methods->get_touch(i);
         auto phase = it.fields.m_Phase;
 
         float x = it.fields.m_Position.x;

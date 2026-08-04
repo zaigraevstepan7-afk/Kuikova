@@ -7,9 +7,19 @@
 
 Matrix esp::matrix()
 {
-    // Halalium-only path: Camera.get_main + get_worldToCameraMatrix_Injected (MethodInfo).
-    // Offsets::Camera::matrix (0xF0) is Halalium profile but needs a Camera* — obtained via API, not Melodium field chain.
     Matrix mat{};
+    // Melodium path: PlayerMainCamera +0x20 → Camera*, then W2C injected
+    if (c_player && c_player->local && c_player->local->m_pMainCamera && c_fn && c_fn->get_w2c_injected)
+    {
+        void *ptr = *(void **)((uintptr_t)c_player->local->m_pMainCamera + 0x20);
+        if (ptr)
+        {
+            c_fn->get_w2c_injected(ptr, &mat);
+            if (mat.m00 != 0.f || mat.m11 != 0.f || mat.m22 != 0.f || mat.m33 != 0.f)
+                return mat;
+        }
+    }
+    // Fallback: Camera.get_main
     if (c_fn && c_fn->camera_get_main && c_fn->get_w2c_injected)
     {
         void *cam = c_fn->camera_get_main();

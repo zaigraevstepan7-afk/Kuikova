@@ -124,6 +124,8 @@ void new_lateupdate(c_player_controller *player)
         {
             c_player->local = player;
             c_globals->updateGun();
+            if (g.b_silent)
+                c_globals->updateTarget();
             c_antiaim->late_update(player);
             if (g.b_third && player->m_pTransform)
             {
@@ -182,6 +184,8 @@ bool hook_raycast(void *scene, ray_t *ray, float max_distance, raycast_hit_t *hi
 
         main_camera = local->m_pMainCameraHolder;
         if (!main_camera)
+            return old_raycast(scene, ray, max_distance, hit, layer, trigger);
+        if (!*(void **)((uintptr_t)main_camera + 0x10))
             return old_raycast(scene, ray, max_distance, hit, layer, trigger);
 
         Vector3 a = main_camera->get_position();
@@ -465,11 +469,28 @@ void new_secondary_halalium(void *gc)
         old_secondary(gc);
 }
 
-// tertiary_hook_cb @0x1d8404 - float in s0, ptr x0, int w2; then BR orig
+// tertiary_hook_cb @0x1d8404 — Halalium Silent Aim:
+//   if flag && s0==1000.0f && w2==0x60006010 → rewrite Ray.direction @ [x0+0xC]
 void (*old_tertiary)(void *a0, void *a1, uint32_t a2, float f0);
 void new_tertiary_halalium(void *a0, void *a1, uint32_t a2, float f0)
 {
-    // Aim-vector rewrite lives in Halalium BSS; silent covered by raycast icall.
+    // Layer 1610637328 == 0x60006010; max distance 1000 (Halalium cmp)
+    if (g.b_silent && a0 && a2 == 0x60006010u)
+    {
+        float maxd = f0;
+        // Exact float match can miss; accept near 1000
+        if (maxd > 999.f && maxd < 1001.f)
+        {
+            c_globals->updateTarget();
+            if (target_t.b_found)
+            {
+                auto *ray = reinterpret_cast<ray_t *>(a0);
+                Vector3 dir = (target_t.pos - ray->m_vecOrigin).nnormalized();
+                if (!(dir == Vector3{}))
+                    ray->m_vecDirection = dir;
+            }
+        }
+    }
     if (old_tertiary)
         old_tertiary(a0, a1, a2, f0);
 }
@@ -581,9 +602,32 @@ void update::init()
     if (gun_controller)
         vmt(gun_controller, oxorany("FEEBGAGHGGCGACA"), (void *)hook_executecommands, (void **)&old_executecommands);
 
-    // Raycast icall: Melodium slot RVA removed. Silent uses MethodInfo Physics when available;
-    // optional resolve via il2cpp_resolve_icall dlsym in icall_hook path.
-    LOGD("ray icall hardcoded slot disabled (not Halalium) — silent via MethodInfo/Physics only");
+    // Silent Aim Melodium backup: swap Physics raycast icall table slot (same ABI as hook_raycast).
+    // Primary Silent path is Halalium Tertiary (use_secondary_hooks).
+    if (base)
+    {
+        void **slot = reinterpret_cast<void **>(base + 0x84DB9F0);
+        if (hmem::readable((uintptr_t)slot, sizeof(void *)))
+        {
+            void *orig = *slot;
+            if (orig && maps_contains_exec((uintptr_t)orig))
+            {
+                if (hhooks::install_tracked(orig, (void *)hook_raycast, (void **)&old_raycast))
+                {
+                    LOGI("raycast Melodium path hooked @%p (slot %p)", orig, slot);
+                }
+                else
+                {
+                    // Direct slot swap if inline hook fails (Melodium icall_hook style)
+                    old_raycast = (decltype(old_raycast))orig;
+                    *slot = (void *)hook_raycast;
+                    LOGI("raycast Melodium slot swapped @%p", slot);
+                }
+            }
+            else
+                LOGI("raycast slot empty/non-exec — Silent via Tertiary only");
+        }
+    }
 
     if (Offsets::Hook::use_getrr_bypass && unity_base)
     {
