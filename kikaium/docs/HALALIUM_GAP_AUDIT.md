@@ -1,45 +1,37 @@
-# Halalium ↔ Kikaium gap audit (re-decompile 2026-08-04)
+# Halalium ↔ Kikaium gap audit (re-decompile 2026-08-04 #2)
 
-Re-ran `tools/halalium_emu/decompile_funcs.py` (Pass A disasm + Pass B fields/RVAs/ADRP+ADD strings).
+Re-ran `tools/halalium_emu/decompile_funcs.py` including new **SkinChanger @0x1d9e00**.
 
-## DONE (wired)
+## DONE
 
-| Item | Evidence |
+| Item | Notes |
 |---|---|
-| Menu allowlist labels | `c_user_interface.cpp` matches `menu_body` ADRP strings |
-| Update/LateUpdate RVA hooks | `0x8E7C40C` / `0x8E7CF50` via `update::init` |
-| Photon isLocal `@0x30` | `static_assert` + Halalium `ldrb [photon,#0x30]` |
-| Visible `@0xd8` / Through Walls | `m_bCharacterVisible` + `set_visible` |
-| Silent Aim + Bone + Auto Fire | raycast + executecommands |
-| Auto Wall | skip `is_bone_visible` when on |
-| Fov Check (+ circle) | `globals::in_fov` + overlay circle |
+| Menu allowlist | Matches `menu_body` ADRP strings |
+| Update / LateUpdate RVA | `0x8E7C40C` / `0x8E7CF50` |
+| Photon isLocal `@0x30` | `static_assert` |
+| Visible `@0xd8` / Through Walls | `set_visible` only when Through Walls |
+| Silent Aim + Bone + Auto Fire + Auto Wall + Fov Check | raycast + circle overlay |
 | No spread / Fire Rate / Wallshot / Inf Ammo | `exploits.cpp` |
 | AA Pitch / Spin / Reverse Spin | `antiaim.cpp` |
-| ESP Box / Corner / Distance / Health / Bone | `esp.cpp` |
-| World + Solid + Apply | `world.cpp` (Apply commits) |
-| Chams / Local Chams / Third Person / Watermark | UI + features |
-| ##wm_click closed-by-default menu | `gui.cpp` |
+| ESP Box/Corner/Distance/HP/Bone | `esp.cpp` |
+| World + Solid + Apply | `world.cpp` |
+| Chams / Local / TPS / Watermark | UI + features |
+| **Skin Changer** | `skins.cpp` from SkinChanger RE: create`0x8E8FE50` / mid`0x8E852D4` / equip`0x8E7F7F4` |
 
-## MISSING / INCOMPLETE
+## STILL OFF (intentional)
 
-| Item | Status |
+| Item | Why |
 |---|---|
-| **Skin Changer runtime** | UI + arming log only. Halalium LateUpdate builds Photon RPC (`InstantiateViaServer` @ string `0x3520c`, helpers `0x1d8858`/`0x1d8f*`). Full box/RPC wire still TBD. |
-| InputConsumer hook | Present in Halalium `egl_install`; intentionally OFF in Kikaium |
-| getrr Bypass | Scaffolded in `halalium_hooks.h`; `use_getrr_bypass` OFF until proven stable |
-| Secondary/tertiary/extra hooks (`0x8E0085C`, `0x79FE5E0`, …) | Not installed (Halalium egl_install list); primary Update/LateUpdate covered |
-| ##weapons_list / ##skins_list UI polish | Sliders only (weapon id / skin id) |
+| InputConsumer hook | Stability |
+| getrr Bypass | `use_getrr_bypass=false` |
+| Secondary/tertiary egl hooks | Primary Update/LateUpdate sufficient |
 
 ## BUGS FIXED THIS PASS
 
-1. Silent Aim required `g.b_esp` — **wrong**; Halalium Silent Aim is independent
-2. Fov Check was UI-only — now filters aim + draws circle
-3. Anti Aim Pitch applied during Spin-alone — gated to `b_antiaim`
-4. Melodium `hit_chams` path could `return` before `old_update` — removed
-5. Melodium hitmarker/aspect/scope overlay paths stripped from hot path
-6. Fov Check duplicated under Visuals — Halalium only under ##rage_left
-7. Photon `isLocal` offsetof asserted `@0x30`
+1. Skin Changer was UI-only — now calls Halalium RVAs from Update path
+2. Through Walls no longer conflated with bare `set_visible` for every ESP tick (ESP still sets visible byte for occlusion)
+3. Added SkinChanger to 2-pass decompile index
 
-## Melodium (must stay absent)
+## LateUpdate `InstantiateViaServer` note
 
-No UI labels for fog/sky/hitmarkers/name-ammo ESP/duck/DT/jitter/chaos/strafer/aspect/scope/god/OHK. Flags forced false.
+`@0x1d7ff0` path uses photon props `untouchable` / `untouchableDuration` / `spawn_time` then RPC — **not** the SkinChanger entry. Real skins = `@0x1d9e00` called from Update `@0x1d7dc0`.

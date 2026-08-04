@@ -18,3 +18,4 @@ Re-run: `python3 tools/halalium_emu/decompile_funcs.py`
 - [menu_body](menu_body.md) @ `0x1db874` — fields=16, RVAs=[—], strings=52
 - [wm_click_site](wm_click_site.md) @ `0x1db464` — fields=9, RVAs=[—], strings=1
 - [track_hook_helper](track_hook_helper.md) @ `0x1d917c` — fields=1, RVAs=[—], strings=0
+- [SkinChanger](SkinChanger.md) @ `0x1d9e00` — fields=11, RVAs=[`0x8e8fe50`, `0x8e852d4`, `0x8e7f7f4`], strings=2

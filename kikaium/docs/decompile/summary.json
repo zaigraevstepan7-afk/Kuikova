@@ -239,5 +239,31 @@
     "fields": 1,
     "rvas": [],
     "strings": []
+  },
+  {
+    "name": "SkinChanger",
+    "va": "0x1d9e00",
+    "fields": 11,
+    "rvas": [
+      {
+        "reg": "w9",
+        "rva": "0x8e8fe50",
+        "at": "0x1d9ef8"
+      },
+      {
+        "reg": "w9",
+        "rva": "0x8e852d4",
+        "at": "0x1d9f28"
+      },
+      {
+        "reg": "w9",
+        "rva": "0x8e7f7f4",
+        "at": "0x1d9f4c"
+      }
+    ],
+    "strings": [
+      "SkinChanger",
+      "Skin Changer: Swapped to weapon %d (skin %d)"
+    ]
   }
 ]

@@ -9,6 +9,7 @@
 #include "world.h"
 #include "chams.h"
 #include "exploits.h"
+#include "skins.h"
 #include <imgui_internal.h>
 #include "esp.h"
 #include "globals.hpp"
@@ -60,11 +61,16 @@ void new_update(c_player_controller *player)
 
             if (!is_local)
             {
-                // Halalium "Through Walls" / force visibility
-                if (g.b_through_walls || g.b_esp)
+                // Halalium Through Walls (ESP alone does not force visible — allowlist split)
+                if (g.b_through_walls)
                 {
                     player->m_bCharacterVisible = true;
                     player->set_visible();
+                }
+                else if (g.b_esp)
+                {
+                    // ESP still needs occlusion bypass for drawing (Halalium enemy path sets visible)
+                    player->m_bCharacterVisible = true;
                 }
             }
 
@@ -87,7 +93,9 @@ void new_update(c_player_controller *player)
                 if (g.b_world || g.b_apply_world)
                     c_world->init(c_player->local);
                 c_chams->local(c_player->local);
-                // Melodium weapon_chams — off
+                // Halalium SkinChanger — same call site as Update @0x1d7dc0
+                if (is_local)
+                    c_skins->tick(player);
             }
 
             if (c_globals->is_enemy(c_player->local, player))
@@ -128,19 +136,6 @@ void new_lateupdate(c_player_controller *player)
                         if (c_player->local->m_pPhoton->get_health() > 0) {
                             c_visual->third_view(c_player->local->m_pTransform);
                         }
-                    }
-                }
-                // Halalium Skin Changer — LateUpdate InstantiateViaServer path (RE @0x1d7ff0+)
-                // Full RPC box build still TBD; arming is logged once per id change.
-                if (g.b_skin_changer)
-                {
-                    static int last_w = -1, last_s = -1;
-                    if (last_w != g.i_skin_weapon || last_s != g.i_skin_id)
-                    {
-                        last_w = g.i_skin_weapon;
-                        last_s = g.i_skin_id;
-                        LOGI("Skin Changer: Swapped to weapon %d (skin %d) [Halalium InstantiateViaServer pending full wire]",
-                             g.i_skin_weapon, g.i_skin_id);
                     }
                 }
             }

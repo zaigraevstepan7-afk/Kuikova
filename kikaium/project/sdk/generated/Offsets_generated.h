@@ -73,6 +73,10 @@ namespace Method {
     constexpr uintptr_t AntiCheat_OnStart_getrr = 0x8B9579C;
     constexpr uintptr_t Gun_ExecuteCommands     = 0x0;
     constexpr uintptr_t Hit_StrictHit           = 0x0;
+    // Halalium SkinChanger @0x1d9e00
+    constexpr uintptr_t Skin_CreateOrGet = 0x8E8FE50;
+    constexpr uintptr_t Skin_Mid         = 0x8E852D4;
+    constexpr uintptr_t Skin_Equip       = 0x8E7F7F4;
 }
 
 namespace Hook {

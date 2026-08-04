@@ -33,7 +33,8 @@ ALLOW_UI = {
     "##misc_right_top", "##settings_left", "##settings_watermark", "##skins_panel",
     "##wm_click", "Halalium_Hooks", "Halalium_Bypass", "InstantiateViaServer",
     "eglSwapBuffers", "libEGL.so", "libunity.so", "libinput.so",
-    "got call from getrr.", "bypas hok result %d",
+    "got call from getrr.", "bypas hok result %d", "SkinChanger",
+    "Skin Changer: Swapped to weapon %d (skin %d)",
 }
 
 FIELD_HINTS = {
@@ -64,6 +65,7 @@ FUNCS = [
     ("menu_body", 0x1DB874, 0x1600),
     ("wm_click_site", 0x1DB464, 0x200),
     ("track_hook_helper", 0x1D917C, 0x80),
+    ("SkinChanger", 0x1D9E00, 0x1B4),
 ]
 
 

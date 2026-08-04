@@ -26,6 +26,7 @@ set(TO_COMPILE
     src/features/world.cpp
     src/features/chams.cpp
     src/features/exploits.cpp
+    src/features/skins.cpp
     src/menu/gui.cpp
     src/menu/c_user_interface.cpp
     sdk/game/unity/photon/c_photon_player.cpp
