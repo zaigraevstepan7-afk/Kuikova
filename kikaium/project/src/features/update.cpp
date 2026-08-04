@@ -436,7 +436,6 @@ void vmtHook(uintptr_t object, int method, void* news, void** old) {
     }
 }
 
-#include "includes/a64_inline_hook.h"
 #include "includes/halalium_hooks.h"
 #include "includes/module_base.h"
 
@@ -631,7 +630,7 @@ void update::init()
     }
 
     g_sdk_ready.store(true, std::memory_order_release);
-    LOGI("xxx hide profile: egl+input UNTRACKED, game RVAs TRACKED, getrr=%d",
+    LOGI("xxx hide profile: Dobby egl+input UNTRACKED, game RVAs TRACKED(+secondary), getrr=%d",
          (int)hhooks::getrr_is_armed());
     LOGI("xxx update::init done pc=%d late=%d il2cpp=%p unity=%p",
          (int)hooked_pc, (int)hooked_late, (void *)base, (void *)unity_base);

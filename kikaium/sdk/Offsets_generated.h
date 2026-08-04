@@ -103,7 +103,7 @@ namespace Hook {
     // Halalium: no GameController VMT. PC Update/Late VMT only if tracked RVA fails
     constexpr bool use_vmt_update_hooks = true;
     constexpr bool use_getrr_bypass = true;
-    constexpr bool use_secondary_hooks = false;
+    constexpr bool use_secondary_hooks = true;
     constexpr bool use_input_consume = true;
 }
 

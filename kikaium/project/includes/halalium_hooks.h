@@ -1,10 +1,9 @@
 #pragma once
-// Halalium-style hook registry + getrr (OnStart) bypass.
-// OnStart @ RVA 0x8B9579C: destroy tracked hooks → call real OnStart → reinstall.
-// Critical: do NOT call OnStart via a stolen-byte trampoline (PC-relative crash).
-// Instead temporarily restore OnStart bytes and call the real address (Dobby-like safe path).
+// Halalium-style hook registry + getrr (OnStart) bypass — Dobby engine.
+// OnStart @ RVA 0x8B9579C: DobbyDestroy tracked → call orig trampoline → DobbyHook reinstall.
+// getrr itself is NOT tracked (same as egl / InputConsumer).
 
-#include "a64_inline_hook.h"
+#include "dobby.h"
 
 #include <cstdint>
 #include <cstring>
@@ -19,8 +18,7 @@ struct Entry
     void *target{};
     void *replacement{};
     void **orig_out{};
-    void *trampoline{};
-    uint8_t backup[a64hook::kPatchSize]{};
+    void *orig{};
     bool active{false};
 };
 
@@ -40,11 +38,18 @@ inline bool looks_like_a64(void *target)
 {
     if (!target || ((uintptr_t)target & 3))
         return false;
-    // First word should be a plausible A64 insn (not all-zero / all-ff filler).
     uint32_t w = *reinterpret_cast<uint32_t *>(target);
     if (w == 0 || w == 0xffffffffu)
         return false;
     return true;
+}
+
+// Untracked DobbyHook (egl / InputConsumer / getrr)
+inline bool install_untracked(void *target, void *replacement, void **orig_out)
+{
+    if (!target || !replacement)
+        return false;
+    return DobbyHook(target, replacement, orig_out) == 0;
 }
 
 inline bool install_tracked(void *target, void *replacement, void **orig_out)
@@ -60,17 +65,15 @@ inline bool install_tracked(void *target, void *replacement, void **orig_out)
             continue;
         if (e.active)
             return true;
-        void *tramp = nullptr;
-        if (!a64hook::install_with_backup(target, replacement, &tramp, e.backup))
+        void *orig = nullptr;
+        if (DobbyHook(target, replacement, &orig) != 0)
             return false;
-        if (e.trampoline && e.trampoline != tramp)
-            a64hook::release_trampoline(e.trampoline);
-        e.trampoline = tramp;
+        e.orig = orig;
         e.replacement = replacement;
         e.orig_out = orig_out;
         e.active = true;
         if (orig_out)
-            *orig_out = tramp;
+            *orig_out = orig;
         return true;
     }
 
@@ -78,11 +81,11 @@ inline bool install_tracked(void *target, void *replacement, void **orig_out)
     e.target = target;
     e.replacement = replacement;
     e.orig_out = orig_out;
-    if (!a64hook::install_with_backup(target, replacement, &e.trampoline, e.backup))
+    if (DobbyHook(target, replacement, &e.orig) != 0)
         return false;
     e.active = true;
     if (orig_out)
-        *orig_out = e.trampoline;
+        *orig_out = e.orig;
     list().push_back(e);
     return true;
 }
@@ -94,7 +97,7 @@ inline void destroy_all()
     {
         if (!e.active || !e.target)
             continue;
-        a64hook::restore(e.target, e.backup);
+        DobbyDestroy(e.target);
         e.active = false;
     }
 }
@@ -106,15 +109,13 @@ inline void reinstall_all()
     {
         if (e.active || !e.target || !e.replacement)
             continue;
-        void *tramp = nullptr;
-        if (!a64hook::install_with_backup(e.target, e.replacement, &tramp, e.backup))
+        void *orig = nullptr;
+        if (DobbyHook(e.target, e.replacement, &orig) != 0)
             continue;
-        if (e.trampoline && e.trampoline != tramp)
-            a64hook::release_trampoline(e.trampoline);
-        e.trampoline = tramp;
+        e.orig = orig;
         e.active = true;
         if (e.orig_out)
-            *e.orig_out = tramp;
+            *e.orig_out = orig;
     }
 }
 
@@ -129,6 +130,8 @@ inline int tracked_count()
 }
 
 // --- getrr / OnStart bypass (Halalium RVA 0x8B9579C) ---
+// Halalium: DobbyHook(OnStart, Bypass_getrr, &orig) — NOT tracked.
+// Bypass: destroy tracked → blr orig trampoline → reinstall tracked.
 constexpr uintptr_t kGetrrRva = 0x8B9579C;
 
 inline void *&getrr_target()
@@ -137,10 +140,10 @@ inline void *&getrr_target()
     return t;
 }
 
-inline uint8_t *getrr_backup()
+inline void *&getrr_orig()
 {
-    static uint8_t b[a64hook::kPatchSize]{};
-    return b;
+    static void *o = nullptr;
+    return o;
 }
 
 inline bool &getrr_armed()
@@ -151,7 +154,6 @@ inline bool &getrr_armed()
 
 inline bool &getrr_reentrant()
 {
-    // TLS so nested calls from other threads don't trip the process-global flag
     thread_local bool v = false;
     return v;
 }
@@ -160,40 +162,27 @@ using getrr_fn = void *(*)(void *self, int32_t p, void *method);
 
 inline void *hk_getrr(void *self, int32_t p, void *method)
 {
-    // Re-entrancy: call real OnStart while temporarily restored (no trampoline).
     if (getrr_reentrant())
     {
-        void *target = getrr_target();
-        if (target)
-            return ((getrr_fn)target)(self, p, method);
+        auto *orig = (getrr_fn)getrr_orig();
+        if (orig)
+            return orig(self, p, method);
         return nullptr;
     }
     getrr_reentrant() = true;
 
-    // Prefer soft log during AC scan window (Halalium still logs, but keep noise low)
-    // __android_log_print(ANDROID_LOG_INFO, "xxx_Bypass", "got call from getrr.");
+    __android_log_print(ANDROID_LOG_INFO, "xxx_Bypass", "got call from getrr.");
 
-    // 1) Hide tracked game hooks from AC scan
+    // 1) Hide tracked game hooks (Halalium DobbyDestroy loop)
     destroy_all();
 
-    // 2) Temporarily restore OnStart itself, call REAL function (no trampoline)
+    // 2) Call REAL OnStart via Dobby trampoline — site stays patched (Halalium blr orig)
     void *ret = nullptr;
-    void *target = getrr_target();
-    if (target && getrr_armed())
-    {
-        a64hook::restore(target, getrr_backup());
-        getrr_armed() = false;
+    auto *orig = (getrr_fn)getrr_orig();
+    if (orig)
+        ret = orig(self, p, method);
 
-        ret = ((getrr_fn)target)(self, p, method);
-
-        // 3) Re-arm OnStart hook (patch only — no trampoline)
-        if (a64hook::patch_jump(target, (void *)hk_getrr, getrr_backup()))
-            getrr_armed() = true;
-        else
-            __android_log_print(ANDROID_LOG_ERROR, "xxx_Bypass", "getrr re-arm failed");
-    }
-
-    // 4) Put game hooks back
+    // 3) Reinstall tracked hooks (Halalium DobbyHook loop)
     reinstall_all();
 
     __android_log_print(ANDROID_LOG_INFO, "xxx_Bypass", "bypas hok result %d",
@@ -218,17 +207,19 @@ inline bool install_getrr_bypass(uintptr_t game_base)
         return false;
     }
 
-    if (!a64hook::patch_jump(target, (void *)hk_getrr, getrr_backup()))
+    void *orig = nullptr;
+    if (DobbyHook(target, (void *)hk_getrr, &orig) != 0 || !orig)
     {
-        __android_log_print(ANDROID_LOG_ERROR, "xxx_Bypass", "getrr install failed @%p", target);
+        __android_log_print(ANDROID_LOG_ERROR, "xxx_Bypass", "getrr DobbyHook failed @%p", target);
         return false;
     }
 
     getrr_target() = target;
+    getrr_orig() = orig;
     getrr_armed() = true;
     __android_log_print(ANDROID_LOG_INFO, "xxx_Bypass",
-                        "getrr OnStart hook OK rva=0x%lx @%p (safe restore-call)",
-                        (unsigned long)kGetrrRva, target);
+                        "getrr OnStart DobbyHook OK rva=0x%lx @%p orig=%p",
+                        (unsigned long)kGetrrRva, target, orig);
     return true;
 }
 
@@ -236,8 +227,9 @@ inline bool uninstall_getrr_bypass()
 {
     if (!getrr_armed() || !getrr_target())
         return true;
-    a64hook::restore(getrr_target(), getrr_backup());
+    DobbyDestroy(getrr_target());
     getrr_armed() = false;
+    getrr_orig() = nullptr;
     __android_log_print(ANDROID_LOG_INFO, "xxx_Bypass", "getrr bypass OFF");
     return true;
 }

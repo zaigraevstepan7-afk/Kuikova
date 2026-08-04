@@ -203,14 +203,14 @@ static bool install_input_consume_hook()
         return false;
     }
     // Halalium: egl + InputConsumer are UNTRACKED — getrr destroy must NOT tear them down
-    void *tramp = nullptr;
-    if (a64hook::install(sym, (void *)hk_input_consume, &tramp))
+    void *orig = nullptr;
+    if (hhooks::install_untracked(sym, (void *)hk_input_consume, &orig))
     {
-        old_input_consume = (decltype(old_input_consume))tramp;
-        LOGI("InputConsumer::consume hooked @%p (Halalium untracked)", sym);
+        old_input_consume = (decltype(old_input_consume))orig;
+        LOGI("InputConsumer::consume DobbyHook @%p (Halalium untracked)", sym);
         return true;
     }
-    LOGI("InputConsumer::consume hook failed @%p", sym);
+    LOGI("InputConsumer::consume DobbyHook failed @%p", sym);
     return false;
 }
 
@@ -654,9 +654,7 @@ bool is_executable_address(void *ptr)
     return info.dli_fbase != nullptr;
 }
 
-// Halalium: dlsym(libEGL, eglSwapBuffers) + DobbyHook(symbol).
-// Melodium: A64 inline hook on the same symbol (GOT scan is unreliable with lazy PLT / anon maps).
-#include "includes/a64_inline_hook.h"
+// Halalium: dlsym/DobbySymbolResolver(libEGL, eglSwapBuffers) + DobbyHook(symbol).
 
 static bool hook_egl_got_slots(void *symbol, void *replacement, void **out_orig)
 {
@@ -705,31 +703,27 @@ void init_render_hook()
     void *sym = egl ? dlsym(egl, oxorany("eglSwapBuffers")) : nullptr;
     if (!sym)
     {
-        LOGI("eglSwapBuffers dlsym failed");
+        // Halalium: DobbySymbolResolver(libEGL, eglSwapBuffers)
+        sym = DobbySymbolResolver("libEGL.so", "eglSwapBuffers");
+    }
+    if (!sym)
+    {
+        LOGI("eglSwapBuffers resolve failed");
         return;
     }
 
-    // Another SO copy already inline-hooked - do NOT GOT-fallback (would dual-hook).
-    if (a64hook::already_patched(sym))
+    // Halalium egl_install: DobbyHook only (UNTRACKED)
+    void *orig = nullptr;
+    if (hhooks::install_untracked(sym, (void *)hook_egl_swap_buffers, &orig))
     {
-        LOGI("eglSwapBuffers already patched - leave existing hook alone");
+        old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))orig;
         egl_hooked = true;
+        LOGI("eglSwapBuffers DobbyHook OK sym=%p orig=%p", sym, orig);
         install_input_consume_hook();
         return;
     }
 
-    // Primary: inline-hook the real symbol (Halalium Dobby path).
-    void *tramp = nullptr;
-    if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &tramp))
-    {
-        old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))tramp;
-        egl_hooked = true;
-        LOGI("eglSwapBuffers inline hook OK sym=%p tramp=%p", sym, tramp);
-        install_input_consume_hook();
-        return;
-    }
-
-    LOGI("inline hook failed, falling back to GOT scan");
+    LOGI("egl DobbyHook failed, falling back to GOT scan");
     old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))sym;
     if (hook_egl_got_slots(sym, (void *)hook_egl_swap_buffers, (void **)&old_egl_swap_buffers))
     {
@@ -742,19 +736,12 @@ void init_render_hook()
     std::thread([sym]() {
         for (int i = 0; i < 40; i++)
         {
-            if (a64hook::already_patched(sym))
+            void *orig2 = nullptr;
+            if (hhooks::install_untracked(sym, (void *)hook_egl_swap_buffers, &orig2))
             {
-                LOGI("eglSwapBuffers already patched (delayed) - stop retry");
+                old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))orig2;
                 egl_hooked = true;
-                install_input_consume_hook();
-                break;
-            }
-            void *tramp2 = nullptr;
-            if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &tramp2))
-            {
-                old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))tramp2;
-                egl_hooked = true;
-                LOGI("eglSwapBuffers inline hook OK (delayed) sym=%p", sym);
+                LOGI("eglSwapBuffers DobbyHook OK (delayed) sym=%p", sym);
                 install_input_consume_hook();
                 break;
             }
@@ -1005,9 +992,8 @@ static void melo_truncate_log()
 
 static bool egl_already_owned()
 {
-    void *egl = dlopen(oxorany("libEGL.so"), RTLD_NOW);
-    void *sym = egl ? dlsym(egl, oxorany("eglSwapBuffers")) : nullptr;
-    return sym && a64hook::already_patched(sym);
+    // With Dobby we cannot cheaply detect foreign patches — rely on once-guards.
+    return false;
 }
 
 // Durable same-process once: PID file survives injector FD sweeps that kill abstract sockets.

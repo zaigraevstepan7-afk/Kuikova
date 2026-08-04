@@ -104,8 +104,8 @@ namespace Hook {
     constexpr bool use_vmt_update_hooks = true;
     // Halalium Bypass_getrr — destroy tracked hooks during AntiCheat OnStart
     constexpr bool use_getrr_bypass = true;
-    // Silent Aim Tertiary/Extra — off for xxx ESP build (less AC surface)
-    constexpr bool use_secondary_hooks = false;
+    // Halalium always installs Secondary/Tertiary/ExtraA/B as TRACKED
+    constexpr bool use_secondary_hooks = true;
     // Halalium path: InputConsumer::consume (UNTRACKED like egl)
     constexpr bool use_input_consume = true;
 }

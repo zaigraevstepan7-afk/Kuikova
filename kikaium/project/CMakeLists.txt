@@ -47,13 +47,19 @@ set_target_properties(xxx PROPERTIES
     PREFIX "lib"
 )
 
+# Halalium-parity hook engine (Dobby static, android arm64)
+# whole-archive: keep weak DobbyHook / routing objects
 target_link_libraries(xxx
+        -Wl,--whole-archive
+        ${CMAKE_CURRENT_SOURCE_DIR}/includes/libdobby.a
+        -Wl,--no-whole-archive
         z
         log
         android
         EGL
         GLESv3
         OpenSLES
+        dl
 )
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
