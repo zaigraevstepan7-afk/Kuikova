@@ -481,42 +481,38 @@ void init_render_hook()
     void *sym = egl ? dlsym(egl, oxorany("eglSwapBuffers")) : nullptr;
     if (!sym)
     {
-        __android_log_print(ANDROID_LOG_ERROR, "melodium", "eglSwapBuffers dlsym failed");
+        LOGI("eglSwapBuffers dlsym failed");
         return;
     }
 
-    // Primary: inline-hook the real symbol (same idea as Halalium DobbyHook).
+    // Prefer GOT pointer-swap: call REAL eglSwapBuffers as orig (no stolen-byte trampoline).
+    // Inline patch of libEGL often crashes on first frame when orig tramp has PC-relative ops.
+    old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))sym;
+    if (hook_egl_got_slots(sym, (void *)hook_egl_swap_buffers, (void **)&old_egl_swap_buffers))
+    {
+        egl_hooked = true;
+        LOGI("eglSwapBuffers GOT hook OK sym=%p", sym);
+        return;
+    }
+
+    LOGI("GOT hook missed, trying inline (may be unstable)");
     void *tramp = nullptr;
     if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &tramp))
     {
         old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))tramp;
         egl_hooked = true;
-        __android_log_print(ANDROID_LOG_INFO, "melodium", "eglSwapBuffers inline hook OK sym=%p", sym);
-        return;
-    }
-
-    __android_log_print(ANDROID_LOG_WARN, "melodium", "inline hook failed, falling back to GOT scan");
-    old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))sym;
-
-    if (hook_egl_got_slots(sym, (void *)hook_egl_swap_buffers, (void **)&old_egl_swap_buffers))
-    {
-        egl_hooked = true;
+        LOGI("eglSwapBuffers inline hook OK sym=%p", sym);
         return;
     }
 
     std::thread([sym]() {
         for (int i = 0; i < 40; i++)
         {
-            void *tramp2 = nullptr;
-            if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &tramp2))
-            {
-                old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))tramp2;
-                egl_hooked = true;
-                break;
-            }
+            old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))sym;
             if (hook_egl_got_slots(sym, (void *)hook_egl_swap_buffers, (void **)&old_egl_swap_buffers))
             {
                 egl_hooked = true;
+                LOGI("eglSwapBuffers GOT hook OK (delayed)");
                 break;
             }
             sleep(1);
@@ -680,7 +676,7 @@ static bool address_in_maps(uintptr_t addr)
 
 void *entry()
 {
-    __android_log_print(ANDROID_LOG_INFO, "melodium", "entry()");
+    LOGI("entry()");
 
     // Hook render ASAP — overlay must not wait on il2cpp/base.
     for (int i = 0; i < 60; i++)
@@ -708,6 +704,7 @@ void *entry()
         sleep(1);
     }
 
+    LOGI("game base ready %p — starting update::init", (void *)base);
     if (base > 0)
         c_update->init();
 
@@ -726,7 +723,7 @@ static void start_melodium_once()
     if (started)
         return;
     started = true;
-    __android_log_print(ANDROID_LOG_INFO, "melodium", "start_melodium_once");
+    LOGI("start_melodium_once");
     std::thread(entry).detach();
 }
 

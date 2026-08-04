@@ -1,5 +1,7 @@
 #pragma once
 #include <cstdint>
+#include <cstdio>
+#include <cstdarg>
 #include "includes/structs.h"
 #include "includes/oxorany/Oxorany.hpp"
 #include <android/log.h>
@@ -20,8 +22,43 @@ inline uintptr_t base;
         } \
         return buff; }()
 
+// Write to /sdcard so user can pull the file without logcat filters.
+inline void melodium_file_log(const char *fmt, ...)
+{
+    char buf[512];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+
+    const char *paths[] = {
+        "/sdcard/Download/melodium.log",
+        "/sdcard/melodium.log",
+        "/storage/emulated/0/Download/melodium.log",
+        "/storage/emulated/0/melodium.log",
+    };
+    for (const char *p : paths)
+    {
+        FILE *f = fopen(p, "a");
+        if (!f)
+            continue;
+        fprintf(f, "%s\n", buf);
+        fclose(f);
+        break;
+    }
+}
+
 #define LOGD(fmt, ...) \
-    __android_log_print(ANDROID_LOG_DEBUG, "tenmi", fmt, ##__VA_ARGS__)
+    do { \
+        __android_log_print(ANDROID_LOG_DEBUG, "tenmi", fmt, ##__VA_ARGS__); \
+        melodium_file_log(fmt, ##__VA_ARGS__); \
+    } while (0)
+
+#define LOGI(fmt, ...) \
+    do { \
+        __android_log_print(ANDROID_LOG_INFO, "melodium", fmt, ##__VA_ARGS__); \
+        melodium_file_log(fmt, ##__VA_ARGS__); \
+    } while (0)
 class c_player_controller;
 class c_playermanager;
 class c_player_controls;

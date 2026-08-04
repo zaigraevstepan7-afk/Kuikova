@@ -516,10 +516,10 @@ void update::init()
 
     ::init(); // resolve il2cpp APIs against current base
 
-    // --- Halalium path: direct method hooks ---
-    bool hooked_pc = hook_rva(oxorany(0x8E7C40C), (void *)new_update, (void **)&old_update, "PlayerController.Update");
-    hook_rva(oxorany(0x8E7CF50), (void *)new_lateupdate, (void **)&old_lateupdate, "PlayerController.LateUpdate");
-    LOGD("getrr bypass OFF (inject-stable); Update/LateUpdate hooked_pc=%d", (int)hooked_pc);
+    // A64 RVA inline hooks disabled for inject stability (stolen-byte tramp can SIGSEGV).
+    // Use VMT name hooks only — same path as pre-Halalium-RVA fallback.
+    bool hooked_pc = false;
+    LOGI("a64 Update/LateUpdate hooks OFF (stable inject); using VMT fallback");
 
     // --- Fallback: name VMT if il2cpp APIs work ---
     Il2CppClass *game_controller = nullptr;
