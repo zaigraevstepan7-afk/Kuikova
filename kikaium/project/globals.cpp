@@ -1,5 +1,6 @@
 #include "globals.hpp"
 #include "includes/halalium_mem.h"
+#include "includes/halalium_chains.h"
 #include "sdk/game/il2cpp/api.h"
 #include <unistd.h>
 #include <thread>
@@ -243,24 +244,30 @@ void globals::updateGun()
 {
     if (!c_player->local)
         return;
-    c_weaponry_controller *weaponry{};
 
-    weaponry = c_player->local->m_pWeaponry;
+    // Halalium chain: player+0x88 → +0xa0 → params@+0x168 / +0xa8
+    void *weaponry = hchain::weaponry(c_player->local);
     if (!weaponry)
         return;
 
-    c_player->weapon_controller = weaponry->m_pCurrentWeapon;
-    c_player->gun_controller = (c_gun_controller *)weaponry->m_pCurrentWeapon;
-    if (!c_player->weapon_controller || !c_player->gun_controller)
+    void *weapon = hchain::current_weapon(c_player->local);
+    if (!weapon)
         return;
 
-    c_player->weapon_parameters = c_player->weapon_controller->m_pParameters;
-    c_player->gun_parameters = c_player->gun_controller->m_pParameters;
+    c_player->weapon_controller = reinterpret_cast<c_weapon_controller *>(weapon);
+    c_player->gun_controller = reinterpret_cast<c_gun_controller *>(weapon);
+
+    void *gparams = hchain::gun_params(weapon);
+    void *wparams = hchain::weapon_params_alt(weapon);
+    c_player->gun_parameters = reinterpret_cast<c_gun_parameters *>(gparams);
+    c_player->weapon_parameters = reinterpret_cast<c_weapon_parameters *>(wparams ? wparams : gparams);
     if (!c_player->weapon_parameters || !c_player->gun_parameters)
         return;
 
-    if (!this->holding_gun()) return;
+    if (!this->holding_gun())
+        return;
 
+    // Apply Halalium Safe writes (Inf Ammo / Fire Rate / Wallshot / No spread)
     c_exploits->init(c_player->gun_controller);
 }
 

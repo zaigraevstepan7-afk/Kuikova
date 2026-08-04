@@ -15,6 +15,7 @@
 #include "esp.h"
 #include "globals.hpp"
 #include "includes/halalium_mem.h"
+#include "includes/halalium_chains.h"
 #include "sdk/OffsetsBridge.h"
 #include <unordered_map>
 
@@ -51,58 +52,63 @@ void new_update(c_player_controller *player)
         return;
     }
 
-    c_photon_player *photon{};
-    bool is_local{};
-
-    photon = player->m_pPhoton;
-    if (photon) {
-        is_local = photon->m_bIsLocal;
-        if (is_local)
-            c_player->local = player;
-
-        if (!is_local)
-        {
-            if (g.b_through_walls)
-            {
-                // Halalium Update: strb #1 → [player,#0xd8]
-                hmem::set_field<uint8_t>(player, Offsets::Player::character_visible, 1);
-                player->m_bCharacterVisible = true;
-                player->set_visible();
-            }
-            else if (g.b_esp)
-            {
-                hmem::set_field<uint8_t>(player, Offsets::Player::character_visible, 1);
-                player->m_bCharacterVisible = true;
-            }
-        }
-
-        if (c_player->local) {
-            if (g.b_third) {
-                if (c_player->local->m_pPhoton) {
-                    if (c_player->local->m_pPhoton->get_health() > 0) {
-                        if (c_player->weapon_parameters && c_globals->holding_gun())
-                            c_player->local->set_tps();
-                        else
-                            c_player->local->set_fps();
-                    }
-                }
-            }
-
-            c_misc->init(c_player->local);
-            c_antiaim->update();
-            if (g.b_world || g.b_apply_world)
-                c_world->init(c_player->local);
-            c_chams->local(c_player->local);
-            if (is_local)
-                c_skins->tick(player);
-        }
-
-        if (c_globals->is_enemy(c_player->local, player))
-            c_player->enemy = player;
-
-        if (c_player->enemy)
-            c_chams->enemy(c_player->enemy);
+    // --- Halalium Update_Halalium_Hooks read path ---
+    // ldr photon = [player,#0x160]; ldrb isLocal = [photon,#0x30]
+    void *ph = hchain::photon(player);
+    if (!ph)
+    {
+        c_player->collect(player);
+        c_player->update();
+        old_update(player);
+        return;
     }
+
+    const bool is_local = hchain::is_local(player);
+    c_photon_player *photon = reinterpret_cast<c_photon_player *>(ph);
+
+    if (is_local)
+        c_player->local = player;
+
+    if (!is_local)
+    {
+        // Halalium: strb #1 → [player,#0xd8] (Through Walls / ESP reveal)
+        if (g.b_through_walls || g.b_esp)
+        {
+            hchain::set_visible(player, true);
+            player->m_bCharacterVisible = true;
+        }
+        if (g.b_through_walls)
+            player->set_visible();
+    }
+
+    if (c_player->local)
+    {
+        if (g.b_third && is_local)
+        {
+            if (photon->get_health() > 0)
+            {
+                if (c_player->weapon_parameters && c_globals->holding_gun())
+                    c_player->local->set_tps();
+                else
+                    c_player->local->set_fps();
+            }
+        }
+
+        c_misc->init(c_player->local);
+        c_antiaim->update();
+        if (g.b_world || g.b_apply_world)
+            c_world->init(c_player->local);
+        c_chams->local(c_player->local);
+        if (is_local)
+            c_skins->tick(player);
+    }
+
+    if (c_globals->is_enemy(c_player->local, player))
+        c_player->enemy = player;
+
+    if (c_player->enemy)
+        c_chams->enemy(c_player->enemy);
+
     c_player->collect(player);
     c_player->update();
     old_update(player);
@@ -111,41 +117,29 @@ void new_update(c_player_controller *player)
 void (*old_lateupdate)(c_player_controller *player);
 void new_lateupdate(c_player_controller *player)
 {
-    if (player) {
-        c_photon_player *photon{};
-        bool is_local{};
-        c_camera camera{};
-        c_player_controller *local{};
-
-        photon = player->m_pPhoton;
-        if (photon)
+    if (player && g_sdk_ready.load(std::memory_order_acquire))
+    {
+        // Halalium LateUpdate: local via photon isLocal
+        if (hchain::is_local(player))
         {
-            is_local = photon->m_bIsLocal;
-            if (is_local)
-                local = player;
-
-            if (local) {
-                c_globals->updateGun();
-                c_antiaim->late_update(local);
-                // Melodium aspect/scope - never
-                if (g.b_third && c_player->local && c_player->local->m_pTransform) {
-                    if (c_player->local->m_pPhoton) {
-                        if (c_player->local->m_pPhoton->get_health() > 0) {
-                            c_visual->third_view(c_player->local->m_pTransform);
-                        }
-                    }
-                }
+            c_player->local = player;
+            c_globals->updateGun();
+            c_antiaim->late_update(player);
+            if (g.b_third && player->m_pTransform)
+            {
+                auto *ph = reinterpret_cast<c_photon_player *>(hchain::photon(player));
+                if (ph && ph->get_health() > 0)
+                    c_visual->third_view(player->m_pTransform);
             }
         }
     }
-    old_lateupdate(player);
+    if (old_lateupdate)
+        old_lateupdate(player);
 }
 
 void (*old_game_update)(c_game_controller *game);
 void new_game_update(c_game_controller *game)
 {
-    // Lobby-safe: GameController.Update runs in menu. Never touch fields until SDK ready,
-    // and never crash the orig path if game/controls look invalid.
     if (!old_game_update)
         return;
     if (!game || !g_sdk_ready.load(std::memory_order_acquire))
@@ -155,7 +149,8 @@ void new_game_update(c_game_controller *game)
     }
 
     c_player->game = game;
-    auto *ctrl = *(c_player_controls **)((uintptr_t)game + Offsets::GameController::player_controls);
+    // Halalium: GameController.player_controls @0x2B0
+    auto *ctrl = reinterpret_cast<c_player_controls *>(hchain::game_controls(game));
     if (ctrl && c_globals->is_allocated(ctrl))
         c_player->controls = ctrl;
 
