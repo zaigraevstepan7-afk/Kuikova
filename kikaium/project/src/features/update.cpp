@@ -567,7 +567,7 @@ void update::init()
         hook_game(Offsets::Method::HookExtraB, (void *)new_extraB_halalium, (void **)&old_extraB, "ExtraB");
     }
 
-    LOGI("kikaium: Halalium RVA Update=%d Late=%d", (int)hooked_pc, (int)hooked_late);
+    LOGI("xxxpastuxxx: RVA Update=%d Late=%d", (int)hooked_pc, (int)hooked_late);
 
     Il2CppClass *game_controller = nullptr;
     Il2CppClass *player_controller = nullptr;
@@ -608,8 +608,8 @@ void update::init()
     }
 
     g_sdk_ready.store(true, std::memory_order_release);
-    LOGI("Halalium reconstruct done; Halalium-style VMT ready");
-    LOGI("kikaium update::init done pc=%d late=%d il2cpp=%p unity=%p",
+    LOGI("xxxpastuxxx reconstruct done; VMT ready");
+    LOGI("xxxpastuxxx update::init done pc=%d late=%d il2cpp=%p unity=%p",
          (int)hooked_pc, (int)hooked_late, (void *)base, (void *)unity_base);
 }
 

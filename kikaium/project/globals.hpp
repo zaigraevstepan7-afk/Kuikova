@@ -27,7 +27,7 @@ inline std::atomic<bool> g_sdk_ready{false};
         return buff; }()
 
 // Write to /sdcard so user can pull the file without logcat filters.
-inline void kikaium_file_log(const char *fmt, ...)
+inline void stux_file_log(const char *fmt, ...)
 {
     char buf[512];
     va_list ap;
@@ -36,10 +36,10 @@ inline void kikaium_file_log(const char *fmt, ...)
     va_end(ap);
 
     const char *paths[] = {
-        "/sdcard/Download/kikaium.log",
-        "/sdcard/kikaium.log",
-        "/storage/emulated/0/Download/kikaium.log",
-        "/storage/emulated/0/kikaium.log",
+        "/sdcard/Download/xxxpastuxxx.log",
+        "/sdcard/xxxpastuxxx.log",
+        "/storage/emulated/0/Download/xxxpastuxxx.log",
+        "/storage/emulated/0/xxxpastuxxx.log",
     };
     for (const char *p : paths)
     {
@@ -54,14 +54,14 @@ inline void kikaium_file_log(const char *fmt, ...)
 
 #define LOGD(fmt, ...) \
     do { \
-        __android_log_print(ANDROID_LOG_DEBUG, "tenmi", fmt, ##__VA_ARGS__); \
-        kikaium_file_log(fmt, ##__VA_ARGS__); \
+        __android_log_print(ANDROID_LOG_DEBUG, "xxxpastuxxx", fmt, ##__VA_ARGS__); \
+        stux_file_log(fmt, ##__VA_ARGS__); \
     } while (0)
 
 #define LOGI(fmt, ...) \
     do { \
-        __android_log_print(ANDROID_LOG_INFO, "kikaium", fmt, ##__VA_ARGS__); \
-        kikaium_file_log(fmt, ##__VA_ARGS__); \
+        __android_log_print(ANDROID_LOG_INFO, "xxxpastuxxx", fmt, ##__VA_ARGS__); \
+        stux_file_log(fmt, ##__VA_ARGS__); \
     } while (0)
 class c_player_controller;
 class c_playermanager;
@@ -294,7 +294,7 @@ inline struct g_
     bool b_skeleton;          // Halalium "Bone" (visual)
     bool b_distance = true;   // Halalium "Distance"
     float m_distance[4] = {1.f, 1.f, 1.f, 1.f};
-    float m_accent[4] = {0.91f, 0.66f, 0.35f, 1.f}; // Halalium "Accent Color"
+    float m_accent[4] = {0.24f, 1.00f, 0.71f, 1.f}; // Halalium "Accent Color"
     // Melodium-only leftovers — forced OFF, no UI
     bool b_name = false;
     bool b_ammo = false;

@@ -170,7 +170,7 @@ inline void *hk_getrr(void *self, int32_t p, void *method)
     }
     getrr_reentrant() = true;
 
-    __android_log_print(ANDROID_LOG_INFO, "Halalium_Bypass", "got call from getrr.");
+    __android_log_print(ANDROID_LOG_INFO, "xxxpastuxxx_Bypass", "got call from getrr.");
 
     // 1) Hide tracked game hooks from AC scan
     destroy_all();
@@ -189,13 +189,13 @@ inline void *hk_getrr(void *self, int32_t p, void *method)
         if (a64hook::patch_jump(target, (void *)hk_getrr, getrr_backup()))
             getrr_armed() = true;
         else
-            __android_log_print(ANDROID_LOG_ERROR, "Halalium_Bypass", "getrr re-arm failed");
+            __android_log_print(ANDROID_LOG_ERROR, "xxxpastuxxx_Bypass", "getrr re-arm failed");
     }
 
     // 4) Put game hooks back
     reinstall_all();
 
-    __android_log_print(ANDROID_LOG_INFO, "Halalium_Bypass", "bypas hok result %d",
+    __android_log_print(ANDROID_LOG_INFO, "xxxpastuxxx_Bypass", "bypas hok result %d",
                         tracked_count());
 
     getrr_reentrant() = false;
@@ -212,7 +212,7 @@ inline bool install_getrr_bypass(uintptr_t game_base)
     void *target = (void *)(game_base + kGetrrRva);
     if (!looks_like_a64(target))
     {
-        __android_log_print(ANDROID_LOG_ERROR, "Halalium_Bypass",
+        __android_log_print(ANDROID_LOG_ERROR, "xxxpastuxxx_Bypass",
                             "getrr target %p not a64 — skipped", target);
         return false;
     }
@@ -220,13 +220,13 @@ inline bool install_getrr_bypass(uintptr_t game_base)
     // Patch jump only — calling orig uses temporary restore (avoids PC-relative tramp crash).
     if (!a64hook::patch_jump(target, (void *)hk_getrr, getrr_backup()))
     {
-        __android_log_print(ANDROID_LOG_ERROR, "Halalium_Bypass", "getrr install failed @%p", target);
+        __android_log_print(ANDROID_LOG_ERROR, "xxxpastuxxx_Bypass", "getrr install failed @%p", target);
         return false;
     }
 
     getrr_target() = target;
     getrr_armed() = true;
-    __android_log_print(ANDROID_LOG_INFO, "Halalium_Bypass",
+    __android_log_print(ANDROID_LOG_INFO, "xxxpastuxxx_Bypass",
                         "getrr OnStart hook OK rva=0x%lx @%p (safe restore-call)",
                         (unsigned long)kGetrrRva, target);
     return true;

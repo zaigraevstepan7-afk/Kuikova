@@ -57,8 +57,8 @@ void init()
 
     if (!il2cpp_domain_get || !il2cpp_domain_assembly_open || !il2cpp_assembly_get_image || !il2cpp_class_from_name)
     {
-        __android_log_print(ANDROID_LOG_ERROR, "kikaium",
-                            "il2cpp API dlsym failed — cannot bootstrap without non-Halalium RVAs");
+        __android_log_print(ANDROID_LOG_ERROR, "xxxpastuxxx",
+                            "il2cpp API dlsym failed — cannot bootstrap — missing RVAs");
         return;
     }
 

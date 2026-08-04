@@ -12,7 +12,7 @@ namespace a64hook {
 
 #ifndef MELODIUM_HOOK_LOG
 #define MELODIUM_HOOK_LOG(...) \
-    __android_log_print(ANDROID_LOG_INFO, "kikaium", __VA_ARGS__)
+    __android_log_print(ANDROID_LOG_INFO, "xxxpastuxxx", __VA_ARGS__)
 #endif
 
 inline bool make_rwx(void *addr, size_t len)

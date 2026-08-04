@@ -1,7 +1,7 @@
 // AUTO-GENERATED / Halalium-only map — Source SO: libhalalium.so
 // BuildID: 12532fca99debbaa836dbbea6e5cceec95f5bbbb
 // Version: t.me/lemminghack, 0.39.2
-// Product: Kikaium — ONLY offsets proven from Halalium RE (profile + decompile).
+// Product: xxxpastuxxx — ONLY offsets proven from Halalium RE (profile + decompile).
 // Do NOT add Melodium / community Unity method RVAs here.
 #pragma once
 #include <cstdint>

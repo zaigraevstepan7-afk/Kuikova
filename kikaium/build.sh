@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build Kikaium (Halalium-architecture) arm64 .so
+# Build xxxpastuxxx arm64 .so
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 PROJ="$ROOT/project"
@@ -14,7 +14,7 @@ fi
 
 build_once() {
   local n="$1"
-  echo "======== Kikaium build #$n ========"
+  echo "======== xxxpastuxxx build #$n ========"
   cmake -S "$PROJ" -B "$PROJ/build/release-phone" \
     -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
@@ -23,11 +23,13 @@ build_once() {
     -DANDROID_PLATFORM=android-26 \
     -DCMAKE_BUILD_TYPE=Release
   cmake --build "$PROJ/build/release-phone" --parallel "$(nproc)"
-  local so="$ROOT/bin/libkikaium.so"
+  local so="$ROOT/bin/libxxxpastuxxx.so"
+  mkdir -p "$ROOT/bin"
   if [[ ! -f "$so" ]]; then
-    # fallback copy if POST_BUILD missed
-    cp -f "$PROJ/build/release-phone/libkikaium.so" "$so"
+    cp -f "$PROJ/build/release-phone/libxxxpastuxxx.so" "$so"
   fi
+  # keep legacy filename symlink for inject scripts that still say libkikaium.so
+  ln -sfn libxxxpastuxxx.so "$ROOT/bin/libkikaium.so"
   file "$so"
   local sz
   sz=$(stat -c%s "$so")
@@ -35,14 +37,26 @@ build_once() {
     echo "FAIL: SO too small ($sz)" >&2
     exit 2
   fi
-  # NOTE: avoid `strings | grep -q` under pipefail — SIGPIPE makes the pipeline fail on match.
   local dump
   dump="$(mktemp)"
   strings -a "$so" >"$dump"
-  if ! grep -qi 'kikaium' "$dump"; then
+  if ! grep -qi 'xxxpastuxxx' "$dump"; then
     rm -f "$dump"
-    echo "FAIL: kikaium brand missing" >&2
+    echo "FAIL: xxxpastuxxx brand missing" >&2
     exit 2
+  fi
+  if ! grep -q 't.me/xxxstuxxx' "$dump"; then
+    rm -f "$dump"
+    echo "FAIL: telegram link missing" >&2
+    exit 2
+  fi
+  if grep -qiE 'lemminghack|Lemming|Halalium_Hooks|KIKAIUM|Kikaium' "$dump"; then
+    # allow internal RE comments in code that may be optimized out; fail only on clear brand leaks
+    if grep -qE 't\.me/lemminghack|Lemming$|"Kikaium"|kikaium_contract' "$dump"; then
+      rm -f "$dump"
+      echo "FAIL: old Lemming/Kikaium brand still in binary" >&2
+      exit 2
+    fi
   fi
   if ! grep -q 'eglSwapBuffers' "$dump"; then
     rm -f "$dump"
@@ -54,14 +68,14 @@ build_once() {
     echo "FAIL: update::init marker missing" >&2
     exit 3
   fi
-  if ! grep -q 'kikaium_contract:wm_click' "$dump"; then
+  if ! grep -q 'xxxpastuxxx_contract:wm_click' "$dump"; then
     rm -f "$dump"
     echo "FAIL: menu contract marker missing" >&2
     exit 4
   fi
-  if ! grep -qE 'Halalium reconstruct|Halalium RVA Update|Halalium-style VMT' "$dump"; then
+  if ! grep -qE 'xxxpastuxxx reconstruct|Halalium reconstruct|VMT ready' "$dump"; then
     rm -f "$dump"
-    echo "FAIL: Halalium init path marker missing" >&2
+    echo "FAIL: init path marker missing" >&2
     exit 4
   fi
   if ! readelf -Ws "$so" 2>/dev/null | grep -q 'JNI_OnLoad'; then
@@ -80,9 +94,10 @@ build_once() {
 
 if [[ "$VERIFY" -eq 1 ]]; then
   for i in 1 2 3; do
-    # force rebuild of main objects between passes
-    rm -f "$PROJ/build/release-phone/CMakeFiles/kikaium.dir/main.cpp.o" \
-          "$PROJ/build/release-phone/CMakeFiles/kikaium.dir/src/features/update.cpp.o" \
+    rm -f "$PROJ/build/release-phone/CMakeFiles/xxxpastuxxx.dir/main.cpp.o" \
+          "$PROJ/build/release-phone/CMakeFiles/xxxpastuxxx.dir/src/features/update.cpp.o" \
+          "$PROJ/build/release-phone/CMakeFiles/kikaium.dir/main.cpp.o" \
+          "$PROJ/build/release-phone/libxxxpastuxxx.so" \
           "$PROJ/build/release-phone/libkikaium.so" 2>/dev/null || true
     build_once "$i"
   done

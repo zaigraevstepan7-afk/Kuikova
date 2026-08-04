@@ -1,5 +1,5 @@
 // ============================================================================
-// Kikaium - Halalium-architecture shell + Kikaium features
+// xxxpastuxxx — Standoff internal
 // Render: eglSwapBuffers GOT hook (Halalium uses Dobby on same symbol)
 // Menu:   ##watermark / ##wm_click
 // Update: tools/halalium_emu/update.sh  (see UPDATE.md)
@@ -203,7 +203,7 @@ static bool install_input_consume_hook()
     }
     if (hhooks::install_tracked(sym, (void *)hk_input_consume, (void **)&old_input_consume))
     {
-        LOGI("InputConsumer::consume hooked @%p (Halalium AInput path)", sym);
+        LOGI("InputConsumer::consume hooked @%p (AInput path)", sym);
         return true;
     }
     LOGI("InputConsumer::consume hook failed @%p", sym);
@@ -323,66 +323,66 @@ static void apply_imgui_style()
     auto style = &ImGui::GetStyle();
     ImGui::StyleColorsDark();
 
-    // Melodium / Kikaium own look: charcoal + copper (not Halalium grey, not teal clone).
-    const ImVec4 copper = ImVec4(0.91f, 0.66f, 0.35f, 1.00f);
-    const ImVec4 copper_dim = ImVec4(0.55f, 0.38f, 0.18f, 1.00f);
-    const ImVec4 bg = ImVec4(0.055f, 0.058f, 0.065f, 0.98f);
-    const ImVec4 bg2 = ImVec4(0.08f, 0.085f, 0.095f, 1.00f);
+    // xxxpastuxxx style: graphite + mint (replaces charcoal/copper)
+    const ImVec4 mint = ImVec4(0.24f, 1.00f, 0.71f, 1.00f);
+    const ImVec4 mint_dim = ImVec4(0.10f, 0.35f, 0.28f, 1.00f);
+    const ImVec4 bg = ImVec4(0.031f, 0.047f, 0.055f, 0.98f);
+    const ImVec4 bg2 = ImVec4(0.05f, 0.07f, 0.08f, 1.00f);
 
     style->WindowBorderSize = 1.f;
     style->ChildBorderSize = 1.f;
     style->FrameBorderSize = 0.f;
     style->WindowRounding = 0.f;
     style->ChildRounding = 0.f;
-    style->FrameRounding = 2.f;
-    style->GrabRounding = 2.f;
+    style->FrameRounding = 0.f;
+    style->GrabRounding = 0.f;
     style->ScrollbarRounding = 0.f;
-    style->ScrollbarSize = 12.f;
+    style->ScrollbarSize = 10.f;
     style->WindowPadding = ImVec2(12, 12);
     style->FramePadding = ImVec2(8, 5);
     style->ItemSpacing = ImVec2(12, 11);
 
-    style->Colors[ImGuiCol_Text] = ImVec4(0.93f, 0.91f, 0.88f, 1.00f);
-    style->Colors[ImGuiCol_TextDisabled] = ImVec4(0.45f, 0.44f, 0.42f, 1.00f);
+    style->Colors[ImGuiCol_Text] = ImVec4(0.86f, 0.92f, 0.89f, 1.00f);
+    style->Colors[ImGuiCol_TextDisabled] = ImVec4(0.40f, 0.48f, 0.45f, 1.00f);
     style->Colors[ImGuiCol_WindowBg] = bg;
     style->Colors[ImGuiCol_ChildBg] = bg2;
-    style->Colors[ImGuiCol_PopupBg] = ImVec4(0.09f, 0.09f, 0.10f, 0.96f);
-    style->Colors[ImGuiCol_Border] = ImVec4(0.22f, 0.23f, 0.25f, 1.00f);
+    style->Colors[ImGuiCol_PopupBg] = ImVec4(0.06f, 0.08f, 0.09f, 0.96f);
+    style->Colors[ImGuiCol_Border] = ImVec4(0.14f, 0.19f, 0.17f, 1.00f);
     style->Colors[ImGuiCol_BorderShadow] = ImVec4(0, 0, 0, 0);
-    style->Colors[ImGuiCol_FrameBg] = ImVec4(0.11f, 0.12f, 0.14f, 1.00f);
-    style->Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.16f, 0.15f, 0.13f, 1.00f);
-    style->Colors[ImGuiCol_FrameBgActive] = copper_dim;
+    style->Colors[ImGuiCol_FrameBg] = ImVec4(0.06f, 0.09f, 0.10f, 1.00f);
+    style->Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.09f, 0.14f, 0.13f, 1.00f);
+    style->Colors[ImGuiCol_FrameBgActive] = mint_dim;
     style->Colors[ImGuiCol_TitleBg] = bg;
-    style->Colors[ImGuiCol_TitleBgActive] = copper_dim;
+    style->Colors[ImGuiCol_TitleBgActive] = mint_dim;
     style->Colors[ImGuiCol_TitleBgCollapsed] = bg;
     style->Colors[ImGuiCol_MenuBarBg] = bg2;
     style->Colors[ImGuiCol_ScrollbarBg] = bg;
-    style->Colors[ImGuiCol_ScrollbarGrab] = copper_dim;
-    style->Colors[ImGuiCol_ScrollbarGrabHovered] = copper;
-    style->Colors[ImGuiCol_ScrollbarGrabActive] = copper;
-    style->Colors[ImGuiCol_CheckMark] = copper;
-    style->Colors[ImGuiCol_SliderGrab] = copper;
-    style->Colors[ImGuiCol_SliderGrabActive] = ImVec4(1.f, 0.78f, 0.45f, 1.00f);
-    style->Colors[ImGuiCol_Button] = ImVec4(0.12f, 0.12f, 0.13f, 1.00f);
-    style->Colors[ImGuiCol_ButtonHovered] = copper_dim;
-    style->Colors[ImGuiCol_ButtonActive] = copper;
-    style->Colors[ImGuiCol_Header] = ImVec4(0.55f, 0.38f, 0.18f, 0.45f);
-    style->Colors[ImGuiCol_HeaderHovered] = ImVec4(0.70f, 0.48f, 0.22f, 0.55f);
-    style->Colors[ImGuiCol_HeaderActive] = ImVec4(0.90f, 0.62f, 0.28f, 0.65f);
-    style->Colors[ImGuiCol_Separator] = ImVec4(0.28f, 0.26f, 0.22f, 0.80f);
-    style->Colors[ImGuiCol_SeparatorHovered] = copper;
-    style->Colors[ImGuiCol_SeparatorActive] = copper;
-    style->Colors[ImGuiCol_ResizeGrip] = copper_dim;
-    style->Colors[ImGuiCol_ResizeGripHovered] = copper;
-    style->Colors[ImGuiCol_ResizeGripActive] = copper;
+    style->Colors[ImGuiCol_ScrollbarGrab] = mint_dim;
+    style->Colors[ImGuiCol_ScrollbarGrabHovered] = mint;
+    style->Colors[ImGuiCol_ScrollbarGrabActive] = mint;
+    style->Colors[ImGuiCol_CheckMark] = mint;
+    style->Colors[ImGuiCol_SliderGrab] = mint;
+    style->Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.55f, 1.f, 0.82f, 1.00f);
+    style->Colors[ImGuiCol_Button] = ImVec4(0.07f, 0.10f, 0.11f, 1.00f);
+    style->Colors[ImGuiCol_ButtonHovered] = mint_dim;
+    style->Colors[ImGuiCol_ButtonActive] = mint;
+    style->Colors[ImGuiCol_Header] = ImVec4(0.10f, 0.35f, 0.28f, 0.45f);
+    style->Colors[ImGuiCol_HeaderHovered] = ImVec4(0.15f, 0.55f, 0.42f, 0.55f);
+    style->Colors[ImGuiCol_HeaderActive] = ImVec4(0.24f, 1.f, 0.71f, 0.35f);
+    style->Colors[ImGuiCol_Separator] = ImVec4(0.14f, 0.22f, 0.19f, 0.80f);
+    style->Colors[ImGuiCol_SeparatorHovered] = mint;
+    style->Colors[ImGuiCol_SeparatorActive] = mint;
+    style->Colors[ImGuiCol_ResizeGrip] = mint_dim;
+    style->Colors[ImGuiCol_ResizeGripHovered] = mint;
+    style->Colors[ImGuiCol_ResizeGripActive] = mint;
     style->Colors[ImGuiCol_Tab] = bg2;
-    style->Colors[ImGuiCol_TabHovered] = copper_dim;
-    style->Colors[ImGuiCol_TabSelected] = copper_dim;
-    style->Colors[ImGuiCol_TabSelectedOverline] = copper;
+    style->Colors[ImGuiCol_TabHovered] = mint_dim;
+    style->Colors[ImGuiCol_TabSelected] = mint_dim;
+    style->Colors[ImGuiCol_TabSelectedOverline] = mint;
     style->Colors[ImGuiCol_TabDimmed] = bg;
-    style->Colors[ImGuiCol_TabDimmedSelected] = copper_dim;
-    style->Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.91f, 0.66f, 0.35f, 0.35f);
-    style->Colors[ImGuiCol_NavCursor] = copper;
+    style->Colors[ImGuiCol_TabDimmedSelected] = mint_dim;
+    style->Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.24f, 1.f, 0.71f, 0.28f);
+    style->Colors[ImGuiCol_NavCursor] = mint;
 }
 
 // Halalium-style path: draw on eglSwapBuffers (dlsym + hook), query surface size like Halalium.
@@ -979,10 +979,10 @@ static int melo_openat(const char *path, int flags, int mode = 0)
 static void melo_truncate_log()
 {
     const char *paths[] = {
-        "/sdcard/Download/kikaium.log",
-        "/sdcard/kikaium.log",
-        "/storage/emulated/0/Download/kikaium.log",
-        "/storage/emulated/0/kikaium.log",
+        "/sdcard/Download/xxxpastuxxx.log",
+        "/sdcard/xxxpastuxxx.log",
+        "/storage/emulated/0/Download/xxxpastuxxx.log",
+        "/storage/emulated/0/xxxpastuxxx.log",
     };
     for (const char *p : paths)
     {
@@ -1007,10 +1007,10 @@ static bool egl_already_owned()
 static int claim_via_pidfile()
 {
     static const char *paths[] = {
-        "/data/local/tmp/kikaium.once",
-        "/sdcard/Download/kikaium.once",
-        "/sdcard/kikaium.once",
-        "/storage/emulated/0/Download/kikaium.once",
+        "/data/local/tmp/xxxpastuxxx.once",
+        "/sdcard/Download/xxxpastuxxx.once",
+        "/sdcard/xxxpastuxxx.once",
+        "/storage/emulated/0/Download/xxxpastuxxx.once",
     };
 
     const pid_t me = getpid();
@@ -1066,7 +1066,7 @@ static bool claim_via_abstract_unix()
 
     sockaddr_un addr{};
     addr.sun_family = AF_UNIX;
-    static const char name[] = "kikaium_once_v3";
+    static const char name[] = "xxxpastuxxx_once_v1";
     const size_t name_len = sizeof(name) - 1;
     addr.sun_path[0] = '\0';
     memcpy(addr.sun_path + 1, name, name_len);
@@ -1111,7 +1111,7 @@ static bool claim_process_once()
     return false;
 }
 
-static void start_kikaium_once()
+static void start_stux_once()
 {
     static std::atomic<bool> local_started{false};
     bool expected = false;
@@ -1120,14 +1120,14 @@ static void start_kikaium_once()
     if (!claim_process_once())
         return;
     melo_truncate_log();
-    LOGI("start_kikaium_once pid=%d", (int)getpid());
+    LOGI("start_stux_once pid=%d", (int)getpid());
     std::thread(entry).detach();
 }
 
 // AndKitty / memfd inject often only dlopen()'s the .so - no reserved JNI key.
-__attribute__((constructor)) static void kikaium_ctor()
+__attribute__((constructor)) static void stux_ctor()
 {
-    start_kikaium_once();
+    start_stux_once();
 }
 
 extern "C" jint JNIEXPORT JNI_OnLoad(JavaVM *vm, void *key)
@@ -1137,6 +1137,6 @@ extern "C" jint JNIEXPORT JNI_OnLoad(JavaVM *vm, void *key)
     if (vm)
         vm->GetEnv((void **)&env, JNI_VERSION_1_6);
 
-    start_kikaium_once();
+    start_stux_once();
     return JNI_VERSION_1_6;
 }

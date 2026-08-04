@@ -6,10 +6,11 @@
 
 float alpha = 0.0f;
 inline C_UserInterface ui;
+
 namespace gui
 {
-    __attribute__((used, retain)) static const char k_kikaium_contract[] =
-        "kikaium_contract:wm_click+egl+vmt+esp";
+    __attribute__((used, retain)) static const char k_stux_contract[] =
+        "xxxpastuxxx_contract:wm_click+egl+vmt+esp";
 
     void DrawGradientLine(ImDrawList *drawList, ImVec2 start, ImVec2 end, float startThickness, ImU32 startColor, ImU32 endColor, int segments = 20)
     {
@@ -45,9 +46,9 @@ namespace gui
 
         float originalLength = c_egl->heigth / 4.0f;
         float lineLength = originalLength / 2.f;
-        float startThickness = 3.0f;
-        ImU32 startColor = IM_COL32(236, 164, 72, 160);
-        ImU32 endColor = IM_COL32(236, 164, 72, 20);
+        float startThickness = 2.5f;
+        ImU32 startColor = IM_COL32(61, 255, 181, 170);
+        ImU32 endColor = IM_COL32(61, 255, 181, 15);
         float gap = 40.0f;
 
         DrawGradientLine(drawList, ImVec2(center.x, center.y - lineLength), ImVec2(center.x, center.y - gap), startThickness, startColor, endColor);
@@ -60,21 +61,21 @@ namespace gui
     {
         if (!g.b_watermark)
             return;
-        (void)k_kikaium_contract;
-        const char *brand = oxorany("Kikaium");
-        const char *line = open ? oxorany("tap to close") : oxorany("private  0.39.2");
+        (void)k_stux_contract;
 
-        // Soft breathing pulse on accent edge
+        const char *brand = oxorany("xxxpastuxxx");
+        const char *tg = oxorany("t.me/xxxstuxxx");
+        const char *hint = open ? oxorany("tap — close") : oxorany("tap — open");
+
         const float t = (float)ImGui::GetTime();
-        const int pulse_a = 180 + (int)(40.f * sinf(t * 2.2f));
+        const int pulse_a = 140 + (int)(50.f * sinf(t * 1.8f));
 
-        ImGui::SetNextWindowPos(ImVec2(16.f, 16.f), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(14.f, 14.f), ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(0.0f);
-        // Do NOT focus when menu is open - steals tab clicks
         if (!open)
             ImGui::SetNextWindowFocus();
 
-        ImGui::Begin(oxorany("##kik_wm"), nullptr,
+        ImGui::Begin(oxorany("##stux_wm"), nullptr,
                      ImGuiWindowFlags_NoTitleBar |
                          ImGuiWindowFlags_NoResize |
                          ImGuiWindowFlags_NoMove |
@@ -87,45 +88,44 @@ namespace gui
                          ImGuiWindowFlags_NoNav);
 
         ImVec2 brand_sz = ImGui::CalcTextSize(brand);
-        ImVec2 line_sz = ImGui::CalcTextSize(line);
-        float width = (brand_sz.x > line_sz.x ? brand_sz.x : line_sz.x) + 44.f;
-        float height = brand_sz.y + line_sz.y + 26.f;
+        ImVec2 tg_sz = ImGui::CalcTextSize(tg);
+        ImVec2 hint_sz = ImGui::CalcTextSize(hint);
+        float text_w = brand_sz.x;
+        if (tg_sz.x > text_w) text_w = tg_sz.x;
+        if (hint_sz.x > text_w) text_w = hint_sz.x;
+        float width = text_w + 52.f;
+        float height = brand_sz.y + tg_sz.y + hint_sz.y + 28.f;
 
         ImVec2 p = ImGui::GetCursorScreenPos();
         ImDrawList *dl = ImGui::GetWindowDrawList();
         ImVec2 rmin = p;
         ImVec2 rmax = ImVec2(p.x + width, p.y + height);
 
-        // Layered glass plate
-        dl->AddRectFilled(rmin, rmax, IM_COL32(10, 11, 13, 220), 8.f);
-        dl->AddRectFilledMultiColor(rmin, rmax,
-                                    IM_COL32(28, 26, 22, 40), IM_COL32(18, 18, 20, 10),
-                                    IM_COL32(18, 18, 20, 10), IM_COL32(28, 26, 22, 40));
-        dl->AddRect(rmin, rmax, IM_COL32(60, 56, 48, 200), 8.f, 0, 1.0f);
-        // Copper left spine
-        dl->AddRectFilled(ImVec2(rmin.x, rmin.y + 6.f), ImVec2(rmin.x + 3.f, rmax.y - 6.f),
-                          IM_COL32(236, 164, 72, pulse_a), 2.f);
-        // Bottom accent hairline
-        dl->AddRectFilled(ImVec2(rmin.x + 10.f, rmax.y - 2.f), ImVec2(rmax.x - 10.f, rmax.y),
-                          IM_COL32(236, 164, 72, 200), 1.f);
+        // Flat ink plate — no glass, no copper spine (new look)
+        dl->AddRectFilled(rmin, rmax, IM_COL32(8, 12, 14, 235), 0.f);
+        dl->AddRect(rmin, rmax, IM_COL32(40, 55, 50, 220), 0.f, 0, 1.0f);
+        // Top mint hairline
+        dl->AddRectFilled(rmin, ImVec2(rmax.x, rmin.y + 2.f), IM_COL32(61, 255, 181, pulse_a));
+        // Right mint tick
+        dl->AddRectFilled(ImVec2(rmax.x - 2.f, rmin.y + 8.f), ImVec2(rmax.x, rmax.y - 8.f),
+                          IM_COL32(61, 255, 181, 200));
 
-        ImVec2 brand_pos = ImVec2(p.x + 18.f, p.y + 8.f);
-        ImVec2 line_pos = ImVec2(p.x + 18.f, p.y + 8.f + brand_sz.y + 3.f);
-        dl->AddText(brand_pos, IM_COL32(248, 242, 232, 255), brand);
-        dl->AddText(line_pos, IM_COL32(190, 145, 90, 255), line);
+        float y = p.y + 8.f;
+        dl->AddText(ImVec2(p.x + 14.f, y), IM_COL32(230, 245, 238, 255), brand);
+        y += brand_sz.y + 2.f;
+        dl->AddText(ImVec2(p.x + 14.f, y), IM_COL32(61, 255, 181, 230), tg);
+        y += tg_sz.y + 2.f;
+        dl->AddText(ImVec2(p.x + 14.f, y), IM_COL32(110, 130, 120, 255), hint);
 
         ImGui::Dummy(ImVec2(width, height));
         ImGui::SetCursorScreenPos(rmin);
-        // Single path: InvisibleButton only (no press_edge / raw_tap double-fire)
         bool clicked = ImGui::InvisibleButton(oxorany("##wm_click"), ImVec2(width, height));
-        // Fallback if ImGui miss-hits but InputConsumer saw the tap in-rect
         if (!clicked && kik_input::consume_tap_in_rect(rmin.x, rmin.y, rmax.x, rmax.y))
             clicked = true;
 
         if (clicked)
         {
             open = !open;
-            // Prevent the same tap from clicking checkboxes under the menu
             g_menu_input_lock.store(8, std::memory_order_release);
         }
 
@@ -138,7 +138,7 @@ namespace gui
 
         ImGui::SetNextWindowPos(pos, ImGuiCond_Once);
         ImGui::SetNextWindowSize(size, ImGuiCond_Always);
-        ImGui::Begin(oxorany("##kik_overlay"), nullptr,
+        ImGui::Begin(oxorany("##stux_overlay"), nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground |
                          ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus |
                          ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |

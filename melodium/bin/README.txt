@@ -1,8 +1,8 @@
-# Melodium / Kikaium — OUR binary
+# xxxpastuxxx — inject this
 
 | File | Use |
 |------|-----|
-| **libmelodium.so** | **Inject this** — our menu (copper theme, left rail) |
-| libkikaium.so | Halalium rebrand only (stock Halalium layout) |
+| **libxxxpastuxxx.so** | **Inject this** (built via kikaium/build.sh) |
+| libkikaium.so | symlink / legacy name |
 
-Watermark: tap **Kikaium** to open menu.
+Watermark: tap **xxxpastuxxx** / t.me/xxxstuxxx to open menu.

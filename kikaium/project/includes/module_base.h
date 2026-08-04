@@ -39,10 +39,10 @@ inline uintptr_t resolve_il2cpp_base()
     uintptr_t b = find_module_base_rx("libil2cpp.so");
     if (b)
     {
-        __android_log_print(ANDROID_LOG_INFO, "kikaium", "il2cpp base=%p", (void *)b);
+        __android_log_print(ANDROID_LOG_INFO, "xxxpastuxxx", "il2cpp base=%p", (void *)b);
         return b;
     }
-    __android_log_print(ANDROID_LOG_ERROR, "kikaium", "libil2cpp.so NOT FOUND");
+    __android_log_print(ANDROID_LOG_ERROR, "xxxpastuxxx", "libil2cpp.so NOT FOUND");
     return 0;
 }
 
@@ -50,9 +50,9 @@ inline uintptr_t resolve_unity_base()
 {
     uintptr_t b = find_module_base_rx("libunity.so");
     if (b)
-        __android_log_print(ANDROID_LOG_INFO, "kikaium", "unity base=%p (Halalium method RVAs)", (void *)b);
+        __android_log_print(ANDROID_LOG_INFO, "xxxpastuxxx", "unity base=%p (method RVAs)", (void *)b);
     else
-        __android_log_print(ANDROID_LOG_WARN, "kikaium", "libunity.so not found - RVA hooks disabled");
+        __android_log_print(ANDROID_LOG_WARN, "xxxpastuxxx", "libunity.so not found - RVA hooks disabled");
     return b;
 }
 

@@ -1,13 +1,12 @@
-# Kikaium = Halalium reconstruction (source), Melodium-quality menu
+# xxxpastuxxx
 
-Not a renamed Halalium SO. Capstone RE of `libhalalium.so` → rebuild:
+Rebrand of the Halalium-architecture rebuild:
 
-- egl + ##wm_click (menu starts closed)
-- Absolute RVA Update/LateUpdate (Halalium Dobby list)
-- Halalium feature labels (Silent Aim, Enable Esp, Auto Wall, …)
-- Melodium left-rail widgets / copper theme
+- Brand: **xxxpastuxxx**
+- Telegram: **https://t.me/xxxstuxxx**
+- Menu: new top-tab mint/graphite UI (not Lemming/Kikaium left-rail)
 
 ```bash
-bash tools/halalium_emu/update.sh
+bash tools/halalium_emu/update.sh   # refresh offsets if needed
 bash kikaium/build.sh --verify
 ```

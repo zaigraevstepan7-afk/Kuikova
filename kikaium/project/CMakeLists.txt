@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
-project(kikaium)
+project(xxxpastuxxx)
 
 set(CMAKE_CXX_STANDARD 17)
 
-# Kikaium — Halalium-architecture cheat (Melodium-style sources + Halalium RE offsets)
+# xxxpastuxxx — Standoff 2 internal (t.me/xxxstuxxx)
 set(TO_COMPILE
     main.cpp
     includes/imgui/imgui_demo.cpp
@@ -33,21 +33,21 @@ set(TO_COMPILE
     sdk/game/il2cpp/api.cpp
 )
 
-add_library(kikaium SHARED ${TO_COMPILE})
+add_library(xxxpastuxxx SHARED ${TO_COMPILE})
 
-add_compile_definitions(BIONIC_IOCTL_NO_SIGNEDNESS_OVERLOAD KIKAIUM=1)
+add_compile_definitions(BIONIC_IOCTL_NO_SIGNEDNESS_OVERLOAD XXXPASTUXXX=1)
 
-target_include_directories(kikaium PUBLIC includes/imgui)
-target_include_directories(kikaium PUBLIC includes/imgui/backends)
-target_include_directories(kikaium PUBLIC .)
+target_include_directories(xxxpastuxxx PUBLIC includes/imgui)
+target_include_directories(xxxpastuxxx PUBLIC includes/imgui/backends)
+target_include_directories(xxxpastuxxx PUBLIC .)
 
-set_target_properties(kikaium PROPERTIES
+set_target_properties(xxxpastuxxx PROPERTIES
     POSITION_INDEPENDENT_CODE ON
-    OUTPUT_NAME "kikaium"
+    OUTPUT_NAME "xxxpastuxxx"
     PREFIX "lib"
 )
 
-target_link_libraries(kikaium
+target_link_libraries(xxxpastuxxx
         z
         log
         android
@@ -57,7 +57,7 @@ target_link_libraries(kikaium
 )
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    target_compile_options(kikaium PRIVATE
+    target_compile_options(xxxpastuxxx PRIVATE
             -O2
             -fPIC
             -fno-rtti
@@ -72,16 +72,16 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
 
     set_source_files_properties(globals.cpp PROPERTIES COMPILE_FLAGS "-O2")
 
-    set_target_properties(kikaium PROPERTIES LINK_FLAGS
+    set_target_properties(xxxpastuxxx PROPERTIES LINK_FLAGS
             "-Wl,--gc-sections -Wl,--strip-all -Wl,--exclude-libs,ALL"
     )
 
     add_custom_command(
-            TARGET kikaium
+            TARGET xxxpastuxxx
             POST_BUILD
-            COMMAND ${CMAKE_STRIP} --strip-all $<TARGET_FILE:kikaium>
+            COMMAND ${CMAKE_STRIP} --strip-all $<TARGET_FILE:xxxpastuxxx>
             COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/../bin"
-            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:kikaium> "${CMAKE_SOURCE_DIR}/../bin/libkikaium.so"
-            COMMENT "Install libkikaium.so -> kikaium/bin/"
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:xxxpastuxxx> "${CMAKE_SOURCE_DIR}/../bin/libxxxpastuxxx.so"
+            COMMENT "Install libxxxpastuxxx.so -> kikaium/bin/"
     )
 endif()
