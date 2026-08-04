@@ -457,11 +457,13 @@ void vmtHook(uintptr_t object, int method, void* news, void** old) {
 }
 
 #include "includes/a64_inline_hook.h"
+#include "includes/halalium_hooks.h"
 #include "includes/module_base.h"
 
 // Halalium hooks PlayerController.Update by absolute RVA (Dobby), not by name.
 // Feng 0.39.2 dump: Update=0x8E7C40C LateUpdate=0x8E7CF50 — matches Halalium install immediates.
-static bool hook_rva(uintptr_t rva, void *hook, void **out_orig, const char *tag)
+// Tracked hooks enter the getrr destroy/reinstall list (Halalium vector @ stride 0x18).
+static bool hook_rva(uintptr_t rva, void *hook, void **out_orig, const char *tag, bool track_for_bypass = true)
 {
     if (!base || !rva || !hook)
         return false;
@@ -471,15 +473,22 @@ static bool hook_rva(uintptr_t rva, void *hook, void **out_orig, const char *tag
         LOGD("hook_rva %s target %p not executable (wrong base?)", tag, target);
         return false;
     }
-    void *tramp = nullptr;
-    if (!a64hook::install(target, hook, &tramp))
+    bool ok = false;
+    if (track_for_bypass)
+        ok = hhooks::install_tracked(target, hook, out_orig);
+    else
+    {
+        void *tramp = nullptr;
+        ok = a64hook::install(target, hook, &tramp);
+        if (ok && out_orig)
+            *out_orig = tramp;
+    }
+    if (!ok)
     {
         LOGD("hook_rva %s a64 install failed @%p", tag, target);
         return false;
     }
-    if (out_orig)
-        *out_orig = tramp;
-    LOGD("hook_rva %s OK rva=0x%lx target=%p tramp=%p", tag, (unsigned long)rva, target, tramp);
+    LOGD("hook_rva %s OK rva=0x%lx target=%p tracked=%d", tag, (unsigned long)rva, target, (int)track_for_bypass);
     return true;
 }
 
@@ -514,9 +523,16 @@ void update::init()
 
     ::init(); // resolve il2cpp APIs against current base
 
-    // --- Halalium path: direct method hooks ---
+    // --- Halalium path: direct method hooks (tracked → getrr bypass list) ---
     bool hooked_pc = hook_rva(oxorany(0x8E7C40C), (void *)new_update, (void **)&old_update, "PlayerController.Update");
     hook_rva(oxorany(0x8E7CF50), (void *)new_lateupdate, (void **)&old_lateupdate, "PlayerController.LateUpdate");
+
+    // Halalium getrr bypass: hook obfuscated OnStart @ 0x8B9579C.
+    // On AC call → destroy tracked hooks → orig → reinstall (tag Halalium_Bypass).
+    if (maps_contains_exec(base + hhooks::kGetrrRva))
+        hhooks::install_getrr_bypass(base);
+    else
+        LOGD("getrr OnStart RVA not executable — bypass skipped");
 
     // --- Fallback: name VMT if il2cpp APIs work ---
     Il2CppClass *game_controller = nullptr;
