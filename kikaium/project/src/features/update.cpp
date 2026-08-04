@@ -121,19 +121,31 @@ static void refresh_game_from_typeinfo()
     if (!c_player || !c_globals || !c_offsets || !g_sdk_ready.load(std::memory_order_acquire))
         return;
 
+    // Debounce TypeInfo misses so a single bad read doesn't wipe match state.
+    static int miss_streak = 0;
+
     auto *game = reinterpret_cast<c_game_controller *>(
         c_globals->type_info_instance(c_offsets->c_game_controller, 0));
     if (!game || !c_globals->is_allocated(game))
     {
         if (c_player->game || c_player->local)
         {
-            c_player->after_match();
-            if (c_esp)
-                c_esp->clear_matrix();
+            if (++miss_streak >= 8)
+            {
+                miss_streak = 0;
+                c_player->after_match();
+                if (c_esp)
+                    c_esp->clear_matrix();
+            }
+        }
+        else
+        {
+            miss_streak = 0;
         }
         return;
     }
 
+    miss_streak = 0;
     c_player->game = game;
     auto *ctrl = reinterpret_cast<c_player_controls *>(hchain::game_controls(game));
     if (ctrl && c_globals->is_allocated(ctrl))
@@ -573,17 +585,28 @@ void update::init()
     };
 
     bool hooked_pc = hook_game(update_rva, (void *)new_update, (void **)&old_update, "PC.Update");
+
+    // Halalium egl_install order: Update → Secondary → Tertiary → LateUpdate → ExtraA → ExtraB
+    bool hooked_sec = false, hooked_ter = false, hooked_ea = false, hooked_eb = false;
+    if (Offsets::Hook::use_secondary_hooks)
+    {
+        hooked_sec = hook_game(Offsets::Method::HookSecondary, (void *)new_secondary_halalium, (void **)&old_secondary, "Secondary");
+        hooked_ter = hook_game(Offsets::Method::HookTertiary, (void *)new_tertiary_halalium, (void **)&old_tertiary, "Tertiary");
+        if (!hooked_ter)
+            hooked_ter = hook_game(Offsets::Method::HookTertiaryAlt, (void *)new_tertiary_halalium, (void **)&old_tertiary, "TertiaryAlt");
+    }
+
     bool hooked_late = hook_game(late_rva, (void *)new_lateupdate, (void **)&old_lateupdate, "PC.LateUpdate");
 
     if (Offsets::Hook::use_secondary_hooks)
     {
-        hook_game(Offsets::Method::HookSecondary, (void *)new_secondary_halalium, (void **)&old_secondary, "Secondary");
-        hook_game(Offsets::Method::HookTertiary, (void *)new_tertiary_halalium, (void **)&old_tertiary, "Tertiary");
-        hook_game(Offsets::Method::HookExtraA, (void *)new_extraA_halalium, (void **)&old_extraA, "ExtraA");
-        hook_game(Offsets::Method::HookExtraB, (void *)new_extraB_halalium, (void **)&old_extraB, "ExtraB");
+        hooked_ea = hook_game(Offsets::Method::HookExtraA, (void *)new_extraA_halalium, (void **)&old_extraA, "ExtraA");
+        hooked_eb = hook_game(Offsets::Method::HookExtraB, (void *)new_extraB_halalium, (void **)&old_extraB, "ExtraB");
     }
 
-    LOGI("kikaium: Halalium RVA Update=%d Late=%d", (int)hooked_pc, (int)hooked_late);
+    LOGI("xxx RVA Update=%d Late=%d Sec=%d Ter=%d EA=%d EB=%d tracked=%d",
+         (int)hooked_pc, (int)hooked_late, (int)hooked_sec, (int)hooked_ter,
+         (int)hooked_ea, (int)hooked_eb, hhooks::tracked_count());
 
     Il2CppClass *game_controller = nullptr;
     Il2CppClass *player_controller = nullptr;

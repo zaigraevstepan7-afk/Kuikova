@@ -111,7 +111,11 @@ inline void reinstall_all()
             continue;
         void *orig = nullptr;
         if (DobbyHook(e.target, e.replacement, &orig) != 0)
+        {
+            __android_log_print(ANDROID_LOG_ERROR, "xxx_Bypass",
+                                "reinstall DobbyHook failed @%p", e.target);
             continue;
+        }
         e.orig = orig;
         e.active = true;
         if (e.orig_out)
