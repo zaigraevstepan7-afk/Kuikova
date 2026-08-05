@@ -6,6 +6,7 @@
 #include <src/menu/gui.h>
 #include "sdk/OffsetsBridge.h"
 #include "includes/halalium_mem.h"
+#include "includes/halalium_chains.h"
 
 Matrix esp::matrix()
 {
@@ -20,37 +21,109 @@ static bool matrix_nonzero(const Matrix &m)
     return m.m00 != 0.f || m.m11 != 0.f || m.m22 != 0.f || m.m33 != 0.f;
 }
 
-// Halalium Update FOV nest — in-process LDR + null (cbz), Unity thread ONLY:
-//   ldr x8, [player, #0xE8]   ; PlayerMainCamera
-//   cbz x8, fail
-//   ldr x8, [x8, #0x28]
-//   cbz x8, fail
-//   ldr x0, [x8, #0x30]       ; UnityEngine.Camera*
-//   cbz x0, fail
-// then Camera.matrix @0xF0 (profile)
+// world2screen() needs view-projection (clip + perspective divide).
+// Pure worldToCamera is usually last-row [0,0,0,1] and will blank ESP.
+static bool looks_like_vp(const Matrix &m)
+{
+    if (!matrix_nonzero(m))
+        return false;
+    const bool last_row_identity =
+        m.m30 == 0.f && m.m31 == 0.f && m.m32 == 0.f &&
+        (m.m33 == 1.f || m.m33 == 0.f);
+    return !last_row_identity;
+}
+
+static bool try_read_matrix_at(uintptr_t base, uintptr_t off, Matrix &out)
+{
+    return base && hmem::read(base + off, out) && matrix_nonzero(out);
+}
+
+static bool try_read_vp_at(uintptr_t base, uintptr_t off, Matrix &out)
+{
+    return try_read_matrix_at(base, off, out) && looks_like_vp(out);
+}
+
+// Unity thread ONLY.
+// Melodium/SO2 W2S nest (proven with this world2screen):
+//   PlayerMainCamera+0x20 → +0x10 → matrix@0xF0 (also try 0x100)
+// Halalium E8→28→30 is Unity Camera* (FOV); use it for P*V Injected product.
 void esp::cache_matrix()
 {
     Matrix mat{};
     bool ok = false;
+    int stage = 0;
 
     void *player = (c_player && c_player->local) ? (void *)c_player->local : nullptr;
     if (player)
     {
-        // LDR [player, #0xE8]
         const uintptr_t pmc = hmem::read_ptr(reinterpret_cast<uintptr_t>(player) + Offsets::Player::main_camera);
-        if (pmc) // cbz
+        if (pmc)
         {
-            // LDR [pmc, #0x28]
-            const uintptr_t nested = hmem::read_ptr(pmc + Offsets::PlayerMainCamera::nested);
-            if (nested) // cbz
+            stage = 1;
+
+            // 1) Melodium community nest — primary for boxes (accept any nonzero @0xF0/0x100)
+            const uintptr_t a = hmem::read_ptr(pmc + 0x20);
+            if (a)
             {
-                // LDR [nested, #0x30] → Unity Camera*
-                const uintptr_t ucam = hmem::read_ptr(nested + Offsets::PlayerMainCamera::unity_camera);
-                if (ucam) // cbz
+                stage = 2;
+                const uintptr_t b = hmem::read_ptr(a + 0x10);
+                if (b)
                 {
-                    // LDR matrix @ Camera+0xF0
-                    if (hmem::read(ucam + Offsets::Camera::matrix, mat) && matrix_nonzero(mat))
+                    stage = 3;
+                    if (try_read_matrix_at(b, 0xF0, mat) || try_read_matrix_at(b, 0x100, mat))
+                    {
                         ok = true;
+                        stage = 5;
+                    }
+                }
+            }
+
+            // 2) Halalium Unity Camera nest → projection * worldToCamera
+            if (!ok)
+            {
+                const uintptr_t nested = hmem::read_ptr(pmc + Offsets::PlayerMainCamera::nested);
+                if (nested)
+                {
+                    if (stage < 2)
+                        stage = 2;
+                    const uintptr_t ucam = hmem::read_ptr(nested + Offsets::PlayerMainCamera::unity_camera);
+                    if (ucam)
+                    {
+                        stage = 3;
+                        Matrix w2c{};
+                        Matrix proj{};
+                        if (c_fn && c_fn->get_w2c_injected)
+                            c_fn->get_w2c_injected(reinterpret_cast<void *>(ucam), &w2c);
+                        if (c_fn && c_fn->get_proj_injected)
+                            c_fn->get_proj_injected(reinterpret_cast<void *>(ucam), &proj);
+                        if (matrix_nonzero(w2c) && matrix_nonzero(proj))
+                        {
+                            mat = proj * w2c;
+                            if (matrix_nonzero(mat))
+                            {
+                                ok = true;
+                                stage = 5;
+                            }
+                        }
+                        if (!ok && (try_read_vp_at(ucam, Offsets::Camera::matrix, mat) ||
+                                    try_read_vp_at(ucam, 0x100, mat)))
+                        {
+                            ok = true;
+                            stage = 5;
+                        }
+                        if (!ok)
+                        {
+                            const uintptr_t native = hmem::read_ptr(ucam + 0x10);
+                            if (try_read_vp_at(native, Offsets::Camera::matrix, mat) ||
+                                try_read_vp_at(native, 0x100, mat))
+                            {
+                                ok = true;
+                                stage = 5;
+                            }
+                        }
+                        if (!ok)
+                            stage = 4;
+                    }
                 }
             }
         }
@@ -60,6 +133,7 @@ void esp::cache_matrix()
     m_have_matrix = ok;
     dbg_matrix.store(ok ? 1 : 0, std::memory_order_relaxed);
     dbg_local.store(player ? 1 : 0, std::memory_order_relaxed);
+    dbg_stage.store(stage, std::memory_order_relaxed);
 }
 
 // Snapshot world positions on Unity thread (Update/LateUpdate).
@@ -96,20 +170,53 @@ void esp::snapshot()
         cam = c_player->local->m_pMainCameraHolder->get_position();
 
     next.reserve(c_player->entity.size());
+
+    // First pass: count how many non-local pass team filter
+    int team_ok = 0;
     for (int i = 0; i < (int)c_player->entity.size(); ++i)
     {
         c_player_controller *player = c_player->entity[i];
-        if (!player || !c_globals->is_allocated(player))
+        if (!player || player == c_player->local)
             continue;
-        if (!c_globals->is_enemy(c_player->local, player))
+        if (!c_globals->is_allocated(player))
+            continue;
+        const uint8_t tl = hchain::team(c_player->local);
+        const uint8_t te = hchain::team(player);
+        if ((tl != te) || (tl == 0 && te == 0))
+            ++team_ok;
+    }
+    // If team bytes look broken (everyone same / zero), draw all non-local
+    const bool soft_team = (team_ok == 0);
+
+    for (int i = 0; i < (int)c_player->entity.size(); ++i)
+    {
+        c_player_controller *player = c_player->entity[i];
+        if (!player || player == c_player->local)
+            continue;
+        if (!c_globals->is_allocated(player))
+            continue;
+
+        const uint8_t tl = hchain::team(c_player->local);
+        const uint8_t te = hchain::team(player);
+        const bool enemy = soft_team || (tl != te) || (tl == 0 && te == 0);
+        if (!enemy)
             continue;
         ++n_enemies;
 
         if (!g.b_esp)
             continue;
 
-        c_photon_player *photon = player->m_pPhoton;
-        c_transform *transform = player->m_pTransform;
+        void *ph = hchain::photon(player);
+        c_photon_player *photon = reinterpret_cast<c_photon_player *>(ph);
+        // LDR transform @ Player+0x100
+        c_transform *transform = reinterpret_cast<c_transform *>(
+            hmem::read_ptr(reinterpret_cast<uintptr_t>(player) + 0x100));
+        if (!photon || !transform)
+        {
+            // struct fallback
+            photon = player->m_pPhoton;
+            transform = player->m_pTransform;
+        }
         if (!photon || !transform)
             continue;
 
@@ -119,7 +226,6 @@ void esp::snapshot()
         if (s.foot == Vector3{})
             continue;
 
-        // Halalium ESP geometry: base± (head +1.7, foot -0.1) — not biped/Melodium +1.65
         const Vector3 base = s.foot;
         s.foot = {base.x, base.y - 0.1f, base.z};
         s.head = {base.x, base.y + 1.7f, base.z};
@@ -141,30 +247,57 @@ void esp::snapshot()
 
 void esp::draw_status()
 {
-    // Top strip — verify memory reads even when ESP boxes fail
-    ImDrawList *dl = ImGui::GetForegroundDrawList();
-    if (!dl || !c_egl)
+    // Always-on diagnostic strip — top + bottom, FG + BG (never gated by ESP/SDK)
+    ImGuiIO &io = ImGui::GetIO();
+    float w = io.DisplaySize.x;
+    float h = io.DisplaySize.y;
+    if (c_egl && c_egl->width > 0 && c_egl->heigth > 0)
+    {
+        w = (float)c_egl->width;
+        h = (float)c_egl->heigth;
+    }
+    if (w < 1.f || h < 1.f)
         return;
 
-    const float w = (float)c_egl->width;
-    const float bar_h = 22.f;
-    dl->AddRectFilled(ImVec2(0, 0), ImVec2(w, bar_h), IM_COL32(0, 0, 0, 180));
+    static const char *stages[] = {"no-local", "pmc", "nest", "ucam", "mat-fail", "mat-ok"};
+    int st = dbg_stage.load(std::memory_order_relaxed);
+    if (st < 0 || st > 5)
+        st = 0;
 
-    char buf[192]{};
+    static int frame = 0;
+    ++frame;
+
+    char buf[288]{};
     std::snprintf(buf, sizeof(buf),
-                  "xxx | Halalium/Lemming | local:%s | matrix:%s | players:%d | enemies:%d | snap:%d",
+                  "xxx | sdk:%s | local:%s | matrix:%s(%s) | players:%d | enemies:%d | snap:%d | f:%d",
+                  dbg_sdk.load(std::memory_order_relaxed) ? "OK" : "NO",
                   dbg_local.load(std::memory_order_relaxed) ? "OK" : "NO",
                   dbg_matrix.load(std::memory_order_relaxed) ? "OK" : "NO",
+                  stages[st],
                   dbg_players.load(std::memory_order_relaxed),
                   dbg_enemies.load(std::memory_order_relaxed),
-                  dbg_snap.load(std::memory_order_relaxed));
+                  dbg_snap.load(std::memory_order_relaxed),
+                  frame);
 
-    ImFont *font = gui::font ? gui::font : ImGui::GetFont();
-    const float fs = 14.f;
-    if (font)
-        dl->AddText(font, fs, ImVec2(8.f, 3.f), IM_COL32(255, 200, 80, 255), buf);
-    else
-        dl->AddText(ImVec2(8.f, 3.f), IM_COL32(255, 200, 80, 255), buf);
+    auto paint = [&](ImDrawList *dl, float y0) {
+        if (!dl)
+            return;
+        const float bar_h = 32.f;
+        dl->AddRectFilled(ImVec2(0, y0), ImVec2(w, y0 + bar_h), IM_COL32(0, 0, 0, 240));
+        dl->AddRect(ImVec2(0, y0), ImVec2(w, y0 + bar_h), IM_COL32(255, 220, 60, 255), 0.f, 0, 2.f);
+        ImFont *font = gui::font ? gui::font : ImGui::GetFont();
+        if (font)
+            dl->AddText(font, 16.f, ImVec2(8.f, y0 + 7.f), IM_COL32(255, 240, 120, 255), buf);
+        else
+            dl->AddText(ImVec2(8.f, y0 + 7.f), IM_COL32(255, 240, 120, 255), buf);
+    };
+
+    ImDrawList *fg = ImGui::GetForegroundDrawList();
+    ImDrawList *bg = ImGui::GetBackgroundDrawList();
+    paint(fg, 0.f);
+    paint(bg, 0.f);
+    paint(fg, h - 32.f);
+    paint(bg, h - 32.f);
 }
 
 bool esp::update_matrix()

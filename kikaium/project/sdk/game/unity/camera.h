@@ -21,7 +21,11 @@ public:
 
     Matrix get_projection_matrix_injected()
     {
-        return Matrix{};
+        Matrix ret{};
+        if (!c_fn || !c_fn->get_proj_injected)
+            return ret;
+        c_fn->get_proj_injected((void *)this, &ret);
+        return ret;
     }
 
     Matrix get_world_to_camera_matrix_injected()

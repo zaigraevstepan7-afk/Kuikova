@@ -176,6 +176,7 @@ struct unity_fns
     void *(*camera_get_main)(){};
     void (*set_fov)(void *, float){};
     void (*get_w2c_injected)(void *, Matrix *){};
+    void (*get_proj_injected)(void *, Matrix *){};
     void *(*shader_find)(monoString *){};
     void *(*mat_get_texture)(void *){};
     void (*mat_set_texture)(void *, void *){};

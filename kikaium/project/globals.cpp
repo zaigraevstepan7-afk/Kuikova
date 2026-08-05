@@ -440,6 +440,7 @@ void globals::init()
         c_fn->get_transform = (decltype(c_fn->get_transform))bind_rva(0x5FF113C);
         c_fn->camera_get_main = (decltype(c_fn->camera_get_main))bind_rva(0x5FACE04);
         c_fn->get_w2c_injected = (decltype(c_fn->get_w2c_injected))bind_rva(0x5FBA5F4);
+        c_fn->get_proj_injected = (decltype(c_fn->get_proj_injected))bind_rva(0x5FA9898);
         c_fn->shader_find = (decltype(c_fn->shader_find))bind_rva(0x6A95144);
         c_fn->mat_get_texture = (decltype(c_fn->mat_get_texture))bind_rva(0x6A92FA4);
         c_fn->mat_set_texture = (decltype(c_fn->mat_set_texture))bind_rva(0x6A81174);
@@ -510,6 +511,7 @@ void globals::init()
         fill(c_fn->camera_get_main, (decltype(c_fn->camera_get_main))mp(cam, oxorany("get_main"), 0));
         fill(c_fn->set_fov, (decltype(c_fn->set_fov))mp(cam, oxorany("set_fieldOfView"), 1));
         fill(c_fn->get_w2c_injected, (decltype(c_fn->get_w2c_injected))mp_any(cam, oxorany("get_worldToCameraMatrix_Injected")));
+        fill(c_fn->get_proj_injected, (decltype(c_fn->get_proj_injected))mp_any(cam, oxorany("get_projectionMatrix_Injected")));
     }
 
     auto *inp = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Input"));

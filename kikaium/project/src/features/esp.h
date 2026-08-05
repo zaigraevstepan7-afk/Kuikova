@@ -15,10 +15,10 @@ struct EspSnap
 class esp {
 public:
     void render();
-    void draw_status(); // top bar — memory/player diagnostics
+    void draw_status(); // always-on top+bottom diagnostic strip
     Matrix matrix();
     bool update_matrix();
-    void cache_matrix();  // Unity thread ONLY: LDR Player+0xE8→+0x28→+0x30→matrix@0xF0
+    void cache_matrix();  // Unity thread: Melodium VP nest + Halalium P*V
     void snapshot();      // Unity thread ONLY: cache feet/heads for EGL draw
     void clear_matrix();
 
@@ -28,6 +28,8 @@ public:
     std::atomic<int> dbg_snap{0};
     std::atomic<int> dbg_local{0};
     std::atomic<int> dbg_matrix{0};
+    std::atomic<int> dbg_stage{0}; // 0 none,1 pmc,2 nest,3 ptr,4 mat fail,5 ok
+    std::atomic<int> dbg_sdk{0};
 
 private:
     Matrix m_cached{};

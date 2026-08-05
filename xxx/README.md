@@ -10,7 +10,7 @@
 | Name / Weapon / Ammo / Skeleton UI | **нет** (это Melodium) |
 | Bypass getrr | да |
 | Aim / chams / skins / rage | нет (позже) |
-| Полоска сверху (players/enemies/matrix) | да — проверка чтения памяти |
+| Полоска сверху+снизу (players/enemies/matrix) | да — проверка чтения памяти |
 
 ## Инжект
 

@@ -449,11 +449,10 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
     NewFrame();
     gui::render();
 
-    // Overlays after SDK ready. No Melodium hitmarkers.
+    // Overlays after SDK ready
     const bool sdk = g_sdk_ready.load(std::memory_order_acquire);
     if (sdk)
     {
-        // Halalium: no GC VMT — TypeInfo refresh / lobby clear from render path too
         if (c_update)
             c_update->tick_lobby_cleanup();
         if (g.b_fov_check && c_egl && c_egl->width > 0 && c_egl->heigth > 0)
@@ -466,10 +465,14 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
             dl->AddCircle(c, r, col, 64, 1.5f);
         }
         if (c_esp)
-        {
-            c_esp->draw_status();
             c_esp->render();
-        }
+    }
+
+    // Status bar LAST (after menu/ESP/watermark) — always visible when ImGui lives
+    if (c_esp)
+    {
+        c_esp->dbg_sdk.store(sdk ? 1 : 0, std::memory_order_relaxed);
+        c_esp->draw_status();
     }
 
     if (cmi)
