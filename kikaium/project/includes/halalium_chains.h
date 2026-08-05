@@ -53,6 +53,18 @@ inline void *main_camera(void *player)
     return hmem::field_ptr(player, Offsets::Player::main_camera);
 }
 
+// Halalium Update FOV nest: PlayerMainCamera+0x28 → +0x30 → UnityEngine.Camera*
+inline void *unity_camera_from_pmc(void *pmc)
+{
+    void *nested = hmem::field_ptr(pmc, Offsets::PlayerMainCamera::nested);
+    return nested ? hmem::field_ptr(nested, Offsets::PlayerMainCamera::unity_camera) : nullptr;
+}
+
+inline void *unity_camera(void *player)
+{
+    return unity_camera_from_pmc(main_camera(player));
+}
+
 inline void *movement(void *player)
 {
     return hmem::field_ptr(player, Offsets::Player::movement_controller);

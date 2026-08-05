@@ -20,28 +20,78 @@ static bool matrix_nonzero(const Matrix &m)
     return m.m00 != 0.f || m.m11 != 0.f || m.m22 != 0.f || m.m33 != 0.f;
 }
 
-// Halalium/Melodium 0.39.2 ESP matrix: PlayerMainCamera+0x20 → +0x10 → Matrix@0xF0
-static bool read_camera_matrix_chain(void *main_camera, Matrix *out)
+static bool read_matrix_field(void *obj, uintptr_t off, Matrix *out)
 {
-    if (!main_camera || !out || !c_globals || !c_globals->is_allocated(main_camera))
+    if (!obj || !out || !c_globals || !c_globals->is_allocated(obj))
+        return false;
+    if (!c_globals->is_allocated((void *)((uintptr_t)obj + off)))
+        return false;
+    Matrix m = *(Matrix *)((uintptr_t)obj + off);
+    if (!matrix_nonzero(m))
+        return false;
+    *out = m;
+    return true;
+}
+
+// Halalium-proven: PlayerMainCamera+0x28 → +0x30 → Unity Camera*, then Camera.matrix@0xF0
+static bool read_halalium_camera_matrix(void *player_main_camera, Matrix *out)
+{
+    if (!player_main_camera || !out)
         return false;
 
-    void *ptr = *(void **)((uintptr_t)main_camera + Offsets::Camera::transform);
+    void *nested = *(void **)((uintptr_t)player_main_camera + Offsets::PlayerMainCamera::nested);
+    if (!nested || !c_globals->is_allocated(nested))
+        return false;
+    void *ucam = *(void **)((uintptr_t)nested + Offsets::PlayerMainCamera::unity_camera);
+    if (!ucam || !c_globals->is_allocated(ucam))
+        return false;
+
+    // Profile: Camera.matrix @0xF0 on the resolved camera object
+    if (read_matrix_field(ucam, Offsets::Camera::matrix, out))
+        return true;
+    if (read_matrix_field(ucam, Offsets::Camera::matrix_alt, out))
+        return true;
+
+    // UnityEngine.Object m_CachedPtr @+0x10 → native matrix @0xF0
+    void *native = *(void **)((uintptr_t)ucam + 0x10);
+    if (native && c_globals->is_allocated(native))
+    {
+        if (read_matrix_field(native, Offsets::Camera::matrix, out))
+            return true;
+        if (read_matrix_field(native, Offsets::Camera::matrix_alt, out))
+            return true;
+    }
+
+    // Engine API on Halalium-resolved Camera* (last Halalium-aligned option)
+    if (c_fn && c_fn->get_w2c_injected)
+    {
+        Matrix m{};
+        c_fn->get_w2c_injected(ucam, &m);
+        if (matrix_nonzero(m))
+        {
+            *out = m;
+            return true;
+        }
+    }
+    return false;
+}
+
+// Melodium/community nest — NOT Halalium RE; kept only as emergency fallback
+static bool read_community_camera_matrix(void *player_main_camera, Matrix *out)
+{
+    if (!player_main_camera || !out || !c_globals || !c_globals->is_allocated(player_main_camera))
+        return false;
+
+    void *ptr = *(void **)((uintptr_t)player_main_camera + Offsets::Camera::community_a);
     if (!ptr || !c_globals->is_allocated(ptr))
         return false;
-
-    void *cashed = *(void **)((uintptr_t)ptr + Offsets::Camera::ptr);
+    void *cashed = *(void **)((uintptr_t)ptr + Offsets::Camera::community_b);
     if (!cashed || !c_globals->is_allocated(cashed))
         return false;
 
-    Matrix m = *(Matrix *)((uintptr_t)cashed + Offsets::Camera::matrix);
-    if (!matrix_nonzero(m))
-        m = *(Matrix *)((uintptr_t)cashed + Offsets::Camera::matrix_alt);
-    if (!matrix_nonzero(m))
-        return false;
-
-    *out = m;
-    return true;
+    if (read_matrix_field(cashed, Offsets::Camera::matrix, out))
+        return true;
+    return read_matrix_field(cashed, Offsets::Camera::matrix_alt, out);
 }
 
 void esp::cache_matrix()
@@ -49,22 +99,41 @@ void esp::cache_matrix()
     Matrix mat{};
     bool ok = false;
 
+    void *pmc = nullptr;
     if (c_player && c_player->local)
     {
-        void *cam = c_player->local->m_pMainCamera;
-        if (!cam)
-            cam = hchain::main_camera(c_player->local);
-        if (read_camera_matrix_chain(cam, &mat))
-            ok = true;
+        pmc = c_player->local->m_pMainCamera;
+        if (!pmc)
+            pmc = hchain::main_camera(c_player->local);
     }
 
-    // Fallback: Unity Camera.main with same nest (some builds expose matrix there)
+    // 1) Halalium FOV nest + profile matrix@0xF0
+    if (pmc && read_halalium_camera_matrix(pmc, &mat))
+        ok = true;
+
+    // 2) Camera.main via same Halalium field reads if get_main returns Camera*
     if (!ok && c_fn && c_fn->camera_get_main)
     {
         void *cam = c_fn->camera_get_main();
-        if (read_camera_matrix_chain(cam, &mat))
-            ok = true;
+        if (cam && c_globals->is_allocated(cam))
+        {
+            if (read_matrix_field(cam, Offsets::Camera::matrix, &mat) ||
+                read_matrix_field(cam, Offsets::Camera::matrix_alt, &mat))
+            {
+                ok = true;
+            }
+            else if (c_fn->get_w2c_injected)
+            {
+                c_fn->get_w2c_injected(cam, &mat);
+                if (matrix_nonzero(mat))
+                    ok = true;
+            }
+        }
     }
+
+    // 3) Melodium nest fallback only
+    if (!ok && pmc && read_community_camera_matrix(pmc, &mat))
+        ok = true;
 
     m_cached = mat;
     m_have_matrix = ok;
