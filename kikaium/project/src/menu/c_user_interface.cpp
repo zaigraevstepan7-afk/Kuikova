@@ -646,6 +646,7 @@ void C_UserInterface::rage()
     {
         stux_section("ESP");
         checkbox(oxorany("Enable Esp"), &g.b_esp);
+        checkbox(oxorany("Through Walls"), &g.b_through_walls);
         checkbox(oxorany("Box"), &g.b_rect);
         {
             int bt = g.i_box_type;
@@ -678,7 +679,6 @@ void C_UserInterface::rage()
             checkbox(oxorany("Distance"), &g.b_distance);
             ImGui::SameLine();
             ImGui::ColorEdit4(oxorany("Distance Color"), g.m_distance, color_flags);
-            checkbox(oxorany("Update Matrix"), &g.update_matrix);
         }
         this->endChild();
     }

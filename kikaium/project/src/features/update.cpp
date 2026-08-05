@@ -71,8 +71,8 @@ void new_update(c_player_controller *player)
 
     if (!is_local)
     {
-        // Only force visibility when Through Walls is on (not bare ESP)
-        if (g.b_through_walls)
+        // Halalium Update @0x1d7b14: strb #1 → [player,#0xd8] (Through Walls / wall ESP)
+        if (g.b_through_walls || g.b_esp)
         {
             hchain::set_visible(player, true);
             player->m_bCharacterVisible = true;

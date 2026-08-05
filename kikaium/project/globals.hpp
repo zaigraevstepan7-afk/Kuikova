@@ -320,7 +320,7 @@ inline struct g_
     bool b_endless;       // Inf Ammo
     bool b_nospread;      // No spread
     bool b_autowall;      // Auto Wall
-    bool b_through_walls; // Through Walls
+    bool b_through_walls = true; // Halalium Through Walls — strb player+0xD8
     bool b_wallshot;      // Wallshot
     bool b_fov_check;     // Fov Check
     float f_fov_check = 120.f;

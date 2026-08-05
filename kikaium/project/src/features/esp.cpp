@@ -5,7 +5,6 @@
 #include <cstdio>
 #include <src/menu/gui.h>
 #include "sdk/OffsetsBridge.h"
-#include "includes/halalium_chains.h"
 
 Matrix esp::matrix()
 {
@@ -27,22 +26,24 @@ void esp::cache_matrix()
     Matrix mat{};
     bool ok = false;
 
-    if (c_player && c_player->local && c_globals)
+    if (c_player && c_player->local && c_globals &&
+        c_globals->is_allocated(c_player->local))
     {
         void *player = c_player->local;
-        // Player + 0xE8 → PlayerMainCamera
-        void *pmc = hchain::main_camera(player);
+
+        // 1) Player + 0xE8 → PlayerMainCamera
+        void *pmc = *(void **)((uintptr_t)player + Offsets::Player::main_camera);
         if (pmc && c_globals->is_allocated(pmc))
         {
-            // PlayerMainCamera + 0x28
+            // 2) + 0x28
             void *nested = *(void **)((uintptr_t)pmc + Offsets::PlayerMainCamera::nested);
             if (nested && c_globals->is_allocated(nested))
             {
-                // + 0x30 → Unity Camera*
+                // 3) + 0x30 → Unity Camera*
                 void *ucam = *(void **)((uintptr_t)nested + Offsets::PlayerMainCamera::unity_camera);
                 if (ucam && c_globals->is_allocated(ucam))
                 {
-                    // Camera.matrix @ 0xF0
+                    // 4) matrix @ 0xF0
                     mat = *(Matrix *)((uintptr_t)ucam + Offsets::Camera::matrix);
                     if (matrix_nonzero(mat))
                         ok = true;
