@@ -17,6 +17,7 @@
 #include "includes/halalium_mem.h"
 #include "includes/halalium_chains.h"
 #include "sdk/OffsetsBridge.h"
+#include "sdk/game/c_playermanager.h"
 #include <unordered_map>
 
 void (*old_strict_hit)(void* _this, void* hit_data, void* player_hit_controller);
@@ -124,6 +125,60 @@ void new_update(c_player_controller *player)
 
 // Halalium has NO GameController VMT — instance comes from TypeInfo statics.
 // Permanent VMT stays visible during AntiCheat OnStart (getrr cannot destroy it).
+static void refresh_players_from_typeinfo()
+{
+    if (!c_player || !c_globals || !c_offsets || !base)
+        return;
+
+    auto *pm = reinterpret_cast<c_playermanager *>(
+        c_globals->type_info_instance(c_offsets->c_player_manager, 0));
+    if (!pm || !c_globals->is_allocated(pm))
+        return;
+
+    // local @0x70
+    auto *local = reinterpret_cast<c_player_controller *>(
+        hmem::read_ptr(reinterpret_cast<uintptr_t>(pm) + Offsets::PlayerManager::local_player));
+    if (!local)
+        local = pm->local_player;
+    if (local && c_globals->is_allocated(local))
+    {
+        c_player->local = local;
+        c_player->collect(local);
+    }
+
+    // Dictionary players_by_id @0x28 — iterate entries for ESP collect
+    auto *dict = reinterpret_cast<monoDictionary<int, c_player_controller *> *>(
+        hmem::read_ptr(reinterpret_cast<uintptr_t>(pm) + Offsets::PlayerManager::players_list));
+    if (!dict)
+        dict = pm->players_by_id;
+    if (dict && c_globals->is_allocated(dict))
+    {
+        // Prefer getValues() if available via struct helpers; else raw scan common layout
+        // Il2Cpp Dictionary: entries array often at +0x18, count at +0x20
+        const uintptr_t d = reinterpret_cast<uintptr_t>(dict);
+        const int count = (int)hmem::read_or<int32_t>(d + 0x20, 0);
+        const uintptr_t entries = hmem::read_ptr(d + 0x18);
+        if (entries && count > 0 && count < 64)
+        {
+            // Entry stride ~0x18 (hash, next, key, value) — value at +0x10
+            for (int i = 0; i < count; ++i)
+            {
+                void *val = reinterpret_cast<void *>(hmem::read_ptr(entries + (uintptr_t)i * 0x18 + 0x10));
+                auto *pc = reinterpret_cast<c_player_controller *>(val);
+                if (pc && c_globals->is_allocated(pc))
+                    c_player->collect(pc);
+            }
+        }
+    }
+
+    c_player->update();
+    if (c_esp && c_player->local)
+    {
+        c_esp->cache_matrix();
+        c_esp->snapshot();
+    }
+}
+
 static void refresh_game_from_typeinfo()
 {
     if (!c_player || !c_globals || !c_offsets || !g_sdk_ready.load(std::memory_order_acquire))
@@ -150,6 +205,8 @@ static void refresh_game_from_typeinfo()
         {
             miss_streak = 0;
         }
+        // Still try PlayerManager even if GameController miss
+        refresh_players_from_typeinfo();
         return;
     }
 
@@ -160,6 +217,8 @@ static void refresh_game_from_typeinfo()
         c_player->controls = ctrl;
     else
         c_player->controls = nullptr;
+
+    refresh_players_from_typeinfo();
 }
 
 void update::tick_lobby_cleanup()
@@ -558,29 +617,17 @@ void update::init()
     if (g_sdk_ready.load(std::memory_order_acquire))
         return;
 
-    static bool s_signer_waited = false;
-    if (!s_signer_waited)
-    {
-        // Melodium waits forever for signer — we poll then continue
-        for (int i = 0; i < 45 && !loadedlib(oxorany("libsigner.so")) && !loadedlib(oxorany("lib/arm64/libsigner.so")); i++)
-            sleep(1);
-        s_signer_waited = true;
-    }
-
     auto set_stage = [](int s) {
         if (c_esp)
             c_esp->dbg_sdk_stage.store(s, std::memory_order_relaxed);
     };
 
-    // CRITICAL split (Halalium RE):
-    // - base       = libil2cpp.so  (il2cpp API + TypeInfo only)
-    // - unity_base = libunity.so   (Halalium Dobby method RVAs — libunity_base_resolve)
+    // Halalium path: DO NOT block on libsigner / domain / Assembly-CSharp.
+    // Those calls crash or hang on stripped SO2 → sdk stuck NO forever while EGL lives.
     set_stage(1); // resolving bases
-    for (int attempt = 0; attempt < 120; ++attempt)
+    for (int attempt = 0; attempt < 60; ++attempt)
     {
-        base = find_module_base_rx("libil2cpp.so");
-        if (!base)
-            base = resolve_il2cpp_base();
+        base = resolve_il2cpp_base();
         unity_base = resolve_unity_base();
         if (base)
             break;
@@ -596,37 +643,14 @@ void update::init()
     }
     LOGI("update::init il2cpp=%p unity=%p", (void *)base, (void *)unity_base);
 
-    set_stage(3); // binding API / images
-    ::init();
-    // Keep retrying Assembly-CSharp — inject often races domain load
-    for (int i = 0; i < 30 && (!il2cpp_domain_get || !dll::charp); ++i)
-    {
-        set_stage(4); // waiting-asm
-        sleep(1);
-        ::init();
-    }
-
-    if (!il2cpp_domain_get)
-    {
-        LOGI("update::init abort: il2cpp API bind failed");
-        set_stage(5); // api-fail
-        return;
-    }
-    if (!dll::charp)
-    {
-        LOGI("update::init warn: Assembly-CSharp still null — continue with RVA hooks + TypeInfo");
-        set_stage(6); // no-asm-partial
-    }
-
-    // Also disable near trampoline for game hooks (Update/getrr) — absolute jumps
+    // Bind Unity method RVAs FIRST (no il2cpp domain needed)
     dobby_set_near_trampoline(false);
-
+    set_stage(3); // bind-rva
     c_globals->init();
 
     const uintptr_t update_rva = Offsets::Method::PlayerController_Update;
     const uintptr_t late_rva = Offsets::Method::PlayerController_LateUpdate;
 
-    // Halalium order: libunity first, libil2cpp only as exec fallback
     auto hook_game = [&](uintptr_t rva, void *hook, void **out_orig, const char *tag) -> bool {
         if (unity_base && hook_rva_tracked(unity_base, rva, hook, out_orig, tag))
             return true;
@@ -642,8 +666,6 @@ void update::init()
     if (!s_hooks_done)
     {
         hooked_pc = hook_game(update_rva, (void *)new_update, (void **)&old_update, "PC.Update");
-
-        // Halalium egl_install order: Update → Secondary → Tertiary → LateUpdate → ExtraA → ExtraB
         if (Offsets::Hook::use_secondary_hooks)
         {
             hooked_sec = hook_game(Offsets::Method::HookSecondary, (void *)new_secondary_halalium, (void **)&old_secondary, "Secondary");
@@ -651,9 +673,7 @@ void update::init()
             if (!hooked_ter)
                 hooked_ter = hook_game(Offsets::Method::HookTertiaryAlt, (void *)new_tertiary_halalium, (void **)&old_tertiary, "TertiaryAlt");
         }
-
         hooked_late = hook_game(late_rva, (void *)new_lateupdate, (void **)&old_lateupdate, "PC.LateUpdate");
-
         if (Offsets::Hook::use_secondary_hooks)
         {
             hooked_ea = hook_game(Offsets::Method::HookExtraA, (void *)new_extraA_halalium, (void **)&old_extraA, "ExtraA");
@@ -671,43 +691,42 @@ void update::init()
          (int)hooked_pc, (int)hooked_late, (int)hooked_sec, (int)hooked_ter,
          (int)hooked_ea, (int)hooked_eb, hhooks::tracked_count());
 
-    Il2CppClass *game_controller = nullptr;
+    // Soft optional: domain/images for VMT fill-ins — NEVER abort ESP if this fails/crashes risk
+    set_stage(4); // soft-api
+    static bool s_api_tried = false;
+    if (!s_api_tried)
+    {
+        s_api_tried = true;
+        // Only call ::init if Api RVAs look like code
+        const uintptr_t dom = base + Offsets::Api::il2cpp_domain_get;
+        if (hhooks::looks_like_a64((void *)dom))
+            ::init();
+        else
+            LOGI("xxx skip ::init — domain RVA not a64 @%p", (void *)dom);
+    }
+
     Il2CppClass *player_controller = nullptr;
     if (il2cpp_class_from_name && dll::charp)
     {
-        game_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Game"), oxorany("GameController"));
         player_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Player"), oxorany("PlayerController"));
-        LOGD("GameController=%p PlayerController=%p", game_controller, player_controller);
+        LOGD("PlayerController=%p", player_controller);
     }
-
-    // Halalium: NO GameController VMT. Prefer tracked a64 RVAs for PC Update/LateUpdate.
-    // VMT only as fallback when tracked RVA failed (permanent — visible during OnStart).
-    // Skip gun/hit VMT for ESP build (rage paths; not destroyed by getrr).
-    (void)game_controller;
 
     if (!hooked_pc && Offsets::Hook::use_vmt_update_hooks && player_controller)
         vmt(player_controller, oxorany("Update"), (void *)new_update, (void **)&old_update);
     if (!hooked_late && Offsets::Hook::use_vmt_update_hooks && player_controller)
         vmt(player_controller, oxorany("LateUpdate"), (void *)new_lateupdate, (void **)&old_lateupdate);
 
-    // Rage VMT only if silent/fire UI paths are armed later — not for ESP+bypass hide profile
-    if (g.b_silent || g.b_fire)
+    if ((g.b_silent || g.b_fire) && il2cpp_class_from_name && dll::charp)
     {
-        Il2CppClass *hit_controller = nullptr;
-        Il2CppClass *gun_controller = nullptr;
-        if (il2cpp_class_from_name && dll::charp)
-        {
-            hit_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Player.Hit"), oxorany("PlayerHitController"));
-            gun_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Inventory.Gun"), oxorany("GunController"));
-        }
-
+        Il2CppClass *hit_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Player.Hit"), oxorany("PlayerHitController"));
+        Il2CppClass *gun_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Inventory.Gun"), oxorany("GunController"));
         if (hit_controller)
             vmt(hit_controller, oxorany("ACHHGEDAEGBBHFB"), (void *)strict_hit, (void **)&old_strict_hit);
         if (gun_controller)
             vmt(gun_controller, oxorany("FEEBGAGHGGCGACA"), (void *)hook_executecommands, (void **)&old_executecommands);
     }
 
-    // Halalium Bypass_getrr: hide tracked game hooks while AntiCheat OnStart runs
     static bool s_getrr_done = false;
     if (!s_getrr_done && (Offsets::Hook::use_getrr_bypass || g.b_bypass) && unity_base)
     {
@@ -717,13 +736,12 @@ void update::init()
         s_getrr_done = true;
     }
 
+    // READY as soon as bases + (hooks attempted). TypeInfo ESP works even if Update hook missed.
     g_sdk_ready.store(true, std::memory_order_release);
     set_stage(8); // ready
     if (c_esp)
         c_esp->dbg_sdk.store(1, std::memory_order_relaxed);
-    LOGI("xxx hide profile: Dobby egl+input UNTRACKED, game RVAs TRACKED(+secondary), getrr=%d",
-         (int)hhooks::getrr_is_armed());
-    LOGI("xxx update::init done pc=%d late=%d il2cpp=%p unity=%p asm=%p",
+    LOGI("xxx sdk READY pc=%d late=%d il2cpp=%p unity=%p asm=%p",
          (int)hooked_pc, (int)hooked_late, (void *)base, (void *)unity_base, dll::charp);
 }
 

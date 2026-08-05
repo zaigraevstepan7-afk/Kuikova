@@ -3,11 +3,11 @@
 #include <cstdio>
 #include <cstring>
 #include <cinttypes>
+#include <link.h>
+#include <dlfcn.h>
 #include <android/log.h>
 
-// Halalium-style: resolve game image base from /proc/self/maps (r-xp).
-// Prefer libil2cpp.so (TypeInfo + ScriptMethod RVAs). Fall back to libunity.so
-// because Halalium's own finder string is "libunity.so" on some SO2 builds.
+// Resolve r-x mapping base for a shared library by substring match in maps.
 inline uintptr_t find_module_base_rx(const char *lib_name)
 {
     FILE *f = fopen("/proc/self/maps", "r");
@@ -32,27 +32,77 @@ inline uintptr_t find_module_base_rx(const char *lib_name)
     return best;
 }
 
+// dl_iterate_phdr — works when maps path is apk!/memfd/split weirdness
+inline uintptr_t find_module_base_phdr(const char *lib_name)
+{
+    struct Ctx
+    {
+        const char *name;
+        uintptr_t base;
+    } ctx{lib_name, 0};
+
+    dl_iterate_phdr(
+        [](struct dl_phdr_info *info, size_t, void *data) -> int {
+            auto *c = reinterpret_cast<Ctx *>(data);
+            if (!info || !info->dlpi_name || !c->name)
+                return 0;
+            if (!strstr(info->dlpi_name, c->name))
+                return 0;
+            c->base = static_cast<uintptr_t>(info->dlpi_addr);
+            return 1;
+        },
+        &ctx);
+    return ctx.base;
+}
+
+inline uintptr_t find_module_base(const char *lib_name)
+{
+    uintptr_t b = find_module_base_rx(lib_name);
+    if (b)
+        return b;
+    b = find_module_base_phdr(lib_name);
+    if (b)
+        return b;
+    // Last resort: dlopen + link_map
+    void *h = dlopen(lib_name, RTLD_NOLOAD);
+    if (!h)
+        h = dlopen(lib_name, RTLD_NOW);
+    if (h)
+    {
+        Dl_info di{};
+        // pick any exported-ish symbol via dlsym of a common name, or just iterate
+        void *sym = dlsym(h, "il2cpp_domain_get");
+        if (!sym)
+            sym = dlsym(h, "UnityMain");
+        if (sym && dladdr(sym, &di) && di.dli_fbase)
+            return reinterpret_cast<uintptr_t>(di.dli_fbase);
+    }
+    return 0;
+}
+
 inline uintptr_t resolve_il2cpp_base()
 {
-    // API/TypeInfo RVAs are ONLY valid against libil2cpp.so.
-    // Never fall back to libunity here - that crashes ::init()/img_to_asm ~seconds after inject.
-    uintptr_t b = find_module_base_rx("libil2cpp.so");
+    uintptr_t b = find_module_base("libil2cpp.so");
+    if (!b)
+        b = find_module_base("libil2cpp");
     if (b)
     {
-        __android_log_print(ANDROID_LOG_INFO, "kikaium", "il2cpp base=%p", (void *)b);
+        __android_log_print(ANDROID_LOG_INFO, "xxx", "il2cpp base=%p", (void *)b);
         return b;
     }
-    __android_log_print(ANDROID_LOG_ERROR, "kikaium", "libil2cpp.so NOT FOUND");
+    __android_log_print(ANDROID_LOG_ERROR, "xxx", "libil2cpp.so NOT FOUND");
     return 0;
 }
 
 inline uintptr_t resolve_unity_base()
 {
-    uintptr_t b = find_module_base_rx("libunity.so");
+    uintptr_t b = find_module_base("libunity.so");
+    if (!b)
+        b = find_module_base("libunity");
     if (b)
-        __android_log_print(ANDROID_LOG_INFO, "kikaium", "unity base=%p (Halalium method RVAs)", (void *)b);
+        __android_log_print(ANDROID_LOG_INFO, "xxx", "unity base=%p", (void *)b);
     else
-        __android_log_print(ANDROID_LOG_WARN, "kikaium", "libunity.so not found - RVA hooks disabled");
+        __android_log_print(ANDROID_LOG_WARN, "xxx", "libunity.so not found - RVA hooks disabled");
     return b;
 }
 

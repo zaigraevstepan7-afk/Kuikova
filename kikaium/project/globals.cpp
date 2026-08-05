@@ -199,13 +199,15 @@ void player::collect(c_player_controller* player)
 {
     if (!player) return;
     if (!c_globals->is_allocated(player)) return;
-    if (!player->m_pPhoton) return;
+    // Prefer Halalium LDR photon; struct field may be stale/wrong
+    if (!hchain::photon(player) && !player->m_pPhoton)
+        return;
 
     // prune dead entries while collecting
     for (int i = 0; i < (int)list.size(); )
     {
         auto *p = list[i];
-        if (!p || !c_globals->is_allocated(p) || !p->m_pPhoton)
+        if (!p || !c_globals->is_allocated(p) || (!hchain::photon(p) && !p->m_pPhoton))
         {
             list.erase(list.begin() + i);
             continue;

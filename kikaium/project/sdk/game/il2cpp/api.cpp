@@ -4,6 +4,7 @@
 #include <dlfcn.h>
 #include <android/log.h>
 #include "includes/module_base.h"
+#include "includes/halalium_hooks.h"
 #include "sdk/OffsetsBridge.h"
 
 void *img_to_asm(const char *assembly)
@@ -64,20 +65,39 @@ static void bind_api_rva(uintptr_t il2cpp_base)
     if (!il2cpp_base)
         return;
     if (!il2cpp_domain_get)
-        il2cpp_domain_get = (decltype(il2cpp_domain_get))(il2cpp_base + Offsets::Api::il2cpp_domain_get);
+    {
+        void *p = (void *)(il2cpp_base + Offsets::Api::il2cpp_domain_get);
+        if (hhooks::looks_like_a64(p))
+            il2cpp_domain_get = (decltype(il2cpp_domain_get))p;
+    }
     if (!il2cpp_domain_assembly_open)
-        il2cpp_domain_assembly_open = (decltype(il2cpp_domain_assembly_open))(il2cpp_base + Offsets::Api::il2cpp_domain_assembly_open);
+    {
+        void *p = (void *)(il2cpp_base + Offsets::Api::il2cpp_domain_assembly_open);
+        if (hhooks::looks_like_a64(p))
+            il2cpp_domain_assembly_open = (decltype(il2cpp_domain_assembly_open))p;
+    }
     if (!il2cpp_assembly_get_image)
-        il2cpp_assembly_get_image = (decltype(il2cpp_assembly_get_image))(il2cpp_base + Offsets::Api::il2cpp_assembly_get_image);
+    {
+        void *p = (void *)(il2cpp_base + Offsets::Api::il2cpp_assembly_get_image);
+        if (hhooks::looks_like_a64(p))
+            il2cpp_assembly_get_image = (decltype(il2cpp_assembly_get_image))p;
+    }
     if (!il2cpp_class_from_name)
-        il2cpp_class_from_name = (decltype(il2cpp_class_from_name))(il2cpp_base + Offsets::Api::il2cpp_class_from_name);
+    {
+        void *p = (void *)(il2cpp_base + Offsets::Api::il2cpp_class_from_name);
+        if (hhooks::looks_like_a64(p))
+            il2cpp_class_from_name = (decltype(il2cpp_class_from_name))p;
+    }
     if (!il2cpp_object_new)
-        il2cpp_object_new = (decltype(il2cpp_object_new))(il2cpp_base + Offsets::Api::il2cpp_object_new);
+    {
+        void *p = (void *)(il2cpp_base + Offsets::Api::il2cpp_object_new);
+        if (hhooks::looks_like_a64(p))
+            il2cpp_object_new = (decltype(il2cpp_object_new))p;
+    }
 }
 
 void init()
 {
-    // 1) Prefer exported symbols when present
     if (!il2cpp_domain_get)
         il2cpp_domain_get = (decltype(il2cpp_domain_get))dlsym_il2cpp("il2cpp_domain_get");
     if (!il2cpp_domain_assembly_open)
@@ -91,7 +111,6 @@ void init()
     if (!g_thread_attach)
         g_thread_attach = (il2cpp_thread_attach_fn)dlsym_il2cpp("il2cpp_thread_attach");
 
-    // 2) RVA fallback against live libil2cpp base (Melodium path — stripped exports)
     uintptr_t il2cpp = resolve_il2cpp_base();
     if (!il2cpp && base)
         il2cpp = base;
@@ -99,12 +118,12 @@ void init()
 
     if (!il2cpp_domain_get || !il2cpp_domain_assembly_open || !il2cpp_assembly_get_image || !il2cpp_class_from_name)
     {
-        __android_log_print(ANDROID_LOG_ERROR, "xxx",
-                            "il2cpp API bind failed (dlsym+rva) base=%p", (void *)il2cpp);
+        __android_log_print(ANDROID_LOG_WARN, "xxx",
+                            "il2cpp API incomplete (optional) base=%p — ESP uses TypeInfo+RVA",
+                            (void *)il2cpp);
         return;
     }
 
-    // Attach this thread to domain before assembly open (foreign pthread)
     if (g_thread_attach)
     {
         void *domain = il2cpp_domain_get();
@@ -112,7 +131,6 @@ void init()
             g_thread_attach(domain);
     }
 
-    // Retry images briefly — caller also retries ::init()
     for (int i = 0; i < 10; ++i)
     {
         if (!dll::charp)
