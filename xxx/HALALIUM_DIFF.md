@@ -9,15 +9,17 @@ Enable Esp, Box, Box Type/Color, Corner Size, Health Bar, Distance/Color, Throug
 
 Melodium Name / Weapon / Ammo / Skeleton — **убраны из UI xxx**.
 
-## Камера
+## Камера / W2S
 
-`Player+0xE8 → +0x28 → +0x30 → Unity Camera → matrix@0xF0`
+FOV nest (Halalium Update): `Player+0xE8 → +0x28 → +0x30 → Unity Camera*`  
+ESP matrix (как Melodium, для `world2screen`): `PlayerMainCamera+0x20 → +0x10 → @0xF0`  
+Fallback: `projection * worldToCamera` через Injected.
 
 ## Память
 
 Halalium: in-process LDR + null.  
 xxx: `hmem` LDR, без process_vm/mincore; позиции snapshot на Unity thread.
 
-## Полоска сверху
+## Полоска сверху+снизу
 
-`local | matrix | players | enemies | snap` — проверка, что чит вообще читает память.
+`sdk | local | matrix(stage) | players | enemies | snap | f` — проверка, что чит читает память и EGL жив.
