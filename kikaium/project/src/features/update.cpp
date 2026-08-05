@@ -555,31 +555,67 @@ void new_extraB_halalium(void *a0, void *a1)
 
 void update::init()
 {
-    for (int i = 0; i < 8 && !loadedlib(oxorany("libsigner.so")) && !loadedlib(oxorany("lib/arm64/libsigner.so")); i++)
-        sleep(1);
+    if (g_sdk_ready.load(std::memory_order_acquire))
+        return;
+
+    static bool s_signer_waited = false;
+    if (!s_signer_waited)
+    {
+        // Melodium waits forever for signer — we poll then continue
+        for (int i = 0; i < 45 && !loadedlib(oxorany("libsigner.so")) && !loadedlib(oxorany("lib/arm64/libsigner.so")); i++)
+            sleep(1);
+        s_signer_waited = true;
+    }
+
+    auto set_stage = [](int s) {
+        if (c_esp)
+            c_esp->dbg_sdk_stage.store(s, std::memory_order_relaxed);
+    };
 
     // CRITICAL split (Halalium RE):
     // - base       = libil2cpp.so  (il2cpp API + TypeInfo only)
     // - unity_base = libunity.so   (Halalium Dobby method RVAs — libunity_base_resolve)
-    // Dump ScriptMethod numbers match Halalium RVAs; Halalium hangs them on libunity.
-    // Do NOT assume dump format ⇒ must use libil2cpp for hooks.
-    base = find_module_base_rx("libil2cpp.so");
-    if (!base)
-        base = resolve_il2cpp_base();
-    unity_base = resolve_unity_base();
+    set_stage(1); // resolving bases
+    for (int attempt = 0; attempt < 120; ++attempt)
+    {
+        base = find_module_base_rx("libil2cpp.so");
+        if (!base)
+            base = resolve_il2cpp_base();
+        unity_base = resolve_unity_base();
+        if (base)
+            break;
+        set_stage(2); // no-il2cpp
+        sleep(1);
+    }
 
     if (!base)
     {
         LOGI("update::init abort: no libil2cpp base");
+        set_stage(2);
         return;
     }
     LOGI("update::init il2cpp=%p unity=%p", (void *)base, (void *)unity_base);
 
+    set_stage(3); // binding API / images
     ::init();
-    if (!il2cpp_domain_get || !dll::charp)
+    // Keep retrying Assembly-CSharp — inject often races domain load
+    for (int i = 0; i < 30 && (!il2cpp_domain_get || !dll::charp); ++i)
     {
-        LOGI("update::init abort: il2cpp API/image failed");
+        set_stage(4); // waiting-asm
+        sleep(1);
+        ::init();
+    }
+
+    if (!il2cpp_domain_get)
+    {
+        LOGI("update::init abort: il2cpp API bind failed");
+        set_stage(5); // api-fail
         return;
+    }
+    if (!dll::charp)
+    {
+        LOGI("update::init warn: Assembly-CSharp still null — continue with RVA hooks + TypeInfo");
+        set_stage(6); // no-asm-partial
     }
 
     // Also disable near trampoline for game hooks (Update/getrr) — absolute jumps
@@ -599,24 +635,36 @@ void update::init()
         return false;
     };
 
-    bool hooked_pc = hook_game(update_rva, (void *)new_update, (void **)&old_update, "PC.Update");
-
-    // Halalium egl_install order: Update → Secondary → Tertiary → LateUpdate → ExtraA → ExtraB
+    set_stage(7); // hooking
+    static bool s_hooks_done = false;
+    bool hooked_pc = false, hooked_late = false;
     bool hooked_sec = false, hooked_ter = false, hooked_ea = false, hooked_eb = false;
-    if (Offsets::Hook::use_secondary_hooks)
+    if (!s_hooks_done)
     {
-        hooked_sec = hook_game(Offsets::Method::HookSecondary, (void *)new_secondary_halalium, (void **)&old_secondary, "Secondary");
-        hooked_ter = hook_game(Offsets::Method::HookTertiary, (void *)new_tertiary_halalium, (void **)&old_tertiary, "Tertiary");
-        if (!hooked_ter)
-            hooked_ter = hook_game(Offsets::Method::HookTertiaryAlt, (void *)new_tertiary_halalium, (void **)&old_tertiary, "TertiaryAlt");
+        hooked_pc = hook_game(update_rva, (void *)new_update, (void **)&old_update, "PC.Update");
+
+        // Halalium egl_install order: Update → Secondary → Tertiary → LateUpdate → ExtraA → ExtraB
+        if (Offsets::Hook::use_secondary_hooks)
+        {
+            hooked_sec = hook_game(Offsets::Method::HookSecondary, (void *)new_secondary_halalium, (void **)&old_secondary, "Secondary");
+            hooked_ter = hook_game(Offsets::Method::HookTertiary, (void *)new_tertiary_halalium, (void **)&old_tertiary, "Tertiary");
+            if (!hooked_ter)
+                hooked_ter = hook_game(Offsets::Method::HookTertiaryAlt, (void *)new_tertiary_halalium, (void **)&old_tertiary, "TertiaryAlt");
+        }
+
+        hooked_late = hook_game(late_rva, (void *)new_lateupdate, (void **)&old_lateupdate, "PC.LateUpdate");
+
+        if (Offsets::Hook::use_secondary_hooks)
+        {
+            hooked_ea = hook_game(Offsets::Method::HookExtraA, (void *)new_extraA_halalium, (void **)&old_extraA, "ExtraA");
+            hooked_eb = hook_game(Offsets::Method::HookExtraB, (void *)new_extraB_halalium, (void **)&old_extraB, "ExtraB");
+        }
+        s_hooks_done = hooked_pc || hooked_late;
     }
-
-    bool hooked_late = hook_game(late_rva, (void *)new_lateupdate, (void **)&old_lateupdate, "PC.LateUpdate");
-
-    if (Offsets::Hook::use_secondary_hooks)
+    else
     {
-        hooked_ea = hook_game(Offsets::Method::HookExtraA, (void *)new_extraA_halalium, (void **)&old_extraA, "ExtraA");
-        hooked_eb = hook_game(Offsets::Method::HookExtraB, (void *)new_extraB_halalium, (void **)&old_extraB, "ExtraB");
+        hooked_pc = old_update != nullptr;
+        hooked_late = old_lateupdate != nullptr;
     }
 
     LOGI("xxx RVA Update=%d Late=%d Sec=%d Ter=%d EA=%d EB=%d tracked=%d",
@@ -660,17 +708,22 @@ void update::init()
     }
 
     // Halalium Bypass_getrr: hide tracked game hooks while AntiCheat OnStart runs
-    if ((Offsets::Hook::use_getrr_bypass || g.b_bypass) && unity_base)
+    static bool s_getrr_done = false;
+    if (!s_getrr_done && (Offsets::Hook::use_getrr_bypass || g.b_bypass) && unity_base)
     {
         g.b_bypass = true;
         bool ok = hhooks::install_getrr_bypass(unity_base);
         LOGI("xxx getrr bypass %s (tracked=%d)", ok ? "ON" : "FAIL", hhooks::tracked_count());
+        s_getrr_done = true;
     }
 
     g_sdk_ready.store(true, std::memory_order_release);
+    set_stage(8); // ready
+    if (c_esp)
+        c_esp->dbg_sdk.store(1, std::memory_order_relaxed);
     LOGI("xxx hide profile: Dobby egl+input UNTRACKED, game RVAs TRACKED(+secondary), getrr=%d",
          (int)hhooks::getrr_is_armed());
-    LOGI("xxx update::init done pc=%d late=%d il2cpp=%p unity=%p",
-         (int)hooked_pc, (int)hooked_late, (void *)base, (void *)unity_base);
+    LOGI("xxx update::init done pc=%d late=%d il2cpp=%p unity=%p asm=%p",
+         (int)hooked_pc, (int)hooked_late, (void *)base, (void *)unity_base, dll::charp);
 }
 

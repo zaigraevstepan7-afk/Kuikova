@@ -996,7 +996,8 @@ void *entry()
         if (_il2cpp->is_loaded())
         {
             base = _il2cpp->address();
-            if (base > 0x100000000ULL)
+            // Any valid 64-bit module base (do not require >4GB — some maps are lower)
+            if (base >= 0x10000ULL)
                 break;
         }
         sleep(1);
@@ -1005,6 +1006,15 @@ void *entry()
     LOGI("game base ready %p - starting update::init", (void *)base);
     if (base > 0)
         c_update->init();
+
+    // If first init raced/failed, keep retrying until sdk ready (overlay already lives)
+    for (int i = 0; i < 60 && !g_sdk_ready.load(std::memory_order_acquire); ++i)
+    {
+        LOGI("retry update::init (%d) sdk_stage=%d", i,
+             c_esp ? c_esp->dbg_sdk_stage.load(std::memory_order_relaxed) : -1);
+        sleep(2);
+        c_update->init();
+    }
 
     // Keep process alive + retry egl if still dark
     for (int i = 0; i < 20 && !egl_inited; i++)

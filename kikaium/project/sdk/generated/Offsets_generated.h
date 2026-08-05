@@ -107,6 +107,20 @@ namespace UnityMethod {
     constexpr uintptr_t LateUpdate_C    = 0x5DEADA4; // LateUpdate_cb
 }
 
+// Dump api_0.39.2.txt — used when libil2cpp exports are stripped (dlsym fails)
+namespace Api {
+    constexpr uintptr_t il2cpp_class_from_name           = 0x9D5B510;
+    constexpr uintptr_t il2cpp_class_get_method_from_name = 0x9D5959C;
+    constexpr uintptr_t il2cpp_runtime_invoke            = 0x5C86F28;
+    constexpr uintptr_t il2cpp_domain_get                = 0x5C86D54;
+    constexpr uintptr_t il2cpp_domain_assembly_open      = 0x5C86D58;
+    constexpr uintptr_t il2cpp_assembly_get_image        = 0x5C86BFC;
+    constexpr uintptr_t il2cpp_array_new                 = 0x5C86BE0;
+    constexpr uintptr_t il2cpp_object_new                = 0x5C86EF8;
+    constexpr uintptr_t il2cpp_string_new                = 0x5C86F3C;
+    constexpr uintptr_t globalMetadata                   = 0xB04AC00;
+}
+
 namespace Hook {
     constexpr bool use_egl_swap_buffers = true;
     constexpr bool open_menu_via_watermark_click = true;

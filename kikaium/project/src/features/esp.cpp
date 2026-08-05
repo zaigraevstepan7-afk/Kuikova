@@ -264,13 +264,20 @@ void esp::draw_status()
     if (st < 0 || st > 5)
         st = 0;
 
+    static const char *sdk_stages[] = {
+        "idle", "bases", "no-il2cpp", "bind", "wait-asm", "api-fail", "partial", "hooks", "ready"};
+    int ss = dbg_sdk_stage.load(std::memory_order_relaxed);
+    if (ss < 0 || ss > 8)
+        ss = 0;
+
     static int frame = 0;
     ++frame;
 
-    char buf[288]{};
+    char buf[320]{};
     std::snprintf(buf, sizeof(buf),
-                  "xxx | sdk:%s | local:%s | matrix:%s(%s) | players:%d | enemies:%d | snap:%d | f:%d",
+                  "xxx | sdk:%s(%s) | local:%s | matrix:%s(%s) | players:%d | enemies:%d | snap:%d | f:%d",
                   dbg_sdk.load(std::memory_order_relaxed) ? "OK" : "NO",
+                  sdk_stages[ss],
                   dbg_local.load(std::memory_order_relaxed) ? "OK" : "NO",
                   dbg_matrix.load(std::memory_order_relaxed) ? "OK" : "NO",
                   stages[st],

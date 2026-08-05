@@ -30,6 +30,7 @@ public:
     std::atomic<int> dbg_matrix{0};
     std::atomic<int> dbg_stage{0}; // 0 none,1 pmc,2 nest,3 ptr,4 mat fail,5 ok
     std::atomic<int> dbg_sdk{0};
+    std::atomic<int> dbg_sdk_stage{0}; // 0 idle … 8 ready (see update::init)
 
 private:
     Matrix m_cached{};
