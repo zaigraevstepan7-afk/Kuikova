@@ -1,6 +1,7 @@
 #include "globals.hpp"
 #include "includes/halalium_mem.h"
 #include "includes/halalium_chains.h"
+#include "includes/halalium_hooks.h"
 #include "includes/module_base.h"
 #include "sdk/game/il2cpp/api.h"
 #include <unistd.h>
@@ -407,8 +408,8 @@ void globals::updateTarget() {
 
 void globals::init()
 {
-    // Prefer libunity (Halalium). Do NOT scan /proc/self/maps per RVA — that
-    // hung update::init on device (status stuck at sdk:NO(bind)).
+    // Prefer libunity (Halalium). Bind only if target is executable + a64 prologue.
+    maps_cache_ensure();
     auto bind_rva = [](uintptr_t rva) -> void * {
         if (!rva)
             return nullptr;
@@ -417,8 +418,11 @@ void globals::init()
             if (!mod)
                 continue;
             void *p = (void *)(mod + rva);
-            if (((uintptr_t)p & 3) == 0)
-                return p;
+            if (!maps_contains_exec((uintptr_t)p))
+                continue;
+            if (!hhooks::looks_like_a64(p))
+                continue;
+            return p;
         }
         return nullptr;
     };
@@ -466,8 +470,6 @@ void globals::init()
         c_methods->get_touch = (decltype(c_methods->get_touch))bind_rva(0x684EDAC);
     }
 
-    // Skip MethodInfo/class_from_name fill on ESP bootstrap — optional and can fault
-    // if domain API is half-bound. RVA table above is enough for W2S + positions.
-    LOGI("globals::init done unity=%p il2cpp=%p get_pos=%p",
-         (void *)unity_base, (void *)base, (void *)c_fn->get_position);
+    LOGI("globals::init done unity=%p il2cpp=%p get_pos=%p w2c=%p",
+         (void *)unity_base, (void *)base, (void *)c_fn->get_position, (void *)c_fn->get_w2c_injected);
 }

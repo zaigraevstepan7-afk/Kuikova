@@ -124,12 +124,11 @@ namespace Api {
 namespace Hook {
     constexpr bool use_egl_swap_buffers = true;
     constexpr bool open_menu_via_watermark_click = true;
-    // Off until menu stable — bad RVA Dobby was crashing ~2s after inject
     constexpr bool use_vmt_update_hooks = false;
-    constexpr bool use_getrr_bypass = false;
-    constexpr bool use_secondary_hooks = false;
-    constexpr bool use_pc_update_hooks = false; // PC.Update / LateUpdate Dobby
-    constexpr bool use_input_consume = false;   // was able to kill overlay
+    constexpr bool use_getrr_bypass = false;   // keep off — crash risk
+    constexpr bool use_secondary_hooks = false; // keep off
+    constexpr bool use_pc_update_hooks = true;  // ESP: Update + LateUpdate only
+    constexpr bool use_input_consume = false;   // keep off
 }
 
 } // namespace OffsetsGenerated

@@ -173,12 +173,16 @@ static void refresh_players_from_typeinfo()
     }
 
     c_player->update();
-    // Do NOT call cache_matrix/snapshot here — get_position RVA may be unbound/wrong
-    // and would crash the GL thread. Status bar still gets local/players from update().
+    // Snapshot only when get_position is a verified bound — Unity-thread path also does this
     if (c_esp)
     {
         c_esp->dbg_local.store(c_player->local ? 1 : 0, std::memory_order_relaxed);
         c_esp->dbg_players.store((int)c_player->entity.size(), std::memory_order_relaxed);
+        if (c_player->local && c_fn && c_fn->get_position && old_update)
+        {
+            c_esp->cache_matrix();
+            c_esp->snapshot();
+        }
     }
 }
 
@@ -628,8 +632,6 @@ void update::init()
             c_esp->dbg_sdk_stage.store(s, std::memory_order_relaxed);
     };
 
-    // STABILITY BUILD: resolve bases + bind RVAs, NO Dobby game hooks / getrr / input.
-    // Bad hooks were crashing ~2s after inject and killing menu/watermark.
     set_stage(1);
     if (!base)
         base = resolve_il2cpp_base();
@@ -642,42 +644,37 @@ void update::init()
         set_stage(2);
         return;
     }
-    LOGI("update::init STABLE il2cpp=%p unity=%p", (void *)base, (void *)unity_base);
+    LOGI("update::init il2cpp=%p unity=%p", (void *)base, (void *)unity_base);
 
     set_stage(3);
+    maps_cache_ensure();
     c_globals->init();
 
-    // Optional PC hooks — OFF by default (Offsets::Hook::use_pc_update_hooks)
+    // Mark ready FIRST so menu/TypeInfo work even if hooks fail
+    g_sdk_ready.store(true, std::memory_order_release);
+    if (c_esp)
+        c_esp->dbg_sdk.store(1, std::memory_order_relaxed);
+
     bool hooked_pc = false, hooked_late = false;
-    if (Offsets::Hook::use_pc_update_hooks)
+    if (Offsets::Hook::use_pc_update_hooks && unity_base)
     {
         set_stage(7);
         dobby_set_near_trampoline(false);
-        auto hook_game = [&](uintptr_t rva, void *hook, void **out_orig, const char *tag) -> bool {
-            if (unity_base && hook_rva_tracked(unity_base, rva, hook, out_orig, tag))
-                return true;
-            if (base && base != unity_base && hook_rva_tracked(base, rva, hook, out_orig, tag))
-                return true;
-            return false;
-        };
-        hooked_pc = hook_game(Offsets::Method::PlayerController_Update, (void *)new_update, (void **)&old_update, "PC.Update");
-        hooked_late = hook_game(Offsets::Method::PlayerController_LateUpdate, (void *)new_lateupdate, (void **)&old_lateupdate, "PC.LateUpdate");
+        // Halalium: method RVAs live on libunity ONLY — never fall back to il2cpp
+        hooked_pc = hook_rva_tracked(unity_base, Offsets::Method::PlayerController_Update,
+                                     (void *)new_update, (void **)&old_update, "PC.Update");
+        hooked_late = hook_rva_tracked(unity_base, Offsets::Method::PlayerController_LateUpdate,
+                                       (void *)new_lateupdate, (void **)&old_lateupdate, "PC.LateUpdate");
+        LOGI("xxx PC hooks unity-only Update=%d Late=%d", (int)hooked_pc, (int)hooked_late);
     }
     else
     {
-        LOGI("xxx PC Update hooks DISABLED (stable menu build)");
+        LOGI("xxx PC hooks skipped (flag=%d unity=%p)",
+             (int)Offsets::Hook::use_pc_update_hooks, (void *)unity_base);
     }
 
-    if (Offsets::Hook::use_getrr_bypass && unity_base)
-    {
-        g.b_bypass = true;
-        hhooks::install_getrr_bypass(unity_base);
-    }
-
-    g_sdk_ready.store(true, std::memory_order_release);
     set_stage(8);
-    if (c_esp)
-        c_esp->dbg_sdk.store(1, std::memory_order_relaxed);
-    LOGI("xxx sdk READY stable pc=%d late=%d", (int)hooked_pc, (int)hooked_late);
+    LOGI("xxx sdk READY pc=%d late=%d get_pos=%p",
+         (int)hooked_pc, (int)hooked_late, c_fn ? (void *)c_fn->get_position : nullptr);
 }
 
