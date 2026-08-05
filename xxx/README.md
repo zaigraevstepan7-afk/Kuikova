@@ -29,11 +29,12 @@ bash kikaium/build_xxx.sh
 
 ## Диагностика
 
-Сверху полоска:
-`xxx | Halalium/Lemming | local:OK/NO | matrix:OK/NO | players:N | enemies:M | snap:K`
+Полоска **сверху и снизу** (каждый кадр):
+`xxx | sdk:OK/NO | local:OK/NO | matrix:OK/NO(stage) | players:N | enemies:M | snap:K | f:F`
 
-- `players>0` + `local:OK` → память/хуки Update читают игроков
-- `matrix:OK` → камера `+0xE8→+0x28→+0x30→@0xF0` ок
-- `enemies/snap>0` → ESP должен рисовать боксы
+- `f` растёт → EGL/ImGui жив
+- `sdk:OK` + `local:OK` + `players>0` → хуки Update читают игроков
+- `matrix:OK` → W2S матрица (`pmc+0x20→+0x10→@0xF0` или P×V)
+- `enemies/snap>0` + ESP on → боксы должны рисоваться
 
 См. также `xxx/HALALIUM_DIFF.md`, `xxx/HIDE.md`.
