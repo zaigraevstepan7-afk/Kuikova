@@ -662,8 +662,7 @@ void C_UserInterface::rage()
         if (g.b_box_fill)
             slider_float(oxorany("Fill Alpha"), &g.f_box_fill_alpha, 0.f, 1.f);
         checkbox(oxorany("Health Bar"), &g.b_health);
-        ImGui::SameLine();
-        ImGui::ColorEdit4(oxorany("##hpcol"), g.m_health, color_flags);
+        checkbox(oxorany("HP Number"), &g.b_hp_number);
         checkbox(oxorany("Distance"), &g.b_distance);
         ImGui::SameLine();
         ImGui::ColorEdit4(oxorany("Distance Color"), g.m_distance, color_flags);

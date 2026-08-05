@@ -109,14 +109,10 @@ void esp::snapshot()
         if (s.foot == Vector3{})
             continue;
 
-        s.head = {s.foot.x, s.foot.y + 1.65f, s.foot.z};
-        if (player->m_pCharacterView && player->m_pCharacterView->c_biped &&
-            player->m_pCharacterView->c_biped->head)
-        {
-            Vector3 hp = player->m_pCharacterView->c_biped->head->get_position();
-            if (hp != Vector3{})
-                s.head = hp;
-        }
+        // Halalium ESP geometry: base± (head +1.7, foot -0.1) — not biped/Melodium +1.65
+        const Vector3 base = s.foot;
+        s.foot = {base.x, base.y - 0.1f, base.z};
+        s.head = {base.x, base.y + 1.7f, base.z};
 
         s.health = photon->get_health();
         if (s.health < 0)
@@ -355,363 +351,142 @@ void esp::render()
     if (snaps.empty())
         return;
 
+    auto draw = ImGui::GetBackgroundDrawList();
+    const Matrix w2c = m_cached;
+
+    for (const EspSnap &snap : snaps)
     {
-        c_player_controller *player{};
-        int health{};
-        float x, y;
-        auto draw = ImGui::GetBackgroundDrawList();
-        const Matrix w2c = m_cached;
+        c_player_controller *player = snap.player;
+        if (!player)
+            continue;
 
-        static std::map<void*, float> fadeT;
-        static std::map<void*, bool> wasAlive;
-        const float fadeDuration = 1.7f;
-        const float fadeStep = 1.0f / (fadeDuration * 60.0f);
+        int health = snap.health;
+        if (health < 0)
+            health = 100;
+        if (health <= 0)
+            continue;
 
-        auto easeInOut = [&](float t)
+        // Halalium geometry (±1.7 / -0.1) from Unity-thread snapshot
+        Vector3 foot = snap.foot;
+        Vector3 head = snap.head;
+        if (foot == Vector3{} || head == Vector3{})
+            continue;
+
+        Vector3 footpos = c_globals->world2screen(w2c, foot);
+        Vector3 headpos = c_globals->world2screen(w2c, head);
+        float height = fabsf(footpos.y - headpos.y);
+        if (footpos.z < 0.01f || headpos.z < 0.01f)
+            continue;
+
+        float width = height / 1.9f; // Halalium aspect
+        float x = headpos.x - width * 0.5f;
+        float y = headpos.y;
+
+        if (g.b_rect)
         {
-            return 0.5f - 0.5f * cosf(3.1415926535f * t);
-        };
+            // Halalium Lemming box (@0x1e9f58 / corners @0x1ea37c)
+            ImU32 col = ImGui::ColorConvertFloat4ToU32(
+                ImVec4(g.m_rect[0], g.m_rect[1], g.m_rect[2], g.m_rect[3]));
+            const float th = std::clamp(g.f_box_thickness, 0.5f, 5.f);
+            const float rounding = (g.i_box_type == 2) ? 3.f : 0.f;
+            const ImVec2 p1(x, y);
+            const ImVec2 p2(x + width, y + height);
 
-        auto easeOut = [&](float t)
-        {
-            return 0.5f + 0.5f * cosf(3.1415926535f * t);
-        };
-
-        for (const EspSnap &snap : snaps)
-        {
-            player = snap.player;
-            if (!player)
-                continue;
-
-            health = snap.health;
-            if (health < 0)
-                health = 100;
-
-            bool alive = health > 0;
-
-            if (!fadeT.count(player))
-            {
-                fadeT[player] = 1.0f; // show immediately — no multi-frame fade-in gate
-                wasAlive[player] = alive;
-            }
-
-            float &t = fadeT[player];
-
-            if (alive)
-            {
-                wasAlive[player] = true;
-                if (t < 1.0f)
-                {
-                    t += fadeStep;
-                    if (t > 1.0f) t = 1.0f;
-                }
-            }
-            else
-            {
-                if (t > 0.0f)
-                {
-                    t -= fadeStep;
-                    if (t < 0.0f) t = 0.0f;
-                }
-            }
-
-            if (t <= 0.01f)
-                continue;
-
-            float alpha = alive ? easeInOut(t) : easeOut(t);
-
-            auto ApplyAlpha = [&](ImU32 col)
-            {
-                ImVec4 c = ImGui::ColorConvertU32ToFloat4(col);
-                c.w *= alpha;
-                return ImGui::ColorConvertFloat4ToU32(c);
+            auto draw_corners = [&](ImU32 c, float t, float inset) {
+                const float cf = std::clamp(g.f_corner_size, 0.05f, 0.5f);
+                const float bw = (p2.x - p1.x);
+                const float bh = (p2.y - p1.y);
+                const float cx = std::clamp(bw * cf, 2.f, bw * 0.5f);
+                const float cy = std::clamp(bh * cf, 2.f, bh * 0.5f);
+                const float x1 = p1.x - inset, y1 = p1.y - inset;
+                const float x2 = p2.x + inset, y2 = p2.y + inset;
+                draw->AddLine(ImVec2(x1, y1), ImVec2(x1 + cx, y1), c, t);
+                draw->AddLine(ImVec2(x1, y1), ImVec2(x1, y1 + cy), c, t);
+                draw->AddLine(ImVec2(x2, y1), ImVec2(x2 - cx, y1), c, t);
+                draw->AddLine(ImVec2(x2, y1), ImVec2(x2, y1 + cy), c, t);
+                draw->AddLine(ImVec2(x1, y2), ImVec2(x1 + cx, y2), c, t);
+                draw->AddLine(ImVec2(x1, y2), ImVec2(x1, y2 - cy), c, t);
+                draw->AddLine(ImVec2(x2, y2), ImVec2(x2 - cx, y2), c, t);
+                draw->AddLine(ImVec2(x2, y2), ImVec2(x2, y2 - cy), c, t);
             };
 
-            // Positions snapshotted on Unity thread — no EGL get_position
-            Vector3 foot = snap.foot;
-            if (foot == Vector3{})
-                continue;
-
-            Vector3 head = snap.head;
-            if (head == Vector3{})
-                head = {foot.x, foot.y + 1.65f, foot.z};
-            Vector3 footpos = c_globals->world2screen(w2c, foot);
-            Vector3 headpos = c_globals->world2screen(w2c, head);
-            float height = fabsf(footpos.y - headpos.y);
-
-            if (footpos.z < 0.01f || headpos.z < 0.01f)
-                continue;
-
-            float width = height / 1.9f; // Halalium aspect
-            x = headpos.x - width * 0.5f;
-            y = headpos.y;
-
-            if (g.b_skeleton)
-                DrawSkeleton({g.m_skeleton[0], g.m_skeleton[1], g.m_skeleton[2], g.m_skeleton[3] * alpha}, false, false, false, w2c, player);
-
-            if (g.b_rect)
+            if (g.b_box_fill)
             {
-                // Halalium Lemming box draw (libhalalium @0x1e9f58 / corners @0x1ea37c):
-                // Fill → Outline(0xA0000000, th+1) → stroke via AddRect / 8x AddLine
-                // NOT Melodium AddRectFilledMultiColor borders.
-                ImU32 col = ApplyAlpha(ImGui::ColorConvertFloat4ToU32(
-                    ImVec4(g.m_rect[0], g.m_rect[1], g.m_rect[2], g.m_rect[3])));
-                const float th = std::clamp(g.f_box_thickness, 0.5f, 5.f);
-                const float rounding = (g.i_box_type == 2) ? 3.f : 0.f;
-                const ImVec2 p1(x, y);
-                const ImVec2 p2(x + width, y + height);
-
-                auto draw_corners = [&](ImU32 c, float t, float inset) {
-                    const float cf = std::clamp(g.f_corner_size, 0.05f, 0.5f);
-                    const float bw = (p2.x - p1.x);
-                    const float bh = (p2.y - p1.y);
-                    const float cx = std::clamp(bw * cf, 2.f, bw * 0.5f);
-                    const float cy = std::clamp(bh * cf, 2.f, bh * 0.5f);
-                    const float x1 = p1.x - inset, y1 = p1.y - inset;
-                    const float x2 = p2.x + inset, y2 = p2.y + inset;
-                    draw->AddLine(ImVec2(x1, y1), ImVec2(x1 + cx, y1), c, t);
-                    draw->AddLine(ImVec2(x1, y1), ImVec2(x1, y1 + cy), c, t);
-                    draw->AddLine(ImVec2(x2, y1), ImVec2(x2 - cx, y1), c, t);
-                    draw->AddLine(ImVec2(x2, y1), ImVec2(x2, y1 + cy), c, t);
-                    draw->AddLine(ImVec2(x1, y2), ImVec2(x1 + cx, y2), c, t);
-                    draw->AddLine(ImVec2(x1, y2), ImVec2(x1, y2 - cy), c, t);
-                    draw->AddLine(ImVec2(x2, y2), ImVec2(x2 - cx, y2), c, t);
-                    draw->AddLine(ImVec2(x2, y2), ImVec2(x2, y2 - cy), c, t);
-                };
-
-                if (g.b_box_fill)
-                {
-                    const float fa = std::clamp(g.f_box_fill_alpha, 0.f, 1.f) *
-                                     (float)((col >> 24) & 0xff);
-                    const ImU32 fc = (col & 0x00FFFFFF) | ((ImU32)fa << 24);
-                    draw->AddRectFilled(p1, p2, fc, rounding);
-                }
-                if (g.b_box_outline)
-                {
-                    const ImU32 oc = ApplyAlpha(IM_COL32(0, 0, 0, 0xA0));
-                    const float ot = th + 1.f;
-                    const float half = th * 0.5f;
-                    if (g.i_box_type == 1)
-                        draw_corners(oc, ot, half);
-                    else
-                        draw->AddRect(ImVec2(p1.x - half, p1.y - half),
-                                      ImVec2(p2.x + half, p2.y + half),
-                                      oc, rounding, 0, ot);
-                }
+                const float fa = std::clamp(g.f_box_fill_alpha, 0.f, 1.f) *
+                                 (float)((col >> 24) & 0xff);
+                const ImU32 fc = (col & 0x00FFFFFF) | ((ImU32)fa << 24);
+                draw->AddRectFilled(p1, p2, fc, rounding);
+            }
+            if (g.b_box_outline)
+            {
+                const ImU32 oc = IM_COL32(0, 0, 0, 0xA0);
+                const float ot = th + 1.f;
+                const float half = th * 0.5f;
                 if (g.i_box_type == 1)
-                    draw_corners(col, th, 0.f);
+                    draw_corners(oc, ot, half);
                 else
-                    draw->AddRect(p1, p2, col, rounding, 0, th);
+                    draw->AddRect(ImVec2(p1.x - half, p1.y - half),
+                                  ImVec2(p2.x + half, p2.y + half),
+                                  oc, rounding, 0, ot);
             }
+            if (g.i_box_type == 1)
+                draw_corners(col, th, 0.f);
+            else
+                draw->AddRect(p1, p2, col, rounding, 0, th);
+        }
 
-            if (g.b_distance)
+        if (g.b_distance)
+        {
+            Vector3 cam_pos = m_cam_pos;
+            const int distm = (cam_pos == Vector3{})
+                                  ? 0
+                                  : (int)(Vector3::Distance(cam_pos, foot) + 0.5f);
+            char dbuf[24]{};
+            std::snprintf(dbuf, sizeof(dbuf), "%dm", distm); // Halalium
+            const float fontSize = 14.f;
+            ImVec2 text_size = gui::font ? gui::font->CalcTextSizeA(fontSize, FLT_MAX, 0.f, dbuf)
+                                        : ImGui::CalcTextSize(dbuf);
+            float textX = x + (width * 0.5f) - (text_size.x * 0.5f);
+            float textY = y + height + 2.f;
+            ImU32 dcol = ImGui::ColorConvertFloat4ToU32(
+                ImVec4(g.m_distance[0], g.m_distance[1], g.m_distance[2], g.m_distance[3]));
+            if (gui::font)
+                text(gui::font, fontSize, ImVec2(textX, textY), dcol, dbuf, false, true);
+            else
+                draw->AddText(ImVec2(textX, textY), dcol, dbuf);
+        }
+
+        if (g.b_health)
+        {
+            // Halalium: fixed 3px bar at x-6..x-3, red→green gradient
+            const float hp = std::clamp(health / 100.f, 0.f, 1.f);
+            const ImVec2 bg1(x - 6.f, y);
+            const ImVec2 bg2(x - 3.f, y + height);
+            draw->AddRectFilled(bg1, bg2, IM_COL32(0, 0, 0, 160));
+
+            const float fy = y + height * (1.f - hp);
+            ImVec4 cmin(g.m_health_min[0], g.m_health_min[1], g.m_health_min[2], g.m_health_min[3]);
+            ImVec4 cmax(g.m_health[0], g.m_health[1], g.m_health[2], g.m_health[3]);
+            ImVec4 c{
+                cmin.x + (cmax.x - cmin.x) * hp,
+                cmin.y + (cmax.y - cmin.y) * hp,
+                cmin.z + (cmax.z - cmin.z) * hp,
+                1.f};
+            const ImU32 hc = ImGui::ColorConvertFloat4ToU32(c);
+            const ImU32 hmin = ImGui::ColorConvertFloat4ToU32(cmin);
+            draw->AddRectFilledMultiColor(ImVec2(bg1.x, fy), bg2, hc, hc, hmin, hmin);
+
+            if (g.b_hp_number)
             {
-                Vector3 cam_pos = m_cam_pos;
-                const float distm = (cam_pos == Vector3{}) ? 0.f : Vector3::Distance(cam_pos, foot);
-                char dbuf[24]{};
-                std::snprintf(dbuf, sizeof(dbuf), "%.0fm", distm);
-                const float fontSize = 14.f;
-                ImVec2 text_size = gui::font ? gui::font->CalcTextSizeA(fontSize, FLT_MAX, 0.f, dbuf)
-                                            : ImGui::CalcTextSize(dbuf);
-                float textX = x + (width * 0.5f) - (text_size.x * 0.5f);
-                float textY = y + height + 2.f;
-                ImU32 dcol = ApplyAlpha(ImGui::ColorConvertFloat4ToU32(
-                    ImVec4(g.m_distance[0], g.m_distance[1], g.m_distance[2], g.m_distance[3])));
-                if (gui::font)
-                    text(gui::font, fontSize, ImVec2(textX, textY), dcol, dbuf, false, true);
-                else
-                    draw->AddText(ImVec2(textX, textY), dcol, dbuf);
-            }
-
-            if (g.b_name)
-            {
-                const float fontSize = 15.0f;
-                auto player_name = snap.name;
-                if (player_name)
+                char healthText[16];
+                snprintf(healthText, sizeof(healthText), "%d", health);
+                ImFont *pf = gui::pixel ? gui::pixel : ImGui::GetFont();
+                if (pf)
                 {
-                    auto nameStr = player_name->toUTF8();
-                    ImFont *nf = gui::font ? gui::font : ImGui::GetFont();
-                    if (nf && !nameStr.empty())
-                    {
-                        ImVec2 text_size = nf->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, nameStr.c_str());
-                        float textX = x + (width * 0.5f) - (text_size.x * 0.5f);
-                        float textY = y - text_size.y - 2.0f;
-                        text(nf, fontSize, ImVec2(textX, textY), ApplyAlpha(ImColor(255, 255, 255, 255)), nameStr.c_str(), false, true);
-                    }
-                }
-            }
-
-            if (g.b_ammo)
-            {
-                const float optimalSize = width * 0.0625f + 8.0f;
-                auto healthWidth = round(optimalSize * 0.2f);
-                auto padding = optimalSize * 0.350f;
-                ImVec4 color{g.m_ammo[0], g.m_ammo[1], g.m_ammo[2], g.m_ammo[3]};
-                auto weaponry = player->m_pWeaponry;
-                if (weaponry && c_globals->is_allocated(weaponry) && weaponry->m_pCurrentWeapon)
-                {
-                    auto weapon = (c_gun_controller *)weaponry->m_pCurrentWeapon;
-                    auto *params = weapon->m_pParameters;
-                    if (params && params->m_id >= 11 && params->m_id <= 65)
-                    {
-                        auto ammo = weapon->m_iAmmoSafe.get();
-                        const short max_ammo = 30;
-                        float ammo_progress = std::clamp((float)ammo / (float)max_ammo, 0.0f, 1.0f);
-                        float barWidth = width;
-                        float barHeight = healthWidth;
-                        float barX = x;
-                        float barY = y + height + padding;
-                        ImVec2 barStart = ImVec2(barX, barY);
-                        ImVec2 barEnd = ImVec2(barX + barWidth, barY + barHeight);
-                        ImVec2 fillStart = ImVec2(barX, barY);
-                        ImVec2 fillEnd = ImVec2(barX + barWidth * ammo_progress, barY + barHeight);
-                        shadow_bar(barStart, barEnd);
-                        draw->AddRectFilled(barStart, barEnd, ApplyAlpha(ImColor(0, 0, 0, 115)));
-                        ImU32 colL = ApplyAlpha(ImGui::ColorConvertFloat4ToU32(color));
-                        draw->AddRectFilledMultiColor(fillStart, fillEnd, colL, colL, colL, colL);
-                    }
-                }
-            }
-
-            if (g.b_eweapon)
-            {
-                auto weaponry = player->m_pWeaponry;
-                if (!weaponry || !c_globals->is_allocated(weaponry))
-                    continue;
-                auto weapon = (c_gun_controller*)weaponry->m_pCurrentWeapon;
-                if (!weapon)
-                    continue;
-                auto *params = weapon->m_pParameters;
-                if (!params)
-                    continue;
-                auto id = params->m_id;
-
-                const char *weaponName;
-                switch (id)
-                {
-                case 11: weaponName = "G22"; break;
-                case 12: weaponName = "USP"; break;
-                case 13: weaponName = "P350"; break;
-                case 15: weaponName = "Deagle"; break;
-                case 16: weaponName = "TEC9"; break;
-                case 17: weaponName = "Five-Seven"; break;
-                case 18: weaponName = "Berretas"; break;
-                case 32: weaponName = "UMP45"; break;
-                case 33: weaponName = "Akimbo Uzi"; break;
-                case 34: weaponName = "MP7"; break;
-                case 35: weaponName = "P90"; break;
-                case 36: weaponName = "MP5"; break;
-                case 37: weaponName = "MAC10"; break;
-                case 42: weaponName = "Val"; break;
-                case 43: weaponName = "M4A1"; break;
-                case 44: weaponName = "AKR"; break;
-                case 45: weaponName = "AKR12"; break;
-                case 46: weaponName = "M4"; break;
-                case 47: weaponName = "M16"; break;
-                case 48: weaponName = "Famas"; break;
-                case 49: weaponName = "Fnfal"; break;
-                case 51: weaponName = "AWM"; break;
-                case 52: weaponName = "M40"; break;
-                case 53: weaponName = "M110"; break;
-                case 54: weaponName = "Mallard"; break;
-                case 62: weaponName = "SM1014"; break;
-                case 63: weaponName = "FabM"; break;
-                case 64: weaponName = "M60"; break;
-                case 65: weaponName = "Spas"; break;
-                case 70: weaponName = "Knife"; break;
-                case 71: weaponName = "Bayonet"; break;
-                case 72: weaponName = "karambit"; break;
-                case 73: weaponName = "Jkommando"; break;
-                case 75: weaponName = "Butterfly"; break;
-                case 77: weaponName = "Flip"; break;
-                case 78: weaponName = "Kunai"; break;
-                case 79: weaponName = "Scorpion"; break;
-                case 80: weaponName = "Tanto"; break;
-                case 81: weaponName = "Dagger"; break;
-                case 82: weaponName = "Kukri"; break;
-                case 83: weaponName = "Stilet"; break;
-                case 85: weaponName = "Mantis"; break;
-                case 86: weaponName = "Fang"; break;
-                case 88: weaponName = "Sting"; break;
-                case 89: weaponName = "Hands"; break;
-                case 91: weaponName = "HE"; break;
-                case 93: weaponName = "Flash"; break;
-                case 92: weaponName = "Smoke"; break;
-                case 94: weaponName = "Molotov"; break;
-                case 95: weaponName = "Incendiary"; break;
-                case 100: weaponName = "Bomb"; break;
-                default: weaponName = "Unknown"; break;
-                }
-
-                const float optimalSize = width * 0.0625f + 8.0f;
-                const float font_size = 15.0f;
-                const float fixed_text_height = font_size;
-                ImFont *wf = gui::font ? gui::font : ImGui::GetFont();
-                if (!wf)
-                    continue;
-
-                ImU32 colTxt = ApplyAlpha(ImColor(255, 255, 255, 255));
-
-                if (!g.b_ammo)
-                {
-                    text(wf, font_size,
-                        ImVec2(
-                            CenterText(weaponName, wf, font_size, x, width).x,
-                            y + height + optimalSize * 1.4f - fixed_text_height),
-                        colTxt, weaponName, false, true);
-                }
-                else if (id >= 11 && id <= 65)
-                {
-                    text(wf, font_size,
-                        ImVec2(
-                            CenterText(weaponName, wf, font_size, x, width).x,
-                            y + height + optimalSize * 2.3f - fixed_text_height),
-                        colTxt, weaponName, false, true);
-                }
-                else if (id > 65 && id <= 100)
-                {
-                    text(wf, font_size,
-                        ImVec2(
-                            CenterText(weaponName, wf, font_size, x, width).x,
-                            y + height + optimalSize * 1.4f - fixed_text_height),
-                        colTxt, weaponName, false, true);
-                }
-            }
-
-            if (g.b_health)
-            {
-                ImVec4 color{g.m_health[0], g.m_health[1], g.m_health[2], g.m_health[3]};
-                float healthOffset = 0.350f;
-                const float optimalSize = width * 0.0625f + 8.0f;
-                float healthWidth = roundf(optimalSize * 0.2f);
-                float padding = optimalSize * healthOffset;
-                float healthPos = health / 100.0f;
-                if (healthPos < 0.0f) healthPos = 0.0f;
-                if (healthPos > 1.0f) healthPos = 1.0f;
-
-                ImVec2 pos1(x - healthWidth - padding, y);
-                ImVec2 pos2(x - padding, y + height);
-
-                draw->AddRectFilled(pos1, pos2, ApplyAlpha(IM_COL32(0, 0, 0, 128)));
-
-                shadow_bar(pos1, pos2);
-
-                draw->AddRectFilled({pos1.x, pos1.y}, {pos2.x, pos2.y}, ApplyAlpha(ImColor(0, 0, 0, 120)));
-                draw->AddRectFilled({x - healthWidth - padding, y + roundf(height * (1.0f - healthPos))},
-                                    {x - padding, y + height}, ApplyAlpha(ImGui::ColorConvertFloat4ToU32(color)));
-
-                if (health < 100)
-                {
-                    char healthText[16];
-                    snprintf(healthText, sizeof(healthText), "%d", health);
-                    ImFont *pf = gui::pixel ? gui::pixel : ImGui::GetFont();
-                    if (pf)
-                    {
-                        ImVec2 textSize = pf->CalcTextSizeA(10, FLT_MAX, 0, healthText);
-                        float textX = x - healthWidth - padding + (healthWidth - textSize.x) * 0.5f;
-                        float textY = y + height * (1.0f - healthPos) - textSize.y + 2.0f;
-                        text(pf, 10, ImVec2(textX, textY), ApplyAlpha(ImColor(255, 255, 255, 255)), healthText, true, false);
-                    }
+                    ImVec2 textSize = pf->CalcTextSizeA(10, FLT_MAX, 0, healthText);
+                    float textX = x - 6.f - textSize.x - 2.f;
+                    float textY = fy - textSize.y * 0.5f;
+                    text(pf, 10, ImVec2(textX, textY), IM_COL32(255, 255, 255, 255), healthText, true, false);
                 }
             }
         }

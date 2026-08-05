@@ -298,14 +298,16 @@ inline struct g_
     bool b_skeleton = false;  // Halalium "Bone" is Rage, not Visuals ESP
     bool b_distance = true;
     bool b_bypass = true;     // getrr OnStart bypass
-    float m_distance[4] = {1.f, 1.f, 1.f, 1.f};
+    float m_distance[4] = {0.62f, 0.62f, 0.66f, 1.f}; // Halalium Distance Color
     float m_accent[4] = {0.91f, 0.66f, 0.35f, 1.f}; // Halalium "Accent Color"
     // Melodium leftovers — OFF, no UI (Halalium Visuals has no Name/Weapon/Ammo)
     bool b_name = false;
     bool b_ammo = false;
     bool b_eweapon = false;
     float m_ammo[4] = {0.077f, 0.251f, 0.605f, 1.0f};
-    float m_health[4] = {0.025f, 0.560f, 0.025f, 1.0f};
+    float m_health[4] = {0.0f, 1.0f, 0.0f, 1.0f}; // Halalium HP Max (green)
+    float m_health_min[4] = {1.0f, 0.0f, 0.0f, 1.0f}; // Halalium HP Min (red)
+    bool b_hp_number = false; // Halalium "HP Number"
     float m_rect[4] = {1.0f, 1.0f, 1.0f, 1.0f}; // Halalium default white
     float m_skeleton[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     bool b_tracer = false;
