@@ -19,6 +19,7 @@
 #include "sdk/OffsetsBridge.h"
 #include "sdk/game/c_playermanager.h"
 #include <unordered_map>
+#include <mutex>
 
 void (*old_strict_hit)(void* _this, void* hit_data, void* player_hit_controller);
 void strict_hit(void* _this, void* hit_data, void* player_hit_controller)
@@ -536,11 +537,7 @@ static bool hook_rva_tracked(uintptr_t module_base, uintptr_t rva, void *hook, v
     if (!module_base || !rva || !hook)
         return false;
     void *target = (void *)(module_base + rva);
-    if (!maps_contains_exec((uintptr_t)target))
-    {
-        LOGD("hook_rva %s target %p not executable (wrong module?)", tag, target);
-        return false;
-    }
+    // Avoid full maps scan (hung init on device). Prologue check only.
     if (!hhooks::looks_like_a64(target))
     {
         LOGD("hook_rva %s target %p not a64 prologue", tag, target);
@@ -614,6 +611,9 @@ void new_extraB_halalium(void *a0, void *a1)
 
 void update::init()
 {
+    static std::mutex s_init_mu;
+    std::lock_guard<std::mutex> lock(s_init_mu);
+
     if (g_sdk_ready.load(std::memory_order_acquire))
         return;
 
@@ -622,18 +622,12 @@ void update::init()
             c_esp->dbg_sdk_stage.store(s, std::memory_order_relaxed);
     };
 
-    // Halalium path: DO NOT block on libsigner / domain / Assembly-CSharp.
-    // Those calls crash or hang on stripped SO2 → sdk stuck NO forever while EGL lives.
-    set_stage(1); // resolving bases
-    for (int attempt = 0; attempt < 60; ++attempt)
-    {
+    // Resolve once — do not sleep 60s here (caller already retries).
+    set_stage(1);
+    if (!base)
         base = resolve_il2cpp_base();
+    if (!unity_base)
         unity_base = resolve_unity_base();
-        if (base)
-            break;
-        set_stage(2); // no-il2cpp
-        sleep(1);
-    }
 
     if (!base && !unity_base)
     {
@@ -642,16 +636,13 @@ void update::init()
         return;
     }
     if (!base)
-    {
-        LOGI("update::init warn: no il2cpp yet — hooks on unity only");
-        set_stage(6); // partial
-    }
+        set_stage(6);
     LOGI("update::init il2cpp=%p unity=%p", (void *)base, (void *)unity_base);
 
-    // Bind Unity method RVAs FIRST (no il2cpp domain needed)
     dobby_set_near_trampoline(false);
-    set_stage(3); // bind-rva
+    set_stage(3); // bind
     c_globals->init();
+    set_stage(7); // hooks
 
     const uintptr_t update_rva = Offsets::Method::PlayerController_Update;
     const uintptr_t late_rva = Offsets::Method::PlayerController_LateUpdate;
@@ -664,26 +655,14 @@ void update::init()
         return false;
     };
 
-    set_stage(7); // hooking
     static bool s_hooks_done = false;
     bool hooked_pc = false, hooked_late = false;
     bool hooked_sec = false, hooked_ter = false, hooked_ea = false, hooked_eb = false;
     if (!s_hooks_done)
     {
         hooked_pc = hook_game(update_rva, (void *)new_update, (void **)&old_update, "PC.Update");
-        if (Offsets::Hook::use_secondary_hooks)
-        {
-            hooked_sec = hook_game(Offsets::Method::HookSecondary, (void *)new_secondary_halalium, (void **)&old_secondary, "Secondary");
-            hooked_ter = hook_game(Offsets::Method::HookTertiary, (void *)new_tertiary_halalium, (void **)&old_tertiary, "Tertiary");
-            if (!hooked_ter)
-                hooked_ter = hook_game(Offsets::Method::HookTertiaryAlt, (void *)new_tertiary_halalium, (void **)&old_tertiary, "TertiaryAlt");
-        }
+        // ESP-only: skip secondary/tertiary/extra for now — less Dobby surface
         hooked_late = hook_game(late_rva, (void *)new_lateupdate, (void **)&old_lateupdate, "PC.LateUpdate");
-        if (Offsets::Hook::use_secondary_hooks)
-        {
-            hooked_ea = hook_game(Offsets::Method::HookExtraA, (void *)new_extraA_halalium, (void **)&old_extraA, "ExtraA");
-            hooked_eb = hook_game(Offsets::Method::HookExtraB, (void *)new_extraB_halalium, (void **)&old_extraB, "ExtraB");
-        }
         s_hooks_done = hooked_pc || hooked_late;
     }
     else
@@ -692,61 +671,33 @@ void update::init()
         hooked_late = old_lateupdate != nullptr;
     }
 
-    LOGI("xxx RVA Update=%d Late=%d Sec=%d Ter=%d EA=%d EB=%d tracked=%d",
-         (int)hooked_pc, (int)hooked_late, (int)hooked_sec, (int)hooked_ter,
-         (int)hooked_ea, (int)hooked_eb, hhooks::tracked_count());
+    LOGI("xxx RVA Update=%d Late=%d tracked=%d",
+         (int)hooked_pc, (int)hooked_late, hhooks::tracked_count());
 
-    // Soft optional: domain/images for VMT fill-ins — NEVER abort ESP if this fails/crashes risk
-    set_stage(4); // soft-api
+    // Soft optional API — never block ready
     static bool s_api_tried = false;
-    if (!s_api_tried)
+    if (!s_api_tried && base)
     {
         s_api_tried = true;
-        // Only call ::init if Api RVAs look like code
         const uintptr_t dom = base + Offsets::Api::il2cpp_domain_get;
         if (hhooks::looks_like_a64((void *)dom))
             ::init();
-        else
-            LOGI("xxx skip ::init — domain RVA not a64 @%p", (void *)dom);
-    }
-
-    Il2CppClass *player_controller = nullptr;
-    if (il2cpp_class_from_name && dll::charp)
-    {
-        player_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Player"), oxorany("PlayerController"));
-        LOGD("PlayerController=%p", player_controller);
-    }
-
-    if (!hooked_pc && Offsets::Hook::use_vmt_update_hooks && player_controller)
-        vmt(player_controller, oxorany("Update"), (void *)new_update, (void **)&old_update);
-    if (!hooked_late && Offsets::Hook::use_vmt_update_hooks && player_controller)
-        vmt(player_controller, oxorany("LateUpdate"), (void *)new_lateupdate, (void **)&old_lateupdate);
-
-    if ((g.b_silent || g.b_fire) && il2cpp_class_from_name && dll::charp)
-    {
-        Il2CppClass *hit_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Player.Hit"), oxorany("PlayerHitController"));
-        Il2CppClass *gun_controller = (Il2CppClass *)il2cpp_class_from_name(dll::charp, oxorany("Axlebolt.Standoff.Inventory.Gun"), oxorany("GunController"));
-        if (hit_controller)
-            vmt(hit_controller, oxorany("ACHHGEDAEGBBHFB"), (void *)strict_hit, (void **)&old_strict_hit);
-        if (gun_controller)
-            vmt(gun_controller, oxorany("FEEBGAGHGGCGACA"), (void *)hook_executecommands, (void **)&old_executecommands);
     }
 
     static bool s_getrr_done = false;
-    if (!s_getrr_done && (Offsets::Hook::use_getrr_bypass || g.b_bypass) && unity_base)
+    if (!s_getrr_done && Offsets::Hook::use_getrr_bypass && unity_base)
     {
         g.b_bypass = true;
         bool ok = hhooks::install_getrr_bypass(unity_base);
-        LOGI("xxx getrr bypass %s (tracked=%d)", ok ? "ON" : "FAIL", hhooks::tracked_count());
+        LOGI("xxx getrr bypass %s", ok ? "ON" : "FAIL");
         s_getrr_done = true;
     }
 
-    // READY as soon as bases + (hooks attempted). TypeInfo ESP works even if Update hook missed.
     g_sdk_ready.store(true, std::memory_order_release);
-    set_stage(8); // ready
+    set_stage(8);
     if (c_esp)
         c_esp->dbg_sdk.store(1, std::memory_order_relaxed);
-    LOGI("xxx sdk READY pc=%d late=%d il2cpp=%p unity=%p asm=%p",
-         (int)hooked_pc, (int)hooked_late, (void *)base, (void *)unity_base, dll::charp);
+    LOGI("xxx sdk READY pc=%d late=%d il2cpp=%p unity=%p",
+         (int)hooked_pc, (int)hooked_late, (void *)base, (void *)unity_base);
 }
 

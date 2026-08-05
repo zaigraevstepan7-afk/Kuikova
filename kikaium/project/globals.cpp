@@ -407,9 +407,8 @@ void globals::updateTarget() {
 
 void globals::init()
 {
-    // Halalium method hooks use libunity base (libunity_base_resolve / egl_install).
-    // Dump ScriptMethod RVAs are the same numbers; module is chosen by exec mapping:
-    // prefer unity_base (Halalium), fall back to libil2cpp if that page is not executable.
+    // Prefer libunity (Halalium). Do NOT scan /proc/self/maps per RVA — that
+    // hung update::init on device (status stuck at sdk:NO(bind)).
     auto bind_rva = [](uintptr_t rva) -> void * {
         if (!rva)
             return nullptr;
@@ -418,7 +417,7 @@ void globals::init()
             if (!mod)
                 continue;
             void *p = (void *)(mod + rva);
-            if (maps_contains_exec((uintptr_t)p))
+            if (((uintptr_t)p & 3) == 0)
                 return p;
         }
         return nullptr;
@@ -431,7 +430,6 @@ void globals::init()
         c_fn->get_game_object = (decltype(c_fn->get_game_object))bind_rva(Offsets::UnityMethod::get_game_object);
         c_methods->set_active = c_fn->set_active;
 
-        // Same numeric RVAs as dump/Melodium — bound via Halalium unity-first policy above
         c_fn->get_position = (decltype(c_fn->get_position))bind_rva(0x6005138);
         c_fn->set_position = (decltype(c_fn->set_position))bind_rva(0x6009694);
         c_fn->get_forward = (decltype(c_fn->get_forward))bind_rva(0x60062E0);
@@ -468,116 +466,8 @@ void globals::init()
         c_methods->get_touch = (decltype(c_methods->get_touch))bind_rva(0x684EDAC);
     }
 
-    // MethodInfo fill-ins for anything Melodium RVA missed
-    auto mp = [](Il2CppClass *clz, const char *name, uint8_t argc) -> void * {
-        MethodInfo *m = GetMethodFromClass(clz, name, argc);
-        return m ? (void *)m->methodPointer : nullptr;
-    };
-    auto mp_any = [](Il2CppClass *clz, const char *name) -> void * {
-        if (!clz || !clz->methods)
-            return nullptr;
-        for (unsigned short i = 0; i < clz->method_count; i++)
-        {
-            auto method = ((MethodInfo **)clz->methods)[i];
-            if (method && method->name && strcmp(method->name, name) == 0 && method->methodPointer)
-                return (void *)method->methodPointer;
-        }
-        return nullptr;
-    };
-
-    auto fill = [&](auto &dst, auto src) { if (!dst && src) dst = src; };
-
-    auto *tr = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Transform"));
-    if (tr)
-    {
-        fill(c_fn->get_position, (decltype(c_fn->get_position))mp(tr, oxorany("get_position"), 0));
-        fill(c_fn->set_position, (decltype(c_fn->set_position))mp(tr, oxorany("set_position"), 1));
-        fill(c_fn->get_forward, (decltype(c_fn->get_forward))mp(tr, oxorany("get_forward"), 0));
-        fill(c_fn->get_up, (decltype(c_fn->get_up))mp(tr, oxorany("get_up"), 0));
-        fill(c_fn->get_euler_angles, (decltype(c_fn->get_euler_angles))mp(tr, oxorany("get_eulerAngles"), 0));
-        fill(c_fn->set_euler_angles, (decltype(c_fn->set_euler_angles))mp(tr, oxorany("set_eulerAngles"), 1));
-        fill(c_fn->get_rotation, (decltype(c_fn->get_rotation))mp(tr, oxorany("get_rotation"), 0));
-    }
-
-    auto *comp = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Component"));
-    if (comp)
-        fill(c_fn->get_transform, (decltype(c_fn->get_transform))mp(comp, oxorany("get_transform"), 0));
-
-    auto *go = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("GameObject"));
-    if (go)
-        fill(c_fn->set_active, (decltype(c_fn->set_active))mp(go, oxorany("SetActive"), 1));
-
-    auto *cam = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Camera"));
-    if (cam)
-    {
-        fill(c_fn->camera_get_main, (decltype(c_fn->camera_get_main))mp(cam, oxorany("get_main"), 0));
-        fill(c_fn->set_fov, (decltype(c_fn->set_fov))mp(cam, oxorany("set_fieldOfView"), 1));
-        fill(c_fn->get_w2c_injected, (decltype(c_fn->get_w2c_injected))mp_any(cam, oxorany("get_worldToCameraMatrix_Injected")));
-        fill(c_fn->get_proj_injected, (decltype(c_fn->get_proj_injected))mp_any(cam, oxorany("get_projectionMatrix_Injected")));
-    }
-
-    auto *inp = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Input"));
-    if (inp)
-    {
-        fill(c_methods->get_count, (decltype(c_methods->get_count))mp(inp, oxorany("get_touchCount"), 0));
-        fill(c_methods->get_touch, (decltype(c_methods->get_touch))mp(inp, oxorany("GetTouch"), 1));
-    }
-
-    auto *phys = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Physics"));
-    if (phys)
-    {
-        fill(c_methods->linecast, (decltype(c_methods->linecast))mp_any(phys, oxorany("Linecast")));
-        fill(c_methods->sphere_cast, (decltype(c_methods->sphere_cast))mp_any(phys, oxorany("SphereCast")));
-    }
-
-    auto *str = (Il2CppClass *)il2cpp_class_from_name(dll::charp ? dll::charp : dll::unity,
-                                                     oxorany("System"), oxorany("String"));
-    if (!str && dll::unity)
-        str = (Il2CppClass *)clazz_unity(oxorany("System"), oxorany("String"));
-    if (str)
-        c_methods->create_string = (decltype(c_methods->create_string))mp_any(str, oxorany("CreateString"));
-
-    auto *sh = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Shader"));
-    if (sh)
-        fill(c_fn->shader_find, (decltype(c_fn->shader_find))mp(sh, oxorany("Find"), 1));
-
-    auto *mat = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Material"));
-    if (mat)
-    {
-        fill(c_fn->mat_get_texture, (decltype(c_fn->mat_get_texture))mp(mat, oxorany("get_mainTexture"), 0));
-        fill(c_fn->mat_set_texture, (decltype(c_fn->mat_set_texture))mp(mat, oxorany("set_mainTexture"), 1));
-        fill(c_fn->mat_get_shader, (decltype(c_fn->mat_get_shader))mp(mat, oxorany("get_shader"), 0));
-        fill(c_fn->mat_set_shader, (decltype(c_fn->mat_set_shader))mp(mat, oxorany("set_shader"), 1));
-        fill(c_fn->mat_ctor_shader, (decltype(c_fn->mat_ctor_shader))mp(mat, oxorany(".ctor"), 1));
-        fill(c_fn->mat_set_color, (decltype(c_fn->mat_set_color))mp_any(mat, oxorany("set_color")));
-        fill(c_fn->mat_set_int, (decltype(c_fn->mat_set_int))mp_any(mat, oxorany("SetInt")));
-        fill(c_fn->mat_set_float, (decltype(c_fn->mat_set_float))mp_any(mat, oxorany("SetFloat")));
-    }
-
-    auto *rend = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Renderer"));
-    if (rend)
-    {
-        fill(c_fn->renderer_get_material, (decltype(c_fn->renderer_get_material))mp(rend, oxorany("get_material"), 0));
-        fill(c_fn->renderer_set_material, (decltype(c_fn->renderer_set_material))mp(rend, oxorany("set_material"), 1));
-        fill(c_fn->renderer_get_materials, (decltype(c_fn->renderer_get_materials))mp(rend, oxorany("get_materials"), 0));
-        fill(c_fn->renderer_set_materials, (decltype(c_fn->renderer_set_materials))mp_any(rend, oxorany("SetMaterialArray")));
-        fill(c_fn->renderer_set_materials, (decltype(c_fn->renderer_set_materials))mp(rend, oxorany("set_materials"), 1));
-    }
-
-    auto *obj = (Il2CppClass *)clazz_unity(oxorany("UnityEngine"), oxorany("Object"));
-    if (obj)
-        fill(c_fn->find_objects_of_type, (decltype(c_fn->find_objects_of_type))mp_any(obj, oxorany("FindObjectsOfType")));
-
-    auto *pc = (Il2CppClass *)clazz_def(oxorany("Axlebolt.Standoff.Player"), oxorany("PlayerController"));
-    if (pc)
-    {
-        fill(c_fn->set_tps, (decltype(c_fn->set_tps))mp_any(pc, oxorany("SetThirdPerson")));
-        fill(c_fn->set_fps, (decltype(c_fn->set_fps))mp_any(pc, oxorany("SetFirstPerson")));
-        fill(c_fn->set_visible, (decltype(c_fn->set_visible))mp_any(pc, oxorany("RefreshVisibility")));
-    }
-
-    LOGI("resolve: pos=%p fov=%p touch=%p linecast=%p shader=%p tps=%p",
-         (void *)c_fn->get_position, (void *)c_fn->set_fov,
-         (void *)c_methods->get_touch, (void *)c_methods->linecast,
-         (void *)c_fn->shader_find, (void *)c_fn->set_tps);
+    // Skip MethodInfo/class_from_name fill on ESP bootstrap — optional and can fault
+    // if domain API is half-bound. RVA table above is enough for W2S + positions.
+    LOGI("globals::init done unity=%p il2cpp=%p get_pos=%p",
+         (void *)unity_base, (void *)base, (void *)c_fn->get_position);
 }
