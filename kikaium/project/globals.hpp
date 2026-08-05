@@ -284,20 +284,20 @@ inline const char *knifes[] = {"m9", "karambit", "jkommando", "butterfly", "flip
 
 inline struct g_
 {
-    // xxx — ESP defaults ON for first inject
+    // xxx — Halalium (Lemming) Visuals defaults — NOT Melodium
     bool b_esp = true;
     bool b_line = false;
     bool b_rect = true;
     int i_box_type = 0;       // 0=Full 1=Corner
     float f_corner_size = 10.f;
     bool b_health = true;
-    bool b_skeleton = true;
+    bool b_skeleton = false;  // Halalium "Bone" is Rage, not Visuals ESP
     bool b_distance = true;
     bool b_bypass = true;     // getrr OnStart bypass
     float m_distance[4] = {1.f, 1.f, 1.f, 1.f};
     float m_accent[4] = {0.91f, 0.66f, 0.35f, 1.f}; // Halalium "Accent Color"
-    // Melodium-only leftovers — forced OFF, no UI
-    bool b_name = true;
+    // Melodium leftovers — OFF, no UI (Halalium Visuals has no Name/Weapon/Ammo)
+    bool b_name = false;
     bool b_ammo = false;
     bool b_eweapon = false;
     float m_ammo[4] = {0.077f, 0.251f, 0.605f, 1.0f};

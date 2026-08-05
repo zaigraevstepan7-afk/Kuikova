@@ -1,57 +1,39 @@
 # xxx — Standoff 2 internal (0.39.2)
 
-Новый чит **xxx** под SO2 **0.39.2** (arm64).
+База: **Halalium / Lemming** (`t.me/lemminghack`, 0.39.2) — **не Melodium**.
 
-## Что внутри (сейчас)
+## Сейчас (только ESP + bypass)
 
-| Фича | Статус |
-|------|--------|
-| Меню (watermark `xxx`, клик открывает) | да |
-| ESP (box / name / hp / skeleton / weapon / ammo / distance) | да, по умолчанию ON |
-| Bypass (getrr OnStart safe restore-call) | да, по умолчанию ON |
-| Aim / chams / skins / rage | нет (добавим позже) |
+| Фича | Как в Halalium |
+|------|----------------|
+| Enable Esp / Box / Box Type / Health / Distance / Through Walls | да |
+| Name / Weapon / Ammo / Skeleton UI | **нет** (это Melodium) |
+| Bypass getrr | да |
+| Aim / chams / skins / rage | нет (позже) |
+| Полоска сверху (players/enemies/matrix) | да — проверка чтения памяти |
 
-## Инжект (root + AndKitty) — OnePlus Ace 6
-
-На телефон в `/data/local/tmp/`:
-
-```text
-AndKittyInjector
-libxxx.so
-inj.sh
-```
-
-```sh
-su
-cd /data/local/tmp
-chmod 755 AndKittyInjector inj.sh
-sh inj.sh
-```
-
-Или руками:
+## Инжект
 
 ```sh
 ./AndKittyInjector --package com.axlebolt.standoff2 --libs libxxx.so --memfd --delay 2000000
 ```
 
-Запуск: зайди в лобби/матч → тап по watermark **xxx** слева сверху → меню.
+Либа: `xxx/bin/libxxx.so`
 
 ## Сборка
 
 ```bash
 export ANDROID_NDK=/home/ubuntu/android-ndk/android-ndk-r27c
 bash kikaium/build_xxx.sh
-# → xxx/bin/libxxx.so
 ```
 
-## Дампы
+## Диагностика
 
-`dumpmmm.7z` на GitHub проверен: TypeInfo совпадают с `Offsets_0.39.2.h` (см. `xxx/TYPEINFO_0.39.2.txt`).
+Сверху полоска:
+`xxx | Halalium/Lemming | local:OK/NO | matrix:OK/NO | players:N | enemies:M | snap:K`
 
-## Скрытие (как Halalium / Lemming)
+- `players>0` + `local:OK` → память/хуки Update читают игроков
+- `matrix:OK` → камера `+0xE8→+0x28→+0x30→@0xF0` ок
+- `enemies/snap>0` → ESP должен рисовать боксы
 
-См. [HIDE.md](HIDE.md): getrr destroy→OnStart→reinstall, egl+InputConsumer untracked, memfd inject.
-
-## Исходники
-
-Логика чита: `kikaium/project/` (egl hook, ESP, getrr bypass, меню xxx).
+См. также `xxx/HALALIUM_DIFF.md`, `xxx/HIDE.md`.

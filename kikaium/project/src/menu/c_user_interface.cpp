@@ -639,14 +639,13 @@ void C_UserInterface::visuals()
 
 void C_UserInterface::rage()
 {
-    // xxx tab 01 — ESP only
+    // Halalium Visuals ESP only (Lemming) — no Melodium Name/Weapon/Ammo/Skeleton
     float L = 0.f, R = 0.f, h = 0.f;
     stux_two_col(L, R, h);
     if (this->beginChild("##xxx_esp_a", ImVec2(L, h), ImGuiChildFlags_Borders))
     {
         stux_section("ESP");
         checkbox(oxorany("Enable Esp"), &g.b_esp);
-        checkbox(oxorany("Through Walls"), &g.b_through_walls);
         checkbox(oxorany("Box"), &g.b_rect);
         {
             int bt = g.i_box_type;
@@ -657,13 +656,12 @@ void C_UserInterface::rage()
         ImGui::ColorEdit4(oxorany("Box Color"), g.m_rect, color_flags);
         if (g.i_box_type == 1)
             slider_float(oxorany("Corner Size"), &g.f_corner_size, 2.f, 40.f);
-        checkbox(oxorany("Name"), &g.b_name);
         checkbox(oxorany("Health Bar"), &g.b_health);
         ImGui::SameLine();
         ImGui::ColorEdit4(oxorany("##hpcol"), g.m_health, color_flags);
-        checkbox(oxorany("Skeleton"), &g.b_skeleton);
+        checkbox(oxorany("Distance"), &g.b_distance);
         ImGui::SameLine();
-        ImGui::ColorEdit4(oxorany("##skelcol"), g.m_skeleton, color_flags);
+        ImGui::ColorEdit4(oxorany("Distance Color"), g.m_distance, color_flags);
     }
     this->endChild();
     if (R > 40.f)
@@ -671,14 +669,11 @@ void C_UserInterface::rage()
         ImGui::SameLine(0, 12.f);
         if (this->beginChild("##xxx_esp_b", ImVec2(R, h), ImGuiChildFlags_Borders))
         {
-            stux_section("INFO");
-            checkbox(oxorany("Weapon"), &g.b_eweapon);
-            checkbox(oxorany("Ammo"), &g.b_ammo);
-            ImGui::SameLine();
-            ImGui::ColorEdit4(oxorany("##ammocol"), g.m_ammo, color_flags);
-            checkbox(oxorany("Distance"), &g.b_distance);
-            ImGui::SameLine();
-            ImGui::ColorEdit4(oxorany("Distance Color"), g.m_distance, color_flags);
+            stux_section("VISUALS");
+            checkbox(oxorany("Through Walls"), &g.b_through_walls);
+            ImGui::Dummy(ImVec2(0, 8.f));
+            ImGui::TextDisabled("Halalium / Lemming ESP");
+            ImGui::TextDisabled("no Melodium name/ammo");
         }
         this->endChild();
     }

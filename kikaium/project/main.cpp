@@ -466,7 +466,10 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
             dl->AddCircle(c, r, col, 64, 1.5f);
         }
         if (c_esp)
+        {
+            c_esp->draw_status();
             c_esp->render();
+        }
     }
 
     if (cmi)

@@ -48,19 +48,37 @@ void esp::cache_matrix()
 
     m_cached = mat;
     m_have_matrix = ok;
+    dbg_matrix.store(ok ? 1 : 0, std::memory_order_relaxed);
+    dbg_local.store((c_player && c_player->local) ? 1 : 0, std::memory_order_relaxed);
 }
 
 // Snapshot world positions on Unity thread (Update/LateUpdate).
-// Halalium never calls Transform.get_position from eglSwapBuffers.
+// Always update dbg_* so status bar shows whether memory reads work.
 void esp::snapshot()
 {
     std::vector<EspSnap> next;
     Vector3 cam{};
-    if (!g.b_esp || !c_player || !c_player->local || !c_globals)
+    int n_players = 0;
+    int n_enemies = 0;
+
+    if (c_player)
+    {
+        n_players = (int)c_player->entity.size();
+        dbg_local.store(c_player->local ? 1 : 0, std::memory_order_relaxed);
+    }
+    else
+    {
+        dbg_local.store(0, std::memory_order_relaxed);
+    }
+
+    if (!c_player || !c_player->local || !c_globals)
     {
         std::lock_guard<std::mutex> lock(m_snap_mu);
         m_snap.clear();
         m_cam_pos = {};
+        dbg_players.store(n_players, std::memory_order_relaxed);
+        dbg_enemies.store(0, std::memory_order_relaxed);
+        dbg_snap.store(0, std::memory_order_relaxed);
         return;
     }
 
@@ -74,6 +92,10 @@ void esp::snapshot()
         if (!player || !c_globals->is_allocated(player))
             continue;
         if (!c_globals->is_enemy(c_player->local, player))
+            continue;
+        ++n_enemies;
+
+        if (!g.b_esp)
             continue;
 
         c_photon_player *photon = player->m_pPhoton;
@@ -106,6 +128,37 @@ void esp::snapshot()
     std::lock_guard<std::mutex> lock(m_snap_mu);
     m_snap.swap(next);
     m_cam_pos = cam;
+    dbg_players.store(n_players, std::memory_order_relaxed);
+    dbg_enemies.store(n_enemies, std::memory_order_relaxed);
+    dbg_snap.store((int)m_snap.size(), std::memory_order_relaxed);
+}
+
+void esp::draw_status()
+{
+    // Top strip — verify memory reads even when ESP boxes fail
+    ImDrawList *dl = ImGui::GetForegroundDrawList();
+    if (!dl || !c_egl)
+        return;
+
+    const float w = (float)c_egl->width;
+    const float bar_h = 22.f;
+    dl->AddRectFilled(ImVec2(0, 0), ImVec2(w, bar_h), IM_COL32(0, 0, 0, 180));
+
+    char buf[192]{};
+    std::snprintf(buf, sizeof(buf),
+                  "xxx | Halalium/Lemming | local:%s | matrix:%s | players:%d | enemies:%d | snap:%d",
+                  dbg_local.load(std::memory_order_relaxed) ? "OK" : "NO",
+                  dbg_matrix.load(std::memory_order_relaxed) ? "OK" : "NO",
+                  dbg_players.load(std::memory_order_relaxed),
+                  dbg_enemies.load(std::memory_order_relaxed),
+                  dbg_snap.load(std::memory_order_relaxed));
+
+    ImFont *font = gui::font ? gui::font : ImGui::GetFont();
+    const float fs = 14.f;
+    if (font)
+        dl->AddText(font, fs, ImVec2(8.f, 3.f), IM_COL32(255, 200, 80, 255), buf);
+    else
+        dl->AddText(ImVec2(8.f, 3.f), IM_COL32(255, 200, 80, 255), buf);
 }
 
 bool esp::update_matrix()
@@ -121,6 +174,9 @@ void esp::clear_matrix()
     std::lock_guard<std::mutex> lock(m_snap_mu);
     m_snap.clear();
     m_cam_pos = {};
+    dbg_matrix.store(0, std::memory_order_relaxed);
+    dbg_snap.store(0, std::memory_order_relaxed);
+    dbg_enemies.store(0, std::memory_order_relaxed);
 }
 
 void text(ImFont *font, float FontSize, const ImVec2 &position, const ImColor &textColor, const char *text, bool outline, bool shadow)
