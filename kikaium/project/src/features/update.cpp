@@ -101,12 +101,6 @@ void new_update(c_player_controller *player)
         if (g.b_local)
             c_chams->local(c_player->local);
         c_skins->tick(player);
-        // Also cache ESP matrix + positions here — LateUpdate can miss a frame
-        if (c_esp)
-        {
-            c_esp->cache_matrix();
-            c_esp->snapshot();
-        }
     }
 
     if (c_globals->is_enemy(c_player->local, player))
@@ -117,6 +111,14 @@ void new_update(c_player_controller *player)
 
     c_player->collect(player);
     c_player->update();
+
+    // Unity thread ONLY — Halalium camera nest LDR + player snapshot after entity list refresh
+    if (is_local && c_esp)
+    {
+        c_esp->cache_matrix(); // Player+0xE8 → +0x28 → +0x30 → matrix@0xF0
+        c_esp->snapshot();
+    }
+
     old_update(player);
 }
 
@@ -176,9 +178,10 @@ void new_lateupdate(c_player_controller *player)
             c_player->local = player;
             refresh_game_from_typeinfo();
             c_globals->updateGun();
+            // Unity thread — same Halalium nest as Update (LateUpdate is authoritative)
             if (c_esp)
             {
-                c_esp->cache_matrix();
+                c_esp->cache_matrix(); // LDR player+0xE8 → +0x28 → +0x30 → @0xF0
                 c_esp->snapshot();
             }
             if (g.b_silent)

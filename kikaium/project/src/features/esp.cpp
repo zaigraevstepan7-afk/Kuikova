@@ -9,6 +9,7 @@
 
 Matrix esp::matrix()
 {
+    // EGL only consumes Unity-thread snapshot — never LDR camera here
     if (m_have_matrix)
         return m_cached;
     return Matrix{};
@@ -19,27 +20,36 @@ static bool matrix_nonzero(const Matrix &m)
     return m.m00 != 0.f || m.m11 != 0.f || m.m22 != 0.f || m.m33 != 0.f;
 }
 
-// Exact Halalium chain via hmem LDR (same as Halalium in-process reads):
-// Player+0xE8 → +0x28 → +0x30 → Unity Camera → matrix@0xF0
+// Halalium Update FOV nest — in-process LDR + null (cbz), Unity thread ONLY:
+//   ldr x8, [player, #0xE8]   ; PlayerMainCamera
+//   cbz x8, fail
+//   ldr x8, [x8, #0x28]
+//   cbz x8, fail
+//   ldr x0, [x8, #0x30]       ; UnityEngine.Camera*
+//   cbz x0, fail
+// then Camera.matrix @0xF0 (profile)
 void esp::cache_matrix()
 {
     Matrix mat{};
     bool ok = false;
 
-    if (c_player && c_player->local)
+    void *player = (c_player && c_player->local) ? (void *)c_player->local : nullptr;
+    if (player)
     {
-        void *player = c_player->local;
-        void *pmc = hmem::field_ptr(player, Offsets::Player::main_camera);
-        if (pmc)
+        // LDR [player, #0xE8]
+        const uintptr_t pmc = hmem::read_ptr(reinterpret_cast<uintptr_t>(player) + Offsets::Player::main_camera);
+        if (pmc) // cbz
         {
-            void *nested = hmem::field_ptr(pmc, Offsets::PlayerMainCamera::nested);
-            if (nested)
+            // LDR [pmc, #0x28]
+            const uintptr_t nested = hmem::read_ptr(pmc + Offsets::PlayerMainCamera::nested);
+            if (nested) // cbz
             {
-                void *ucam = hmem::field_ptr(nested, Offsets::PlayerMainCamera::unity_camera);
-                if (ucam)
+                // LDR [nested, #0x30] → Unity Camera*
+                const uintptr_t ucam = hmem::read_ptr(nested + Offsets::PlayerMainCamera::unity_camera);
+                if (ucam) // cbz
                 {
-                    if (hmem::read(reinterpret_cast<uintptr_t>(ucam) + Offsets::Camera::matrix, mat) &&
-                        matrix_nonzero(mat))
+                    // LDR matrix @ Camera+0xF0
+                    if (hmem::read(ucam + Offsets::Camera::matrix, mat) && matrix_nonzero(mat))
                         ok = true;
                 }
             }
@@ -49,7 +59,7 @@ void esp::cache_matrix()
     m_cached = mat;
     m_have_matrix = ok;
     dbg_matrix.store(ok ? 1 : 0, std::memory_order_relaxed);
-    dbg_local.store((c_player && c_player->local) ? 1 : 0, std::memory_order_relaxed);
+    dbg_local.store(player ? 1 : 0, std::memory_order_relaxed);
 }
 
 // Snapshot world positions on Unity thread (Update/LateUpdate).

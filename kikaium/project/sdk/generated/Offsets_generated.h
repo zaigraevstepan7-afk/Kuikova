@@ -61,12 +61,14 @@ namespace GameController {
 }
 
 namespace Camera {
-    // Halalium profile — matrix on Unity Camera from PlayerMainCamera nest
+    // Halalium profile — matrix on Unity Camera from Player+0xE8→+0x28→+0x30
     constexpr uintptr_t matrix = 0xF0;
 }
 
-// Halalium Update FOV @0x1d7d80:
-// ldr [player,#0xe8]; ldr [x,#0x28]; ldr [x,#0x30] → Unity Camera*; matrix @0xF0
+// Halalium Update FOV @0x1d7d80 — in-process LDR + null:
+//   ldr [player,#0xe8]; cbz
+//   ldr [x,#0x28]; cbz
+//   ldr [x,#0x30]; cbz  → Unity Camera*
 namespace PlayerMainCamera {
     constexpr uintptr_t nested       = 0x28;
     constexpr uintptr_t unity_camera = 0x30;

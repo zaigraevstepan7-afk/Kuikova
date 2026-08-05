@@ -50,18 +50,24 @@ inline void *weapon_params_alt(void *weapon)
 
 inline void *main_camera(void *player)
 {
+    // LDR [player, #0xE8]; cbz
     return hmem::field_ptr(player, Offsets::Player::main_camera);
 }
 
-// Halalium Update FOV nest: PlayerMainCamera+0x28 → +0x30 → UnityEngine.Camera*
+// Halalium Update @0x1d7d80: ldr [pmc,#0x28]; cbz; ldr [x,#0x30]; cbz → Unity Camera*
 inline void *unity_camera_from_pmc(void *pmc)
 {
-    void *nested = hmem::field_ptr(pmc, Offsets::PlayerMainCamera::nested);
-    return nested ? hmem::field_ptr(nested, Offsets::PlayerMainCamera::unity_camera) : nullptr;
+    if (!pmc)
+        return nullptr;
+    void *nested = hmem::field_ptr(pmc, Offsets::PlayerMainCamera::nested); // +0x28
+    if (!nested)
+        return nullptr;
+    return hmem::field_ptr(nested, Offsets::PlayerMainCamera::unity_camera); // +0x30
 }
 
 inline void *unity_camera(void *player)
 {
+    // Player+0xE8 → +0x28 → +0x30 (in-process LDR + null)
     return unity_camera_from_pmc(main_camera(player));
 }
 

@@ -18,8 +18,8 @@ public:
     void draw_status(); // top bar — memory/player diagnostics
     Matrix matrix();
     bool update_matrix();
-    void cache_matrix();  // Unity thread — Halalium camera nest
-    void snapshot();      // Unity thread — cache positions
+    void cache_matrix();  // Unity thread ONLY: LDR Player+0xE8→+0x28→+0x30→matrix@0xF0
+    void snapshot();      // Unity thread ONLY: cache feet/heads for EGL draw
     void clear_matrix();
 
     // Diagnostics (updated on Unity thread)
