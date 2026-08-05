@@ -649,13 +649,18 @@ void C_UserInterface::rage()
         checkbox(oxorany("Box"), &g.b_rect);
         {
             int bt = g.i_box_type;
-            ImGui::Combo(oxorany("Box Type"), &bt, "Full\0Corner\0\0");
+            ImGui::Combo(oxorany("Box Type"), &bt, "Full\0Corner\0Rounded\0\0");
             g.i_box_type = bt;
         }
         ImGui::SameLine();
         ImGui::ColorEdit4(oxorany("Box Color"), g.m_rect, color_flags);
+        slider_float(oxorany("Thickness"), &g.f_box_thickness, 0.5f, 5.f);
         if (g.i_box_type == 1)
-            slider_float(oxorany("Corner Size"), &g.f_corner_size, 2.f, 40.f);
+            slider_float(oxorany("Corner Size"), &g.f_corner_size, 0.05f, 0.5f);
+        checkbox(oxorany("Outline"), &g.b_box_outline);
+        checkbox(oxorany("Fill"), &g.b_box_fill);
+        if (g.b_box_fill)
+            slider_float(oxorany("Fill Alpha"), &g.f_box_fill_alpha, 0.f, 1.f);
         checkbox(oxorany("Health Bar"), &g.b_health);
         ImGui::SameLine();
         ImGui::ColorEdit4(oxorany("##hpcol"), g.m_health, color_flags);

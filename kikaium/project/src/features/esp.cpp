@@ -442,7 +442,7 @@ void esp::render()
             if (footpos.z < 0.01f || headpos.z < 0.01f)
                 continue;
 
-            float width = height / 1.8f;
+            float width = height / 1.9f; // Halalium aspect
             x = headpos.x - width * 0.5f;
             y = headpos.y;
 
@@ -451,47 +451,57 @@ void esp::render()
 
             if (g.b_rect)
             {
-                ImVec4 color{g.m_rect[0], g.m_rect[1], g.m_rect[2], g.m_rect[3]};
-                ImU32 col_box = ApplyAlpha(ImGui::ColorConvertFloat4ToU32(color));
-                ImU32 col_shadow = ApplyAlpha(IM_COL32(0, 0, 0, 255));
+                // Halalium Lemming box draw (libhalalium @0x1e9f58 / corners @0x1ea37c):
+                // Fill → Outline(0xA0000000, th+1) → stroke via AddRect / 8x AddLine
+                // NOT Melodium AddRectFilledMultiColor borders.
+                ImU32 col = ApplyAlpha(ImGui::ColorConvertFloat4ToU32(
+                    ImVec4(g.m_rect[0], g.m_rect[1], g.m_rect[2], g.m_rect[3])));
+                const float th = std::clamp(g.f_box_thickness, 0.5f, 5.f);
+                const float rounding = (g.i_box_type == 2) ? 3.f : 0.f;
+                const ImVec2 p1(x, y);
+                const ImVec2 p2(x + width, y + height);
 
-                float x1 = x;
-                float y1 = y;
-                float x2 = x + width;
-                float y2 = y + height;
+                auto draw_corners = [&](ImU32 c, float t, float inset) {
+                    const float cf = std::clamp(g.f_corner_size, 0.05f, 0.5f);
+                    const float bw = (p2.x - p1.x);
+                    const float bh = (p2.y - p1.y);
+                    const float cx = std::clamp(bw * cf, 2.f, bw * 0.5f);
+                    const float cy = std::clamp(bh * cf, 2.f, bh * 0.5f);
+                    const float x1 = p1.x - inset, y1 = p1.y - inset;
+                    const float x2 = p2.x + inset, y2 = p2.y + inset;
+                    draw->AddLine(ImVec2(x1, y1), ImVec2(x1 + cx, y1), c, t);
+                    draw->AddLine(ImVec2(x1, y1), ImVec2(x1, y1 + cy), c, t);
+                    draw->AddLine(ImVec2(x2, y1), ImVec2(x2 - cx, y1), c, t);
+                    draw->AddLine(ImVec2(x2, y1), ImVec2(x2, y1 + cy), c, t);
+                    draw->AddLine(ImVec2(x1, y2), ImVec2(x1 + cx, y2), c, t);
+                    draw->AddLine(ImVec2(x1, y2), ImVec2(x1, y2 - cy), c, t);
+                    draw->AddLine(ImVec2(x2, y2), ImVec2(x2 - cx, y2), c, t);
+                    draw->AddLine(ImVec2(x2, y2), ImVec2(x2, y2 - cy), c, t);
+                };
 
+                if (g.b_box_fill)
+                {
+                    const float fa = std::clamp(g.f_box_fill_alpha, 0.f, 1.f) *
+                                     (float)((col >> 24) & 0xff);
+                    const ImU32 fc = (col & 0x00FFFFFF) | ((ImU32)fa << 24);
+                    draw->AddRectFilled(p1, p2, fc, rounding);
+                }
+                if (g.b_box_outline)
+                {
+                    const ImU32 oc = ApplyAlpha(IM_COL32(0, 0, 0, 0xA0));
+                    const float ot = th + 1.f;
+                    const float half = th * 0.5f;
+                    if (g.i_box_type == 1)
+                        draw_corners(oc, ot, half);
+                    else
+                        draw->AddRect(ImVec2(p1.x - half, p1.y - half),
+                                      ImVec2(p2.x + half, p2.y + half),
+                                      oc, rounding, 0, ot);
+                }
                 if (g.i_box_type == 1)
-                {
-                    // Halalium "Box Type" = Corner
-                    const float cs = std::clamp(g.f_corner_size, 2.f, 40.f);
-                    auto corner = [&](float ax, float ay, float dx, float dy) {
-                        draw->AddLine(ImVec2(ax, ay), ImVec2(ax + dx, ay), col_shadow, 3.f);
-                        draw->AddLine(ImVec2(ax, ay), ImVec2(ax, ay + dy), col_shadow, 3.f);
-                        draw->AddLine(ImVec2(ax, ay), ImVec2(ax + dx, ay), col_box, 1.5f);
-                        draw->AddLine(ImVec2(ax, ay), ImVec2(ax, ay + dy), col_box, 1.5f);
-                    };
-                    corner(x1, y1, cs, cs);
-                    corner(x2, y1, -cs, cs);
-                    corner(x1, y2, cs, -cs);
-                    corner(x2, y2, -cs, -cs);
-                }
+                    draw_corners(col, th, 0.f);
                 else
-                {
-                    draw->AddRectFilledMultiColor({x1 - 1, y1 - 1}, {x2 + 1, y1}, col_shadow, col_shadow, col_shadow, col_shadow);
-                    draw->AddRectFilledMultiColor({x1 - 1, y2}, {x2 + 1, y2 + 1}, col_shadow, col_shadow, col_shadow, col_shadow);
-                    draw->AddRectFilledMultiColor({x1 - 1, y1}, {x1, y2}, col_shadow, col_shadow, col_shadow, col_shadow);
-                    draw->AddRectFilledMultiColor({x2, y1}, {x2 + 1, y2}, col_shadow, col_shadow, col_shadow, col_shadow);
-
-                    draw->AddRectFilledMultiColor(ImVec2(x1, y1 + 1), ImVec2(x2, y1 + 2), col_shadow, col_shadow, col_shadow, col_shadow);
-                    draw->AddRectFilledMultiColor(ImVec2(x1, y2 - 2), ImVec2(x2, y2 - 1), col_shadow, col_shadow, col_shadow, col_shadow);
-                    draw->AddRectFilledMultiColor(ImVec2(x1 + 1, y1), ImVec2(x1 + 2, y2), col_shadow, col_shadow, col_shadow, col_shadow);
-                    draw->AddRectFilledMultiColor(ImVec2(x2 - 2, y1), ImVec2(x2 - 1, y2), col_shadow, col_shadow, col_shadow, col_shadow);
-
-                    draw->AddRectFilledMultiColor({x1, y1}, {x2, y1 + 1}, col_box, col_box, col_box, col_box);
-                    draw->AddRectFilledMultiColor({x1, y2 - 1}, {x2, y2}, col_box, col_box, col_box, col_box);
-                    draw->AddRectFilledMultiColor({x1, y1}, {x1 + 1, y2}, col_box, col_box, col_box, col_box);
-                    draw->AddRectFilledMultiColor({x2 - 1, y1}, {x2, y2}, col_box, col_box, col_box, col_box);
-                }
+                    draw->AddRect(p1, p2, col, rounding, 0, th);
             }
 
             if (g.b_distance)

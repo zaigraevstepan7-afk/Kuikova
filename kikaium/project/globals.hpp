@@ -288,8 +288,12 @@ inline struct g_
     bool b_esp = true;
     bool b_line = false;
     bool b_rect = true;
-    int i_box_type = 0;       // 0=Full 1=Corner
-    float f_corner_size = 10.f;
+    int i_box_type = 1;       // Halalium default: 0=Full 1=Corner 2=Rounded
+    float f_corner_size = 0.28f; // Halalium: fraction of box side (0.05–0.5)
+    float f_box_thickness = 1.5f;
+    bool b_box_outline = true;
+    bool b_box_fill = false;
+    float f_box_fill_alpha = 0.1f;
     bool b_health = true;
     bool b_skeleton = false;  // Halalium "Bone" is Rage, not Visuals ESP
     bool b_distance = true;
@@ -302,7 +306,7 @@ inline struct g_
     bool b_eweapon = false;
     float m_ammo[4] = {0.077f, 0.251f, 0.605f, 1.0f};
     float m_health[4] = {0.025f, 0.560f, 0.025f, 1.0f};
-    float m_rect[4] = {1.0f, 0.0f, 0.0f, 1.0f};
+    float m_rect[4] = {1.0f, 1.0f, 1.0f, 1.0f}; // Halalium default white
     float m_skeleton[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     bool b_tracer = false;
     float m_tracer[4] = {1.0f, 1.0f, 1.0f, 1.0f};
