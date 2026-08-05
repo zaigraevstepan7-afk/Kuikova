@@ -3,50 +3,59 @@
 #include <cstdio>
 #include <cstring>
 #include <cinttypes>
+#include <cctype>
 #include <link.h>
 #include <dlfcn.h>
 #include <android/log.h>
 
-// Resolve r-x mapping base for a shared library by substring match in maps.
-inline uintptr_t find_module_base_rx(const char *lib_name)
+// True ELF load base = LOWEST mapped address of the library (not r-x text start).
+// RVAs (TypeInfo / methods) are relative to this bias.
+inline uintptr_t find_module_base_maps(const char *needle)
 {
+    if (!needle || !needle[0])
+        return 0;
     FILE *f = fopen("/proc/self/maps", "r");
     if (!f)
         return 0;
-    char line[512];
+    char line[768];
     uintptr_t best = 0;
     while (fgets(line, sizeof(line), f))
     {
         uintptr_t start = 0, end = 0;
-        char perms[8]{}, path[256]{};
-        if (sscanf(line, "%" SCNxPTR "-%" SCNxPTR " %7s %*s %*s %*s %255s", &start, &end, perms, path) < 3)
+        char perms[8]{};
+        // Path may contain spaces on some builds — take everything after offset/dev/inode
+        if (sscanf(line, "%" SCNxPTR "-%" SCNxPTR " %7s", &start, &end, perms) < 3)
             continue;
-        if (!strstr(path, lib_name))
+        char *path = strchr(line, '/');
+        if (!path)
+        {
+            // apk!/ or memfd without leading slash — search whole line
+            path = line;
+        }
+        if (!strstr(path, needle))
             continue;
-        if (perms[2] != 'x')
-            continue;
-        best = start;
-        break;
+        if (!best || start < best)
+            best = start;
     }
     fclose(f);
     return best;
 }
 
-// dl_iterate_phdr — works when maps path is apk!/memfd/split weirdness
-inline uintptr_t find_module_base_phdr(const char *lib_name)
+inline uintptr_t find_module_base_phdr(const char *needle)
 {
     struct Ctx
     {
         const char *name;
         uintptr_t base;
-    } ctx{lib_name, 0};
+    } ctx{needle, 0};
 
     dl_iterate_phdr(
         [](struct dl_phdr_info *info, size_t, void *data) -> int {
             auto *c = reinterpret_cast<Ctx *>(data);
-            if (!info || !info->dlpi_name || !c->name)
+            if (!info || !c->name)
                 return 0;
-            if (!strstr(info->dlpi_name, c->name))
+            const char *n = info->dlpi_name ? info->dlpi_name : "";
+            if (!n[0] || !strstr(n, c->name))
                 return 0;
             c->base = static_cast<uintptr_t>(info->dlpi_addr);
             return 1;
@@ -55,55 +64,125 @@ inline uintptr_t find_module_base_phdr(const char *lib_name)
     return ctx.base;
 }
 
-inline uintptr_t find_module_base(const char *lib_name)
+inline uintptr_t find_module_base_dl(const char *soname)
 {
-    uintptr_t b = find_module_base_rx(lib_name);
-    if (b)
-        return b;
-    b = find_module_base_phdr(lib_name);
-    if (b)
-        return b;
-    // Last resort: dlopen + link_map
-    void *h = dlopen(lib_name, RTLD_NOLOAD);
+    void *h = dlopen(soname, RTLD_NOLOAD);
     if (!h)
-        h = dlopen(lib_name, RTLD_NOW);
-    if (h)
+        h = dlopen(soname, RTLD_NOW);
+    if (!h)
+        return 0;
+
+    Dl_info di{};
+    void *sym = dlsym(h, "il2cpp_domain_get");
+    if (!sym)
+        sym = dlsym(h, "il2cpp_string_new");
+    if (!sym)
+        sym = dlsym(h, "il2cpp_alloc");
+    if (!sym)
+        sym = dlsym(h, "UnityMain");
+    // Any symbol from the SO — walk via dladdr
+    if (!sym)
     {
-        Dl_info di{};
-        // pick any exported-ish symbol via dlsym of a common name, or just iterate
-        void *sym = dlsym(h, "il2cpp_domain_get");
-        if (!sym)
-            sym = dlsym(h, "UnityMain");
-        if (sym && dladdr(sym, &di) && di.dli_fbase)
-            return reinterpret_cast<uintptr_t>(di.dli_fbase);
+        // force a known weak probe: dlsym of empty often fails; try common unity export
+        sym = dlsym(h, "JNI_OnLoad");
     }
+    if (sym && dladdr(sym, &di) && di.dli_fbase)
+        return reinterpret_cast<uintptr_t>(di.dli_fbase);
     return 0;
+}
+
+inline uintptr_t find_module_base(const char *needle)
+{
+    uintptr_t b = find_module_base_maps(needle);
+    if (b)
+        return b;
+    b = find_module_base_phdr(needle);
+    if (b)
+        return b;
+    return 0;
+}
+
+inline int count_maps_matching(const char *needle)
+{
+    FILE *f = fopen("/proc/self/maps", "r");
+    if (!f)
+        return -1;
+    char line[768];
+    int n = 0;
+    while (fgets(line, sizeof(line), f))
+    {
+        if (strstr(line, needle))
+            ++n;
+    }
+    fclose(f);
+    return n;
 }
 
 inline uintptr_t resolve_il2cpp_base()
 {
-    uintptr_t b = find_module_base("libil2cpp.so");
-    if (!b)
-        b = find_module_base("libil2cpp");
-    if (b)
+    static const char *names[] = {
+        "libil2cpp.so",
+        "libil2cpp",
+        "il2cpp.so",
+        "il2cpp",
+    };
+    for (const char *n : names)
     {
-        __android_log_print(ANDROID_LOG_INFO, "xxx", "il2cpp base=%p", (void *)b);
-        return b;
+        uintptr_t b = find_module_base(n);
+        if (b)
+        {
+            __android_log_print(ANDROID_LOG_INFO, "xxx", "il2cpp base=%p via maps/phdr (%s)", (void *)b, n);
+            return b;
+        }
     }
-    __android_log_print(ANDROID_LOG_ERROR, "xxx", "libil2cpp.so NOT FOUND");
+    for (const char *n : names)
+    {
+        uintptr_t b = find_module_base_dl(n);
+        if (b)
+        {
+            __android_log_print(ANDROID_LOG_INFO, "xxx", "il2cpp base=%p via dlopen (%s)", (void *)b, n);
+            return b;
+        }
+    }
+    __android_log_print(ANDROID_LOG_ERROR, "xxx",
+                        "libil2cpp NOT FOUND maps_hits=%d", count_maps_matching("il2cpp"));
     return 0;
 }
 
 inline uintptr_t resolve_unity_base()
 {
-    uintptr_t b = find_module_base("libunity.so");
-    if (!b)
-        b = find_module_base("libunity");
-    if (b)
-        __android_log_print(ANDROID_LOG_INFO, "xxx", "unity base=%p", (void *)b);
-    else
-        __android_log_print(ANDROID_LOG_WARN, "xxx", "libunity.so not found - RVA hooks disabled");
-    return b;
+    static const char *names[] = {
+        "libunity.so",
+        "libunity",
+        "unity.so",
+    };
+    for (const char *n : names)
+    {
+        uintptr_t b = find_module_base(n);
+        if (b)
+        {
+            __android_log_print(ANDROID_LOG_INFO, "xxx", "unity base=%p (%s)", (void *)b, n);
+            return b;
+        }
+    }
+    for (const char *n : names)
+    {
+        uintptr_t b = find_module_base_dl(n);
+        if (b)
+        {
+            __android_log_print(ANDROID_LOG_INFO, "xxx", "unity base=%p via dlopen (%s)", (void *)b, n);
+            return b;
+        }
+    }
+    __android_log_print(ANDROID_LOG_WARN, "xxx",
+                        "libunity NOT FOUND maps_hits=%d", count_maps_matching("unity"));
+    return 0;
+}
+
+// Back-compat alias
+inline uintptr_t find_module_base_rx(const char *lib_name)
+{
+    return find_module_base(lib_name);
 }
 
 inline bool maps_contains_exec(uintptr_t addr)

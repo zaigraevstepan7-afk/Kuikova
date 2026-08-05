@@ -635,11 +635,16 @@ void update::init()
         sleep(1);
     }
 
-    if (!base)
+    if (!base && !unity_base)
     {
-        LOGI("update::init abort: no libil2cpp base");
+        LOGI("update::init abort: no libil2cpp/libunity base");
         set_stage(2);
         return;
+    }
+    if (!base)
+    {
+        LOGI("update::init warn: no il2cpp yet — hooks on unity only");
+        set_stage(6); // partial
     }
     LOGI("update::init il2cpp=%p unity=%p", (void *)base, (void *)unity_base);
 
