@@ -111,13 +111,13 @@ inline bool writable(uintptr_t addr, size_t size = sizeof(void *))
     return (prot_of(addr, size) & PROT_WRITE) != 0;
 }
 
-// Direct LDR — same as Halalium after inject (null + soft maps).
+// Direct LDR — same as Halalium after inject (null check, then memcpy).
+// Soft maps is NOT a hard gate: Halalium only cbz-null before ldr; maps false-negatives
+// would blank ESP/photon/camera while the game heap is still valid in-process.
 template <typename T>
 inline bool read(uintptr_t addr, T &out)
 {
-    if (!addr)
-        return false;
-    if (!readable(addr, sizeof(T)))
+    if (!addr || addr < 0x10000)
         return false;
     std::memcpy(&out, reinterpret_cast<const void *>(addr), sizeof(T));
     return true;

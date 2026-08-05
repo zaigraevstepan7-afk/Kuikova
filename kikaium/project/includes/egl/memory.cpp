@@ -35,8 +35,7 @@ bool perform_mem_rw(uintptr_t address, void *buffer, size_t size, bool write)
     if (write)
         return hmem::write_bytes(address, buffer, size);
 
-    if (!hmem::readable(address, size))
-        return false;
+    // Halalium: direct in-process LDR (no hard maps gate)
     std::memcpy(buffer, reinterpret_cast<const void *>(address), size);
     return true;
 }

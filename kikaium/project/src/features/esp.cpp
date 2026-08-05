@@ -5,10 +5,10 @@
 #include <cstdio>
 #include <src/menu/gui.h>
 #include "sdk/OffsetsBridge.h"
+#include "includes/halalium_mem.h"
 
 Matrix esp::matrix()
 {
-    // Prefer matrix snapshotted on Unity thread; avoid live Unity calls from EGL.
     if (m_have_matrix)
         return m_cached;
     return Matrix{};
@@ -19,33 +19,27 @@ static bool matrix_nonzero(const Matrix &m)
     return m.m00 != 0.f || m.m11 != 0.f || m.m22 != 0.f || m.m33 != 0.f;
 }
 
-// Exact Halalium chain:
+// Exact Halalium chain via hmem LDR (same as Halalium in-process reads):
 // Player+0xE8 → +0x28 → +0x30 → Unity Camera → matrix@0xF0
 void esp::cache_matrix()
 {
     Matrix mat{};
     bool ok = false;
 
-    if (c_player && c_player->local && c_globals &&
-        c_globals->is_allocated(c_player->local))
+    if (c_player && c_player->local)
     {
         void *player = c_player->local;
-
-        // 1) Player + 0xE8 → PlayerMainCamera
-        void *pmc = *(void **)((uintptr_t)player + Offsets::Player::main_camera);
-        if (pmc && c_globals->is_allocated(pmc))
+        void *pmc = hmem::field_ptr(player, Offsets::Player::main_camera);
+        if (pmc)
         {
-            // 2) + 0x28
-            void *nested = *(void **)((uintptr_t)pmc + Offsets::PlayerMainCamera::nested);
-            if (nested && c_globals->is_allocated(nested))
+            void *nested = hmem::field_ptr(pmc, Offsets::PlayerMainCamera::nested);
+            if (nested)
             {
-                // 3) + 0x30 → Unity Camera*
-                void *ucam = *(void **)((uintptr_t)nested + Offsets::PlayerMainCamera::unity_camera);
-                if (ucam && c_globals->is_allocated(ucam))
+                void *ucam = hmem::field_ptr(nested, Offsets::PlayerMainCamera::unity_camera);
+                if (ucam)
                 {
-                    // 4) matrix @ 0xF0
-                    mat = *(Matrix *)((uintptr_t)ucam + Offsets::Camera::matrix);
-                    if (matrix_nonzero(mat))
+                    if (hmem::read(reinterpret_cast<uintptr_t>(ucam) + Offsets::Camera::matrix, mat) &&
+                        matrix_nonzero(mat))
                         ok = true;
                 }
             }
@@ -54,6 +48,64 @@ void esp::cache_matrix()
 
     m_cached = mat;
     m_have_matrix = ok;
+}
+
+// Snapshot world positions on Unity thread (Update/LateUpdate).
+// Halalium never calls Transform.get_position from eglSwapBuffers.
+void esp::snapshot()
+{
+    std::vector<EspSnap> next;
+    Vector3 cam{};
+    if (!g.b_esp || !c_player || !c_player->local || !c_globals)
+    {
+        std::lock_guard<std::mutex> lock(m_snap_mu);
+        m_snap.clear();
+        m_cam_pos = {};
+        return;
+    }
+
+    if (c_player->local->m_pMainCameraHolder)
+        cam = c_player->local->m_pMainCameraHolder->get_position();
+
+    next.reserve(c_player->entity.size());
+    for (int i = 0; i < (int)c_player->entity.size(); ++i)
+    {
+        c_player_controller *player = c_player->entity[i];
+        if (!player || !c_globals->is_allocated(player))
+            continue;
+        if (!c_globals->is_enemy(c_player->local, player))
+            continue;
+
+        c_photon_player *photon = player->m_pPhoton;
+        c_transform *transform = player->m_pTransform;
+        if (!photon || !transform)
+            continue;
+
+        EspSnap s{};
+        s.player = player;
+        s.foot = transform->get_position(); // Unity thread — OK
+        if (s.foot == Vector3{})
+            continue;
+
+        s.head = {s.foot.x, s.foot.y + 1.65f, s.foot.z};
+        if (player->m_pCharacterView && player->m_pCharacterView->c_biped &&
+            player->m_pCharacterView->c_biped->head)
+        {
+            Vector3 hp = player->m_pCharacterView->c_biped->head->get_position();
+            if (hp != Vector3{})
+                s.head = hp;
+        }
+
+        s.health = photon->get_health();
+        if (s.health < 0)
+            s.health = 100;
+        s.name = photon->m_nameField;
+        next.push_back(s);
+    }
+
+    std::lock_guard<std::mutex> lock(m_snap_mu);
+    m_snap.swap(next);
+    m_cam_pos = cam;
 }
 
 bool esp::update_matrix()
@@ -66,6 +118,9 @@ void esp::clear_matrix()
 {
     m_cached = Matrix{};
     m_have_matrix = false;
+    std::lock_guard<std::mutex> lock(m_snap_mu);
+    m_snap.clear();
+    m_cam_pos = {};
 }
 
 void text(ImFont *font, float FontSize, const ImVec2 &position, const ImColor &textColor, const char *text, bool outline, bool shadow)
@@ -231,20 +286,22 @@ void esp::render()
 {
     if (!g.b_esp)
         return;
-    // Entities come from PC.Update; GameController TypeInfo is not required to draw.
     if (!c_player || !c_player->local)
         return;
     if (!m_have_matrix)
         return;
-    if (c_player->entity.empty())
+
+    std::vector<EspSnap> snaps;
+    {
+        std::lock_guard<std::mutex> lock(m_snap_mu);
+        snaps = m_snap;
+    }
+    if (snaps.empty())
         return;
 
     {
         c_player_controller *player{};
-        c_photon_player *photon{};
-        c_transform *transform{};
         int health{};
-        monoString *name{};
         float x, y;
         auto draw = ImGui::GetBackgroundDrawList();
         const Matrix w2c = m_cached;
@@ -264,23 +321,13 @@ void esp::render()
             return 0.5f + 0.5f * cosf(3.1415926535f * t);
         };
 
-        for (int i{}; i < (int)c_player->entity.size(); i++)
+        for (const EspSnap &snap : snaps)
         {
-            player = c_player->entity[i];
-            if (!player || !c_globals->is_allocated(player))
-                continue;
-            if (!c_globals->is_enemy(c_player->local, player))
+            player = snap.player;
+            if (!player)
                 continue;
 
-            photon = player->m_pPhoton;
-            transform = player->m_pTransform;
-            if (!photon || !transform)
-                continue;
-            if (!c_globals->is_allocated(photon) || !c_globals->is_allocated(transform))
-                continue;
-
-            health = photon->get_health();
-            // Property miss (-1) must not kill ESP — still draw as full HP
+            health = snap.health;
             if (health < 0)
                 health = 100;
 
@@ -324,11 +371,14 @@ void esp::render()
                 return ImGui::ColorConvertFloat4ToU32(c);
             };
 
-            Vector3 foot = transform->get_position();
+            // Positions snapshotted on Unity thread — no EGL get_position
+            Vector3 foot = snap.foot;
             if (foot == Vector3{})
                 continue;
 
-            Vector3 head{foot.x, foot.y + 1.65f, foot.z};
+            Vector3 head = snap.head;
+            if (head == Vector3{})
+                head = {foot.x, foot.y + 1.65f, foot.z};
             Vector3 footpos = c_globals->world2screen(w2c, foot);
             Vector3 headpos = c_globals->world2screen(w2c, head);
             float height = fabsf(footpos.y - headpos.y);
@@ -390,9 +440,7 @@ void esp::render()
 
             if (g.b_distance)
             {
-                Vector3 cam_pos{};
-                if (c_player->local && c_player->local->m_pMainCameraHolder)
-                    cam_pos = c_player->local->m_pMainCameraHolder->get_position();
+                Vector3 cam_pos = m_cam_pos;
                 const float distm = (cam_pos == Vector3{}) ? 0.f : Vector3::Distance(cam_pos, foot);
                 char dbuf[24]{};
                 std::snprintf(dbuf, sizeof(dbuf), "%.0fm", distm);
@@ -412,7 +460,7 @@ void esp::render()
             if (g.b_name)
             {
                 const float fontSize = 15.0f;
-                auto player_name = photon->m_nameField;
+                auto player_name = snap.name;
                 if (player_name)
                 {
                     auto nameStr = player_name->toUTF8();

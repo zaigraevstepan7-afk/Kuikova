@@ -101,9 +101,12 @@ void new_update(c_player_controller *player)
         if (g.b_local)
             c_chams->local(c_player->local);
         c_skins->tick(player);
-        // Also cache ESP matrix here — LateUpdate hook can miss a frame
+        // Also cache ESP matrix + positions here — LateUpdate can miss a frame
         if (c_esp)
+        {
             c_esp->cache_matrix();
+            c_esp->snapshot();
+        }
     }
 
     if (c_globals->is_enemy(c_player->local, player))
@@ -174,7 +177,10 @@ void new_lateupdate(c_player_controller *player)
             refresh_game_from_typeinfo();
             c_globals->updateGun();
             if (c_esp)
+            {
                 c_esp->cache_matrix();
+                c_esp->snapshot();
+            }
             if (g.b_silent)
                 c_globals->updateTarget();
             if (g.b_antiaim || g.b_spin)

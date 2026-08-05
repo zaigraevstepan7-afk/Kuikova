@@ -11,8 +11,11 @@
 
 bool globals::is_allocated(void *x)
 {
-    // Halalium-style: maps check instead of mincore / memfd / process_vm_*.
-    return hmem::readable(reinterpret_cast<uintptr_t>(x), sizeof(void *));
+    // Halalium hot path: null-check only before LDR (no mincore / process_vm / hard maps gate).
+    // Reject only obvious junk so maps false-negatives cannot blank ESP.
+    if (!x)
+        return false;
+    return reinterpret_cast<uintptr_t>(x) > 0x10000;
 }
 
 void *globals::get_lazysingleton_typeinfo(uintptr_t addr)
@@ -119,6 +122,9 @@ bool globals::is_alive(c_player_controller *player)
         return false;
 
     int32_t health = photon->get_health();
+    // Hashtable miss (-1): treat as alive — Halalium does not gate on this prop
+    if (health < 0)
+        return true;
     return health > 0;
 }
 
