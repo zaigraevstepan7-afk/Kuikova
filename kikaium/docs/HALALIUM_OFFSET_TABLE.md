@@ -48,8 +48,7 @@ Everything else is MethodInfo/`dlsym` resolve or disabled.
 | Photon.isLocal | `0x30` | Update `ldrb` |
 | GameController.player_controls / local | `0x2B0` / `0x2C0` | profile |
 | Camera.matrix | `0xF0` | profile |
-| PlayerMainCamera → Unity Camera | `+0x28` → `+0x30` | Halalium Update FOV nest (`0x1d7d80`) |
-| Camera nest Melodium `+0x20`→`+0x10` | community | **fallback only** (not Halalium RE) |
+| ESP camera chain | `Player+0xE8 → +0x28 → +0x30 → @0xF0` | Halalium Update FOV nest (only path) |
 
 ### Method RVAs (libunity)
 
@@ -99,8 +98,7 @@ Features that need them use **MethodInfo resolve** (`globals::init` → `c_fn` /
 
 | Site | Off | Status |
 |---|---|---|
-| esp Camera Halalium `PMC+0x28→+0x30` + `@0xF0` | Halalium Update + profile | **primary** W2S matrix |
-| esp Camera Melodium `+0x20`/`+0x10`/`@0xF0` | Melodium/community | **fallback only** |
+| esp Camera | `Player+0xE8 → +0x28 → +0x30 → matrix@0xF0` | Halalium only |
 | esp ammo capacity `+0x130` | community | **removed** |
 | visual HUD `+0xB8/+0x30/+0x50` | Melodium | **removed** (keep Halalium `set_fov`) |
 | antiaim TranslationData `+0xE0` | community | **disabled** |

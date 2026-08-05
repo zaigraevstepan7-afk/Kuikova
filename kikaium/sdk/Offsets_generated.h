@@ -61,18 +61,15 @@ namespace GameController {
 }
 
 namespace Camera {
-    // Halalium profile only — matrix field on Unity Camera (resolved via PlayerMainCamera nest)
+    // Halalium profile — matrix on Unity Camera from PlayerMainCamera nest
     constexpr uintptr_t matrix = 0xF0;
-    constexpr uintptr_t matrix_alt = 0x100; // community alt, last resort
-    // Melodium/community nest on PlayerMainCamera — NOT in Halalium RE (fallback only)
-    constexpr uintptr_t community_a = 0x20;
-    constexpr uintptr_t community_b = 0x10;
 }
 
-// Halalium Update FOV @0x1d7d80: ldr [player,#0xe8]; ldr [x,#0x28]; ldr [x,#0x30] → Unity Camera*
+// Halalium Update FOV @0x1d7d80:
+// ldr [player,#0xe8]; ldr [x,#0x28]; ldr [x,#0x30] → Unity Camera*; matrix @0xF0
 namespace PlayerMainCamera {
-    constexpr uintptr_t nested        = 0x28;
-    constexpr uintptr_t unity_camera  = 0x30;
+    constexpr uintptr_t nested       = 0x28;
+    constexpr uintptr_t unity_camera = 0x30;
 }
 
 namespace Photon {
