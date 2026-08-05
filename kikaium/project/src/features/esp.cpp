@@ -275,7 +275,7 @@ void esp::draw_status()
 
     char buf[320]{};
     std::snprintf(buf, sizeof(buf),
-                  "xxx#5 | sdk:%s(%s) | local:%s | matrix:%s(%s) | players:%d | enemies:%d | snap:%d | f:%d",
+                  "xxx#6 | sdk:%s(%s) | local:%s | matrix:%s(%s) | players:%d | enemies:%d | snap:%d | f:%d",
                   dbg_sdk.load(std::memory_order_relaxed) ? "OK" : "NO",
                   sdk_stages[ss],
                   dbg_local.load(std::memory_order_relaxed) ? "OK" : "NO",

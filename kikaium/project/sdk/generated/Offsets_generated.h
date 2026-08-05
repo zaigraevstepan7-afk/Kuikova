@@ -124,14 +124,12 @@ namespace Api {
 namespace Hook {
     constexpr bool use_egl_swap_buffers = true;
     constexpr bool open_menu_via_watermark_click = true;
-    // Halalium: no GameController VMT. PC Update/Late VMT only if tracked RVA fails
-    constexpr bool use_vmt_update_hooks = true;
-    // Halalium Bypass_getrr — destroy tracked hooks during AntiCheat OnStart
-    constexpr bool use_getrr_bypass = true;
-    // Halalium always installs Secondary/Tertiary/ExtraA/B as TRACKED
-    constexpr bool use_secondary_hooks = true;
-    // Halalium path: InputConsumer::consume (UNTRACKED like egl)
-    constexpr bool use_input_consume = true;
+    // Off until menu stable — bad RVA Dobby was crashing ~2s after inject
+    constexpr bool use_vmt_update_hooks = false;
+    constexpr bool use_getrr_bypass = false;
+    constexpr bool use_secondary_hooks = false;
+    constexpr bool use_pc_update_hooks = false; // PC.Update / LateUpdate Dobby
+    constexpr bool use_input_consume = false;   // was able to kill overlay
 }
 
 } // namespace OffsetsGenerated

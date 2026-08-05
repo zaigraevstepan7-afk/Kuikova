@@ -173,10 +173,12 @@ static void refresh_players_from_typeinfo()
     }
 
     c_player->update();
-    if (c_esp && c_player->local)
+    // Do NOT call cache_matrix/snapshot here — get_position RVA may be unbound/wrong
+    // and would crash the GL thread. Status bar still gets local/players from update().
+    if (c_esp)
     {
-        c_esp->cache_matrix();
-        c_esp->snapshot();
+        c_esp->dbg_local.store(c_player->local ? 1 : 0, std::memory_order_relaxed);
+        c_esp->dbg_players.store((int)c_player->entity.size(), std::memory_order_relaxed);
     }
 }
 
@@ -537,7 +539,11 @@ static bool hook_rva_tracked(uintptr_t module_base, uintptr_t rva, void *hook, v
     if (!module_base || !rva || !hook)
         return false;
     void *target = (void *)(module_base + rva);
-    // Avoid full maps scan (hung init on device). Prologue check only.
+    if (!maps_contains_exec((uintptr_t)target))
+    {
+        LOGD("hook_rva %s target %p not exec", tag, target);
+        return false;
+    }
     if (!hhooks::looks_like_a64(target))
     {
         LOGD("hook_rva %s target %p not a64 prologue", tag, target);
@@ -622,7 +628,8 @@ void update::init()
             c_esp->dbg_sdk_stage.store(s, std::memory_order_relaxed);
     };
 
-    // Resolve once — do not sleep 60s here (caller already retries).
+    // STABILITY BUILD: resolve bases + bind RVAs, NO Dobby game hooks / getrr / input.
+    // Bad hooks were crashing ~2s after inject and killing menu/watermark.
     set_stage(1);
     if (!base)
         base = resolve_il2cpp_base();
@@ -631,73 +638,46 @@ void update::init()
 
     if (!base && !unity_base)
     {
-        LOGI("update::init abort: no libil2cpp/libunity base");
+        LOGI("update::init abort: no bases");
         set_stage(2);
         return;
     }
-    if (!base)
-        set_stage(6);
-    LOGI("update::init il2cpp=%p unity=%p", (void *)base, (void *)unity_base);
+    LOGI("update::init STABLE il2cpp=%p unity=%p", (void *)base, (void *)unity_base);
 
-    dobby_set_near_trampoline(false);
-    set_stage(3); // bind
+    set_stage(3);
     c_globals->init();
-    set_stage(7); // hooks
 
-    const uintptr_t update_rva = Offsets::Method::PlayerController_Update;
-    const uintptr_t late_rva = Offsets::Method::PlayerController_LateUpdate;
-
-    auto hook_game = [&](uintptr_t rva, void *hook, void **out_orig, const char *tag) -> bool {
-        if (unity_base && hook_rva_tracked(unity_base, rva, hook, out_orig, tag))
-            return true;
-        if (base && base != unity_base && hook_rva_tracked(base, rva, hook, out_orig, tag))
-            return true;
-        return false;
-    };
-
-    static bool s_hooks_done = false;
+    // Optional PC hooks — OFF by default (Offsets::Hook::use_pc_update_hooks)
     bool hooked_pc = false, hooked_late = false;
-    bool hooked_sec = false, hooked_ter = false, hooked_ea = false, hooked_eb = false;
-    if (!s_hooks_done)
+    if (Offsets::Hook::use_pc_update_hooks)
     {
-        hooked_pc = hook_game(update_rva, (void *)new_update, (void **)&old_update, "PC.Update");
-        // ESP-only: skip secondary/tertiary/extra for now — less Dobby surface
-        hooked_late = hook_game(late_rva, (void *)new_lateupdate, (void **)&old_lateupdate, "PC.LateUpdate");
-        s_hooks_done = hooked_pc || hooked_late;
+        set_stage(7);
+        dobby_set_near_trampoline(false);
+        auto hook_game = [&](uintptr_t rva, void *hook, void **out_orig, const char *tag) -> bool {
+            if (unity_base && hook_rva_tracked(unity_base, rva, hook, out_orig, tag))
+                return true;
+            if (base && base != unity_base && hook_rva_tracked(base, rva, hook, out_orig, tag))
+                return true;
+            return false;
+        };
+        hooked_pc = hook_game(Offsets::Method::PlayerController_Update, (void *)new_update, (void **)&old_update, "PC.Update");
+        hooked_late = hook_game(Offsets::Method::PlayerController_LateUpdate, (void *)new_lateupdate, (void **)&old_lateupdate, "PC.LateUpdate");
     }
     else
     {
-        hooked_pc = old_update != nullptr;
-        hooked_late = old_lateupdate != nullptr;
+        LOGI("xxx PC Update hooks DISABLED (stable menu build)");
     }
 
-    LOGI("xxx RVA Update=%d Late=%d tracked=%d",
-         (int)hooked_pc, (int)hooked_late, hhooks::tracked_count());
-
-    // Soft optional API — never block ready
-    static bool s_api_tried = false;
-    if (!s_api_tried && base)
-    {
-        s_api_tried = true;
-        const uintptr_t dom = base + Offsets::Api::il2cpp_domain_get;
-        if (hhooks::looks_like_a64((void *)dom))
-            ::init();
-    }
-
-    static bool s_getrr_done = false;
-    if (!s_getrr_done && Offsets::Hook::use_getrr_bypass && unity_base)
+    if (Offsets::Hook::use_getrr_bypass && unity_base)
     {
         g.b_bypass = true;
-        bool ok = hhooks::install_getrr_bypass(unity_base);
-        LOGI("xxx getrr bypass %s", ok ? "ON" : "FAIL");
-        s_getrr_done = true;
+        hhooks::install_getrr_bypass(unity_base);
     }
 
     g_sdk_ready.store(true, std::memory_order_release);
     set_stage(8);
     if (c_esp)
         c_esp->dbg_sdk.store(1, std::memory_order_relaxed);
-    LOGI("xxx sdk READY pc=%d late=%d il2cpp=%p unity=%p",
-         (int)hooked_pc, (int)hooked_late, (void *)base, (void *)unity_base);
+    LOGI("xxx sdk READY stable pc=%d late=%d", (int)hooked_pc, (int)hooked_late);
 }
 

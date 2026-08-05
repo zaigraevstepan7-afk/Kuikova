@@ -422,32 +422,30 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
     c_egl->width = w;
     c_egl->heigth = h;
 
-    // NEVER call ::init()/img_to_asm from the GL thread every frame - that was
-    // crashing right after ImGui inited (il2cpp_domain_get via bad/racy base).
-    // Soft kickstart: if entry stuck before update::init (sdk idle), spawn init once.
-    if (!g_sdk_ready.load(std::memory_order_acquire) && c_update && c_esp)
+    // Soft kickstart AFTER overlay lives — never race before menu
+    if (egl_inited && !g_sdk_ready.load(std::memory_order_acquire) && c_update && c_esp)
     {
-        const int st = c_esp->dbg_sdk_stage.load(std::memory_order_relaxed);
-        if (st == 0) // idle — entry never entered update::init
+        static std::atomic<int> frames{0};
+        static std::atomic<bool> kick{false};
+        const int f = frames.fetch_add(1, std::memory_order_relaxed);
+        if (f >= 90 && c_esp->dbg_sdk_stage.load(std::memory_order_relaxed) == 0)
         {
-            static std::atomic<bool> kick{false};
             bool expected = false;
             if (kick.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
             {
-                c_esp->dbg_sdk_stage.store(1, std::memory_order_relaxed); // bases
+                c_esp->dbg_sdk_stage.store(1, std::memory_order_relaxed);
                 std::thread([]() {
                     pthread_setname_np(pthread_self(), "xxx_SdkKick");
-                    LOGI("EGL kickstart update::init (was idle)");
-                    for (int i = 0; i < 90 && !g_sdk_ready.load(std::memory_order_acquire); ++i)
+                    sleep(1);
+                    LOGI("EGL kickstart update::init (stable)");
+                    for (int i = 0; i < 30 && !g_sdk_ready.load(std::memory_order_acquire); ++i)
                     {
-                        if (c_esp)
-                            c_esp->dbg_sdk_stage.store(1, std::memory_order_relaxed);
                         base = resolve_il2cpp_base();
                         unity_base = resolve_unity_base();
                         if (base || unity_base)
                             c_update->init();
                         else if (c_esp)
-                            c_esp->dbg_sdk_stage.store(2, std::memory_order_relaxed); // no-il2cpp
+                            c_esp->dbg_sdk_stage.store(2, std::memory_order_relaxed);
                         sleep(1);
                     }
                 }).detach();
@@ -465,6 +463,7 @@ EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
         setup();
         apply_imgui_style();
         egl_inited = true;
+        g.b_watermark = true;
         LOGI("ImGui egl inited %dx%d", w, h);
     }
 
@@ -1018,49 +1017,43 @@ void *entry()
     }
     LOGI("entry render: egl_inited=%d", (int)egl_inited);
 
+    // Wait until overlay is actually drawing before touching game bases/hooks
+    for (int i = 0; i < 60 && !egl_inited; ++i)
+    {
+        init_render_hook();
+        sleep(1);
+    }
+    sleep(3); // menu/watermark first — then sdk
+
     if (!_il2cpp)
         _il2cpp = new il2cpp_t();
 
-    // Do NOT hang forever — status stays idle if we never call update::init.
-    for (int i = 0; i < 120; ++i)
+    for (int i = 0; i < 60; ++i)
     {
         if (c_esp)
-            c_esp->dbg_sdk_stage.store(1, std::memory_order_relaxed); // bases / wait-il2cpp
+            c_esp->dbg_sdk_stage.store(1, std::memory_order_relaxed);
         base = resolve_il2cpp_base();
         unity_base = resolve_unity_base();
-        if (base >= 0x10000ULL)
+        if (base >= 0x10000ULL || unity_base >= 0x10000ULL)
             break;
-        if (i == 5 || i == 30 || i == 60)
-            LOGI("wait il2cpp i=%d maps_il2cpp=%d maps_unity=%d unity=%p",
-                 i, count_maps_matching("il2cpp"), count_maps_matching("unity"), (void *)unity_base);
         sleep(1);
     }
 
-    if (!base)
-        base = resolve_il2cpp_base();
-    if (!unity_base)
-        unity_base = resolve_unity_base();
-
-    LOGI("game base il2cpp=%p unity=%p - starting update::init", (void *)base, (void *)unity_base);
-    // Proceed even if only unity found (hooks); TypeInfo needs il2cpp
+    LOGI("game base il2cpp=%p unity=%p - stable update::init", (void *)base, (void *)unity_base);
     if (base || unity_base)
         c_update->init();
     else if (c_esp)
         c_esp->dbg_sdk_stage.store(2, std::memory_order_relaxed);
 
-    // Keep retrying until sdk ready (overlay already lives)
-    for (int i = 0; i < 90 && !g_sdk_ready.load(std::memory_order_acquire); ++i)
+    for (int i = 0; i < 30 && !g_sdk_ready.load(std::memory_order_acquire); ++i)
     {
-        LOGI("retry update::init (%d) sdk_stage=%d il2cpp=%p unity=%p", i,
-             c_esp ? c_esp->dbg_sdk_stage.load(std::memory_order_relaxed) : -1,
-             (void *)base, (void *)unity_base);
         if (!base)
             base = resolve_il2cpp_base();
         if (!unity_base)
             unity_base = resolve_unity_base();
-        sleep(1);
         if (base || unity_base)
             c_update->init();
+        sleep(1);
     }
 
     // Keep process alive + retry egl if still dark
