@@ -473,8 +473,8 @@ static bool str_contains(uint64_t s, const char* needle) {
 }
 
 static int health_of(uint64_t p) {
-    float hp = rdf(p + OFF_PLAYER_HEALTH);
-    if (hp > 0.f && hp < 1000.f) return (int)hp;
+    // 0x7C on 0.39.2 is m_fLocalTime, NOT health — never treat it as HP (false
+    // positives and bad TPS/ESP gating). Photon custom property only.
     uint64_t pp = rd64(p + OFF_PLAYER_PHOTON_PTR);
     if (!ok(pp)) return 0;
     uint64_t pr = rd64(pp + OFF_PHOTON_PROPS_REG);
@@ -772,19 +772,16 @@ static bool looks_like_a64(void* p) {
     return true;
 }
 
-static void* bind_game_rva(uint64_t rva) {
-    if (!rva) return nullptr;
-    // Halalium RVAs are against libunity (g_base). Only fall back to libil2cpp
-    // if unity is missing — never bind a "looks like a64" hit in the wrong module first.
-    uintptr_t bases[2] = { (uintptr_t)g_base, (uintptr_t)g_il2 };
-    for (uintptr_t mod : bases) {
-        if (!mod) continue;
-        void* p = (void*)(mod + rva);
-        if (!looks_like_a64(p)) continue;
-        return p;
-    }
-    return nullptr;
+// Halalium RVAs are against libunity only. Falling back to libil2cpp at the same
+// offset would call unrelated code and crash.
+static void* bind_unity_rva(uint64_t rva) {
+    if (!rva || !g_base) return nullptr;
+    void* p = (void*)(g_base + rva);
+    if (!looks_like_a64(p)) return nullptr;
+    return p;
 }
+
+static void* bind_game_rva(uint64_t rva) { return bind_unity_rva(rva); }
 
 static void resolve_view_rvas() {
     if (g_view_rva_tried && fn_set_tps && fn_set_localpos) return;
@@ -801,8 +798,13 @@ static void resolve_view_rvas() {
 }
 
 // Camera.main.transform.localPosition = (0, 0, z) — exactly what halalium does.
+// Thunk ABI: get_main(mi=null); get_transform(self, mi=null); set_localpos(self, xyz, mi=null).
 static bool push_main_camera(float z) {
     if (!fn_cam_main || !fn_get_transform || !fn_set_localpos) return false;
+    if (!looks_like_a64((void*)fn_cam_main) || !looks_like_a64((void*)fn_get_transform) ||
+        !looks_like_a64((void*)fn_set_localpos))
+        return false;
+    if (!std::isfinite(z) || z > 0.f || z < -20.f) z = -2.f;
     void* cam = fn_cam_main(nullptr);
     if (!cam || !ok((uint64_t)cam)) return false;
     void* tr = fn_get_transform(cam, nullptr);
@@ -917,23 +919,21 @@ static void resolve_lu(){
     resolve_view_fns(pc);
 }
 
-// Exactly what libhalalium does in its LateUpdate cave, with the RVAs recovered
-// from that binary. The game's own set_tps swaps the arms rig for the full body.
+// Exactly Halalium LateUpdate @0x1d6ec4 for the local player:
+//   if (tps) { set_tps(p); cam=Camera.main; cam.transform.localPosition=(0,0,-d); }
+//   else     { set_fps(p); }
+// No set_visible / view_mode field writes here — those are ESP paths, not TPS.
 static void apply_body_view(void* player, bool tps_on) {
     if (!player || !ok((uint64_t)player)) return;
-    uint64_t lp = (uint64_t)player;
     if (tps_on) {
-        // view_mode_t: fps=1, tps=2 (Academic 0.39.2 dump)
-        wr8(lp + OFF_PLAYER_VIEW_MODE, 2);
-        wr8(lp + OFF_PLAYER_CHAR_VISIBLE, 1);
-        if (fn_set_tps) fn_set_tps(player, mi_or_self(mi_set_tps, player));
-        // Halalium Update forces the mesh via CharacterVisible + set_visible.
-        if (fn_set_visible) fn_set_visible(player, mi_or_self(mi_set_visible, player));
+        if (!fn_set_tps || !looks_like_a64((void*)fn_set_tps)) return;
+        // Halalium thunk: x0=player, x1=player (never null). Prefer real MethodInfo.
+        fn_set_tps(player, mi_or_self(mi_set_tps, player));
         push_main_camera(-tps_dist);
         g_tps_ok.store(true);
     } else {
-        wr8(lp + OFF_PLAYER_VIEW_MODE, 1);
-        if (fn_set_fps) fn_set_fps(player, mi_or_self(mi_set_fps, player));
+        if (fn_set_fps && looks_like_a64((void*)fn_set_fps))
+            fn_set_fps(player, mi_or_self(mi_set_fps, player));
         push_main_camera(0.f);
         g_tps_ok.store(false);
     }
@@ -951,7 +951,8 @@ static inline float clamp_pitch(float p, float m = 70.f) {
     return p;
 }
 
-// Undo the arms yeet older builds left behind, and keep the local body drawn.
+// Field backup after set_tps/set_fps. Halalium does not touch LOD fields — set_tps
+// owns the arms/body swap. We only undo old yeets and avoid re-enabling arms under TPS.
 static void third_person_model() {
     uint64_t pm = player_manager();
     if (!ok(pm)) return;
@@ -966,15 +967,22 @@ static void third_person_model() {
             wrf(arms + OFF_ARMS_LOCAL_POS + 8, 0.f);
         }
     }
-    uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
-    if (ok(arms_lod)) wr8(arms_lod + OFF_LOD_RENDER_ENABLED, 1);
 
-    if (!opt_tps) return;
-    wr8(lp + OFF_PLAYER_CHAR_VISIBLE, 1);
-    uint64_t char_lod = rd64(lp + OFF_PLAYER_CHAR_LOD);
-    if (ok(char_lod)) wr8(char_lod + OFF_LOD_RENDER_ENABLED, 1);
-    uint64_t skin_lod = rd64(lp + OFF_PLAYER_SKIN_LOD);
-    if (ok(skin_lod)) wr8(skin_lod + OFF_LOD_RENDER_ENABLED, 1);
+    if (opt_tps) {
+        // Keep body drawn; do not force-enable arms LOD (that undoes set_tps).
+        if (readable(lp + OFF_PLAYER_CHAR_VISIBLE, 1))
+            wr8(lp + OFF_PLAYER_CHAR_VISIBLE, 1);
+        uint64_t char_lod = rd64(lp + OFF_PLAYER_CHAR_LOD);
+        if (ok(char_lod) && readable(char_lod + OFF_LOD_RENDER_ENABLED, 1))
+            wr8(char_lod + OFF_LOD_RENDER_ENABLED, 1);
+        uint64_t skin_lod = rd64(lp + OFF_PLAYER_SKIN_LOD);
+        if (ok(skin_lod) && readable(skin_lod + OFF_LOD_RENDER_ENABLED, 1))
+            wr8(skin_lod + OFF_LOD_RENDER_ENABLED, 1);
+    } else {
+        uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
+        if (ok(arms_lod) && readable(arms_lod + OFF_LOD_RENDER_ENABLED, 1))
+            wr8(arms_lod + OFF_LOD_RENDER_ENABLED, 1);
+    }
 }
 
 // ---- Anti-aim: fake angles only while the game's Update runs ----
@@ -1061,7 +1069,7 @@ static bool is_local_player(void* p) {
 }
 
 static void hk_up(void* p, void* mi) {
-    if (!up_mp) return;
+    if (!up_mp || !p) return;
     bool local = opt_aa && is_local_player(p);
     if (local) aa_begin(p);
     ((void(*)(void*, void*))up_mp)(p, mi);
@@ -1073,16 +1081,17 @@ static void hk_up(void* p, void* mi) {
 static void hk_lu(void* p, void* mi) {
     if (!lu_mp) return;
     ((void(*)(void*, void*))lu_mp)(p, mi);
-    if (!is_local_player(p)) return;
+    if (!p || !is_local_player(p)) return;
 
     static bool applied = false;
     if (opt_tps) {
-        // Prefer living check, but don't block TPS solely on photon health parse.
+        // Halalium: photon health >= 1, else skip. If we can't parse health yet,
+        // still allow when the player has a main camera (spawned).
         int hp = health_of((uint64_t)p);
-        if (hp == 0) {
-            // 0x7C is localTime on 0.39.2 — treat "no parsed hp" as alive if we have a cam.
+        if (hp < 1) {
             uint64_t cam = rd64((uint64_t)p + OFF_PLAYER_MAIN_CAMERA);
-            if (!ok(cam)) return;
+            uint64_t photon = rd64((uint64_t)p + OFF_PLAYER_PHOTON_PTR);
+            if (!ok(cam) || !ok(photon)) return;
         }
         apply_body_view(p, true);
         third_person_model();
@@ -1096,7 +1105,7 @@ static void hk_lu(void* p, void* mi) {
 
 // Swap MethodInfo::methodPointer; il2cpp keeps it at 0x0 or 0x8 depending on build.
 static bool hook_method_ptr(MethodInfo* mi, void* hook, void** orig) {
-    if (!mi || !ok((uint64_t)mi)) return false;
+    if (!mi || !ok((uint64_t)mi) || !hook || !orig) return false;
     uintptr_t slot0 = (uintptr_t)rd64((uint64_t)mi + 0x0);
     uintptr_t slot8 = (uintptr_t)rd64((uint64_t)mi + 0x8);
     uintptr_t a = 0;
@@ -1104,10 +1113,8 @@ static bool hook_method_ptr(MethodInfo* mi, void* hook, void** orig) {
     if (slot8 > 0x100000 && readable(slot8, 4)) { a = slot8; ptr_off = 0x8; }
     else if (slot0 > 0x100000 && readable(slot0, 4)) { a = slot0; ptr_off = 0x0; }
     if (!a) return false;
-    if ((void*)a == hook) {
-        if (!*orig) *orig = (void*)a;
-        return true;
-    }
+    // Already pointing at our hook with no saved original → would recurse forever.
+    if ((void*)a == hook) return false;
     *orig = (void*)a;
     long pg = sysconf(_SC_PAGESIZE);
     uintptr_t page = ((uintptr_t)mi + ptr_off) & ~(uintptr_t)(pg - 1);
@@ -1142,17 +1149,21 @@ static void try_hook_lu(){
     resolve_view_rvas();
 
     if (!lu_hooked) {
-        void* target = bind_game_rva(RVA_PC_LATEUPDATE);
+        void* target = bind_unity_rva(RVA_PC_LATEUPDATE);
         void* tramp = nullptr;
-        if (target && a64hook::install(target, (void*)hk_lu, &tramp) && tramp) {
+        // If a previous inject already patched the prologue and we lost the
+        // trampoline, do NOT MethodInfo-swap on top — that recurses with no orig.
+        if (target && !a64hook::already_patched(target) &&
+            a64hook::install(target, (void*)hk_lu, &tramp) && tramp) {
             lu_mp = tramp;
             lu_hooked = true;
         }
     }
     if (!up_hooked && opt_aa) {
-        void* target = bind_game_rva(RVA_PC_UPDATE);
+        void* target = bind_unity_rva(RVA_PC_UPDATE);
         void* tramp = nullptr;
-        if (target && a64hook::install(target, (void*)hk_up, &tramp) && tramp) {
+        if (target && !a64hook::already_patched(target) &&
+            a64hook::install(target, (void*)hk_up, &tramp) && tramp) {
             up_mp = tramp;
             up_hooked = true;
         }
@@ -1161,9 +1172,14 @@ static void try_hook_lu(){
     // MethodInfo swap as a fallback when the prologue was not relocatable.
     if (!lu_hooked || (!up_hooked && opt_aa)) {
         if (!lu_mi || !up_mi) resolve_lu();
-        if (!lu_hooked && lu_mi && hook_method_ptr(lu_mi, (void*)hk_lu, &lu_mp) && lu_mp)
+        void* lu_tgt = bind_unity_rva(RVA_PC_LATEUPDATE);
+        void* up_tgt = bind_unity_rva(RVA_PC_UPDATE);
+        const bool lu_a64 = lu_tgt && a64hook::already_patched(lu_tgt);
+        const bool up_a64 = up_tgt && a64hook::already_patched(up_tgt);
+        if (!lu_hooked && !lu_a64 && lu_mi &&
+            hook_method_ptr(lu_mi, (void*)hk_lu, &lu_mp) && lu_mp)
             lu_hooked = true;
-        if (!up_hooked && opt_aa && up_mi &&
+        if (!up_hooked && opt_aa && !up_a64 && up_mi &&
             hook_method_ptr(up_mi, (void*)hk_up, &up_mp) && up_mp)
             up_hooked = true;
     }

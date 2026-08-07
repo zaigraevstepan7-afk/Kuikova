@@ -8,7 +8,7 @@
 #define OFF_LIST_ENTRY_BASE         0x30
 #define OFF_LIST_ENTRY_STRIDE       0x18
 
-#define OFF_PLAYER_HEALTH           0x7C
+#define OFF_PLAYER_HEALTH           0x7C  /* m_fLocalTime on 0.39.2 — NOT HP */
 #define OFF_PLAYER_TEAM             0x79
 #define OFF_PLAYER_MOVEMENT_CTRL    0x98
 #define OFF_PLAYER_PHOTON_PTR       0x160
