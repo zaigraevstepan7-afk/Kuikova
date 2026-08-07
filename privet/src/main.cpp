@@ -99,6 +99,7 @@ static float opt_aa_spin = 0.f;
 static bool menu_open = false;
 static float menu_alpha = 0.f;
 static float tps_dist = 2.5f;
+static std::atomic<bool> g_hooks_armed{false}; // PC Update/LateUpdate only after match/setup
 static int scr_w = 0, scr_h = 0;
 static std::mutex g_mtx;
 
@@ -1226,7 +1227,23 @@ static bool hook_method_ptr(MethodInfo* mi, void* hook, void** orig) {
 static bool lu_hooked;
 static bool up_hooked;
 
+// True once the local player is spawned in a round (not lobby/menu).
+static bool in_match() {
+    uint64_t pm = player_manager();
+    if (!ok(pm)) return false;
+    uint64_t lp = rd64(pm + OFF_PM_LOCAL_PLAYER);
+    if (!ok(lp)) return false;
+    uint64_t cam = rd64(lp + OFF_PLAYER_MAIN_CAMERA);
+    if (!ok(cam)) return false;
+    Vector3 pos = player_pos(lp);
+    return pos.x > -20000.f && pos.x < 20000.f &&
+           pos.y > -20000.f && pos.y < 20000.f &&
+           pos.z > -20000.f && pos.z < 20000.f &&
+           !(pos.x == 0.f && pos.y == 0.f && pos.z == 0.f);
+}
+
 static void try_hook_lu(){
+    if (!g_hooks_armed.load()) return;
     resolve_view_rvas();
 
     // Primary: Melodium/Halalium a64 inline hooks on libunity RVAs.
@@ -1258,6 +1275,23 @@ static void try_hook_lu(){
         lu_hooked = true;
     if (!up_hooked && up_mi && hook_method_ptr(up_mi, (void*)hk_up, &up_mp) && up_mp)
         up_hooked = true;
+}
+
+// Arm + install PlayerController hooks. Call only in-match or via menu button.
+static void setup_hooks_now() {
+    g_hooks_armed.store(true);
+    resolve_view_rvas();
+    try_hook_lu();
+    ensure_tps_hf();
+}
+
+// Auto-arm once spawned in a round (never in lobby — AC detect).
+static void maybe_auto_hooks() {
+    if (lu_hooked && up_hooked) return;
+    if (!in_match()) return;
+    // Only when a feature that needs game-thread hooks is on.
+    if (!(opt_tps || opt_aa)) return;
+    setup_hooks_now();
 }
 
 static bool view_matrix(float out[16]) {
@@ -1573,6 +1607,14 @@ static void draw_menu() {
             melo_checkbox("third person", &opt_tps);
             if (opt_tps)
                 ImGui::SliderFloat("distance", &tps_dist, 2.f, 6.f, "%.1f");
+            ImGui::Spacing();
+            if (lu_hooked && up_hooked) {
+                ImGui::TextDisabled("hooks ready");
+            } else if (ImGui::Button("setup hooks", ImVec2(-1, 0))) {
+                setup_hooks_now();
+            }
+            if (!lu_hooked || !up_hooked)
+                ImGui::TextDisabled("press in match");
         }
         ImGui::EndChild();
         ImGui::SameLine();
@@ -1652,6 +1694,7 @@ static void render_frame() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui::NewFrame();
     handle_touch();
+    maybe_auto_hooks();
     draw_menu();
     // Field writes only here — game methods are called from the LateUpdate hook.
     if (opt_tps) tps_tick();
@@ -1852,11 +1895,9 @@ static void* thread_main(void*) {
     if (!g_il2) g_il2 = resolve_il2();
 
     build_segs();
-    il2cpp::init_api(g_base); // AA MethodInfo hooks only; TPS/ESP use field R/W
+    il2cpp::init_api(g_base); // field R/W; PC hooks deferred until match/setup
     touch_init();
-    resolve_lu();
-    try_hook_lu();
-    ensure_tps_hf();
+    // Do NOT hook Update/LateUpdate here — AC detects lobby hooks.
     try_hook_egl();
     try_hook_input();
 
@@ -1866,9 +1907,9 @@ static void* thread_main(void*) {
         if (!g_il2) g_il2 = resolve_il2();
         try_hook_egl();
         try_hook_input();
-        try_hook_lu();
         if (!touch_count_fn || !get_touch_fn) touch_init();
-        ensure_tps_hf();
+        // Retry PC hooks only after user/match armed them.
+        if (g_hooks_armed.load()) try_hook_lu();
         uint64_t new_base = pick_base();
         uintptr_t new_il2 = resolve_il2();
         if (new_il2 && new_il2 != g_il2) {
@@ -1893,8 +1934,8 @@ static void* thread_main(void*) {
             g_unity_helpers_tried = false;
             g_view_rva_tried = false;
             g_body_ok.store(false);
-            resolve_lu();
-            try_hook_lu();
+            // Keep armed flag; reinstall only if still armed (user already set up).
+            if (g_hooks_armed.load()) try_hook_lu();
         }
     }
     return nullptr;
