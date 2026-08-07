@@ -5,7 +5,7 @@ LOCAL_PATH := $(call my-dir)
 # ---------------- payload ----------------
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := payload
+LOCAL_MODULE := xxxstux
 
 LOCAL_SRC_FILES := \
     ../src/main.cpp \
@@ -44,7 +44,8 @@ LOCAL_LDFLAGS := \
     -Wl,-z,noexecstack \
     -Wl,--export-dynamic-symbol=JNI_OnLoad \
     -Wl,--export-dynamic-symbol=payload_entry \
-    -Wl,--export-dynamic-symbol=EntryPoint
+    -Wl,--export-dynamic-symbol=EntryPoint \
+    -Wl,--export-dynamic-symbol=xxxstux_entry
 
 # Keep .symtab for custom inj + Kitty findSymbol; never strip entry exports.
 LOCAL_STRIP_MODE := none

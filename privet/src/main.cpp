@@ -90,9 +90,15 @@ __attribute__((visibility("hidden"), used)) char* strstr(const char* h, const ch
 static uintptr_t g_base = 0;
 static uintptr_t g_il2 = 0;
 static bool opt_box = true, opt_health = true, opt_dist = true, opt_skeleton = false, opt_tps = false;
+static bool opt_aa = false, opt_aa_jitter = false, opt_aa_chaos = false;
+static int opt_aa_pitch = 0; // 0 local, 1 up, 2 down
+static int opt_aa_yaw = 0;   // 0 local, 1 backward, 2 spiral, 3 chaos
+static int opt_aa_range = 15;
+static int opt_aa_frames = 2;
+static float opt_aa_spin = 0.f;
 static bool menu_open = false;
 static float menu_alpha = 0.f;
-static float tps_dist = 3.5f;
+static float tps_dist = 2.5f;
 static int scr_w = 0, scr_h = 0;
 static std::mutex g_mtx;
 
@@ -210,6 +216,7 @@ static inline bool obj_ok(uint64_t a) {
     return readable(k, 8) && k > 0x1000000;
 }
 static inline float rdf(uint64_t a) { return readable(a, 4) ? *(float*)a : 0.f; }
+static inline void wrf(uint64_t a, float v) { if (readable(a, 4)) *(float*)a = v; }
 static inline void rdv(uint64_t a, Vector3& v) {
     if (readable(a, sizeof(Vector3))) memcpy(&v, (void*)a, sizeof(Vector3));
     else memset(&v, 0, sizeof(Vector3));
@@ -726,8 +733,23 @@ static void* mp(const void* m) {
 
 static void* vm_apply;
 static void* vm_settps2;
+static void (*fn_set_tps)(void*) = nullptr;
+static void (*fn_set_fps)(void*) = nullptr;
+static void (*fn_set_euler)(void*, Vector3) = nullptr;
+static Vector3 (*fn_get_pos_ret)(void*) = nullptr;
+static Vector3 (*fn_get_fwd)(void*) = nullptr;
+static void (*fn_set_pos)(void*, Vector3) = nullptr;
 
 static void resolve_view_methods() {
+    if (!g_il2) g_il2 = resolve_il2();
+    if (g_il2) {
+        if (!fn_set_tps) fn_set_tps = (void (*)(void*))(g_il2 + OFF_SET_TPS);
+        if (!fn_set_fps) fn_set_fps = (void (*)(void*))(g_il2 + OFF_SET_FPS);
+        if (!fn_set_euler) fn_set_euler = (void (*)(void*, Vector3))(g_il2 + OFF_SET_EULER_ANGLES);
+        if (!fn_get_fwd) fn_get_fwd = (Vector3 (*)(void*))(g_il2 + OFF_GET_FORWARD);
+        if (!fn_set_pos) fn_set_pos = (void (*)(void*, Vector3))(g_il2 + OFF_SET_POSITION);
+        if (!fn_get_pos_ret) fn_get_pos_ret = (Vector3 (*)(void*))(g_il2 + OFF_GET_POSITION);
+    }
     if ((vm_apply && vm_settps2) || !il2cpp::class_get_methods || !il2cpp::method_get_name) return;
     Il2CppDomain* d = il2cpp::domain_get();
     if (!d) return;
@@ -773,43 +795,212 @@ static bool tps_init(){
     cgt=(void* (*)(void*))mp(il2cpp::class_get_method_from_name(c,"get_transform",0));
     tgf=(Vector3 (*)(void*))mp(il2cpp::class_get_method_from_name(t,"get_forward",0));
     tsp=(void (*)(void*,Vector3))mp(il2cpp::class_get_method_from_name(t,"set_position",1));
-    if(!cm||!cgt||!tgf||!tsp)return false;
+    resolve_view_methods();
     resolve_lu();
-    return true;
+    return cm && cgt && (tgf || fn_get_fwd) && (tsp || fn_set_pos);
 }
 
-static void tps(void* p){
-    if(!cm||!cgt||!tgf||!tsp)return;
-    Vector3 pos=player_pos((uint64_t)p);
-    if(!(pos.x>-20000&&pos.x<20000&&pos.y>-20000&&pos.y<20000&&pos.z>-20000&&pos.z<20000))return;
-    void* c=cm();if(!c)return;
-    void* t=cgt(c);if(!t)return;
-    Vector3 f=tgf(t);
-    if(!(f.x>-10&&f.x<10&&f.y>-10&&f.y<10&&f.z>-10&&f.z<10))return;
-    if(f.x*f.x+f.y*f.y+f.z*f.z<0.01f)return;
-    Vector3 s;
-    s.x=pos.x+f.x*-tps_dist;
-    s.y=pos.y+1.5f+f.y*-tps_dist;
-    s.z=pos.z+f.z*-tps_dist;
-    static Vector3 sm;
-    static bool sm_init = false;
-    if (!sm_init) {
-        sm = s;
-        sm_init = true;
-    }
-    // Reset lerp if camera jumped too far (respawn / teleport)
-    float jdx = s.x - sm.x, jdy = s.y - sm.y, jdz = s.z - sm.z;
-    if (jdx*jdx + jdy*jdy + jdz*jdz > 25.f) {
-        sm = s;
+static inline float norm_yaw(float yaw) {
+    while (yaw > 180.f) yaw -= 360.f;
+    while (yaw < -180.f) yaw += 360.f;
+    return yaw;
+}
+static inline float clamp_pitch(float p, float m = 70.f) {
+    if (p > m) p = m;
+    if (p < -m) p = -m;
+    return p;
+}
+
+// Melodium visual::third_view (without sphere_cast — soft pullback)
+static void third_view(void* player) {
+    if (!opt_tps || !player) return;
+    Vector3 (*get_fwd_v)(void*) = fn_get_fwd ? fn_get_fwd : tgf;
+    void (*set_pos)(void*, Vector3) = fn_set_pos ? fn_set_pos : tsp;
+    if (!cm || !cgt || !get_fwd_v || !set_pos) return;
+
+    Vector3 location = player_pos((uint64_t)player);
+    if (!(location.x > -20000 && location.x < 20000)) return;
+
+    void* cam = cm();
+    if (!cam) return;
+    void* tr = cgt(cam);
+    if (!tr) return;
+    Vector3 forward = get_fwd_v(tr);
+    if (forward.x * forward.x + forward.y * forward.y + forward.z * forward.z < 0.01f) return;
+
+    Vector3 camera_position;
+    camera_position.x = location.x + forward.x * -tps_dist;
+    camera_position.y = location.y + 1.50f + forward.y * -tps_dist;
+    camera_position.z = location.z + forward.z * -tps_dist;
+
+    static Vector3 smoothed(0, 0, 0);
+    static bool init = false;
+    if (!init) { smoothed = camera_position; init = true; }
+    float jdx = camera_position.x - smoothed.x;
+    float jdy = camera_position.y - smoothed.y;
+    float jdz = camera_position.z - smoothed.z;
+    if (jdx * jdx + jdy * jdy + jdz * jdz > 25.f) {
+        smoothed = camera_position;
     } else {
-        sm.x += (s.x - sm.x) * 0.688f;
-        sm.y += (s.y - sm.y) * 0.688f;
-        sm.z += (s.z - sm.z) * 0.688f;
+        // Melodium ImLerp factor 0.688
+        smoothed.x += (camera_position.x - smoothed.x) * 0.688f;
+        smoothed.y += (camera_position.y - smoothed.y) * 0.688f;
+        smoothed.z += (camera_position.z - smoothed.z) * 0.688f;
     }
-    tsp(t, sm);
+    set_pos(tr, smoothed);
 }
 
-static int vis_state;
+// ---- Melodium antiaim (input filter + late camera restore) ----
+struct Euler { float pitch, yaw, roll; };
+static Euler aa_orig{};
+static bool aa_orig_set = false;
+static void (*og_input_filter)(void* thiz, void* inputs) = nullptr;
+static std::atomic<bool> g_aa_hooked{false};
+
+static uint64_t game_controller() {
+    if (!g_il2) g_il2 = resolve_il2();
+    if (!g_il2) return 0;
+    uint64_t v1 = rd64(g_il2 + OFF_GAME_CONTROLLER);
+    if (!ok(v1)) return 0;
+    // static_fields path
+    uint64_t sf = rd64(v1 + 0x90);
+    if (ok(sf)) {
+        uint64_t inst = rd64(sf + 0x10);
+        if (ok(inst)) return inst;
+    }
+    // lazy path (same as PlayerManager)
+    uint64_t v2 = rd64(v1 + 0x58);
+    if (!ok(v2)) return 0;
+    uint64_t v3 = rd64(v2 + 0xB8);
+    if (!ok(v3)) return 0;
+    return rd64(v3 + 0x0);
+}
+
+static void aa_apply_to_inputs(void* local, void* inputs) {
+    if (!opt_aa || !local || !inputs) {
+        aa_orig_set = false;
+        return;
+    }
+    uint64_t aim = rd64((uint64_t)local + OFF_PLAYER_AIM);
+    if (!ok(aim)) return;
+    uint64_t ad = rd64(aim + OFF_AIM_AIMING_DATA);
+    if (!ok(ad)) return;
+
+    float aim_pitch = rdf(ad + OFF_AIMDATA_CUR_AIM + 0);
+    float euler_yaw = rdf(ad + OFF_AIMDATA_CUR_EULER + 4);
+    float dx = rdf((uint64_t)inputs + OFF_INPUTS_DELTA_AIM);
+    float dy = rdf((uint64_t)inputs + OFF_INPUTS_DELTA_AIM + 4);
+    bool jump = rd8((uint64_t)inputs + OFF_INPUTS_JUMP) != 0;
+    bool fire = rd8((uint64_t)inputs + OFF_INPUTS_FIRE) != 0;
+
+    if (!aa_orig_set) {
+        aa_orig = {aim_pitch, euler_yaw, 0.f};
+        aa_orig_set = true;
+    }
+    aa_orig.pitch = clamp_pitch(aa_orig.pitch - dx);
+    aa_orig.yaw = norm_yaw(aa_orig.yaw + dy);
+
+    Euler aa = aa_orig;
+    switch (opt_aa_pitch) {
+        case 1: aa.pitch = -90.f; break;
+        case 2: aa.pitch = 90.f; break;
+        default: break;
+    }
+
+    float base_yaw = aa_orig.yaw;
+    switch (opt_aa_yaw) {
+        case 1: base_yaw = 165.f; break;
+        case 2: {
+            static float ang = 0.f, rad = 0.f;
+            ang += 8.f; rad += 0.5f;
+            if (ang >= 360.f) ang = rad = 0.f;
+            base_yaw = ang + (sinf(rad) * 180.f);
+            break;
+        }
+        case 3:
+            aa.pitch = (float)(rand() % 179 - 89);
+            base_yaw = (float)(rand() % 360);
+            break;
+        default: break;
+    }
+
+    if (opt_aa_chaos && jump) {
+        aa.pitch = (float)(rand() % 179 - 89);
+        base_yaw = (float)(rand() % 360);
+    }
+
+    if (opt_aa_spin != 0.f) {
+        static float spin = 0.f;
+        spin += opt_aa_spin;
+        if (spin >= 360.f) spin -= 360.f;
+        if (spin < 0.f) spin += 360.f;
+        base_yaw = spin;
+    }
+
+    if (opt_aa_jitter && opt_aa_spin == 0.f) {
+        static int frames = 0;
+        static bool flip = false;
+        int need = opt_aa_frames > 0 ? opt_aa_frames : 1;
+        if (frames >= need) { frames = 0; flip = !flip; }
+        ++frames;
+        base_yaw = norm_yaw(base_yaw + (flip ? (float)opt_aa_range : (float)-opt_aa_range));
+    }
+
+    // Melodium: yaw_angle = Normalize(orig_yaw + base_yaw) except spin/chaos replace base entirely
+    if (opt_aa_spin != 0.f || opt_aa_yaw == 2 || opt_aa_yaw == 3 || (opt_aa_chaos && jump))
+        aa.yaw = norm_yaw(base_yaw);
+    else if (opt_aa_yaw == 1 || opt_aa_jitter)
+        aa.yaw = norm_yaw(aa_orig.yaw + base_yaw);
+    else
+        aa.yaw = aa_orig.yaw;
+    aa.pitch = clamp_pitch(aa.pitch);
+
+    if (!fire) {
+        wrf(ad + OFF_AIMDATA_CUR_AIM + 0, aa.pitch);
+        wrf(ad + OFF_AIMDATA_CUR_EULER + 4, aa.yaw);
+    } else {
+        wrf(ad + OFF_AIMDATA_CUR_AIM + 0, aa_orig.pitch);
+        wrf(ad + OFF_AIMDATA_CUR_EULER + 4, aa_orig.yaw);
+    }
+}
+
+static void hk_input_filter(void* thiz, void* inputs) {
+    uint64_t pm = player_manager();
+    void* local = nullptr;
+    if (ok(pm)) local = (void*)rd64(pm + OFF_PM_LOCAL_PLAYER);
+    if (local && inputs) aa_apply_to_inputs(local, inputs);
+    else aa_orig_set = false;
+    if (og_input_filter) og_input_filter(thiz, inputs);
+}
+
+static void aa_late_update(void* local) {
+    if (!opt_aa || !local || !aa_orig_set) return;
+    uint64_t holder = rd64((uint64_t)local + OFF_PLAYER_CAM_HOLDER);
+    if (!ok(holder) || !fn_set_euler) return;
+    Vector3 e{aa_orig.pitch, aa_orig.yaw, 0.f};
+    fn_set_euler((void*)holder, e);
+}
+
+static void try_hook_aa_filter() {
+    if (g_aa_hooked.load()) return;
+    uint64_t gc = game_controller();
+    if (!ok(gc)) return;
+    uint64_t controls = rd64(gc + OFF_GC_PLAYER_CONTROLS);
+    if (!ok(controls)) return;
+    uint64_t filter = rd64(controls + OFF_PC_INPUT_FILTER);
+    if (!ok(filter)) return;
+    // Melodium c_delegate: invoke_impl at +0x18 (after pad[16] + method_ptr at 0x10)
+    // struct: pad[16], method_ptr@0x10, invoke_impl@0x18
+    void** p_invoke = (void**)(filter + 0x18);
+    if (!ok((uint64_t)p_invoke) || !readable((uint64_t)p_invoke, 8)) return;
+    void* cur = *p_invoke;
+    if (!cur || cur == (void*)hk_input_filter) return;
+    if (!og_input_filter) og_input_filter = (void (*)(void*, void*))cur;
+    *p_invoke = (void*)hk_input_filter;
+    g_aa_hooked.store(true);
+}
+
+static int vis_state = -1;
 
 static void hk_lu(void* p){
     if (!lu_mp) return;
@@ -818,24 +1009,28 @@ static void hk_lu(void* p){
         uint64_t pm = player_manager();
         if (ok(pm) && (uint64_t)p == rd64(pm + OFF_PM_LOCAL_PLAYER)) is_local = 1;
     }
-    if (opt_tps && is_local) {
-        if (vm_settps2) ((void(*)(void*))vm_settps2)((void*)p);
-        int cur = rd32((uint64_t)p + 0x134);
-        if (cur != 2) {
-            if (vm_apply) ((void(*)(void*, int))vm_apply)((void*)p, 2);
+    if (is_local) {
+        resolve_view_methods();
+        if (opt_tps) {
+            // Melodium: set_tps() then third_view in LateUpdate
+            if (fn_set_tps) fn_set_tps(p);
+            else if (vm_settps2) ((void(*)(void*))vm_settps2)(p);
+            int cur = rd32((uint64_t)p + OFF_PLAYER_VIEW_MODE);
+            if (cur != 2 && vm_apply) ((void(*)(void*, int))vm_apply)(p, 2);
+            wr32((uint64_t)p + OFF_PLAYER_VIEW_MODE, 2);
+        } else if (vis_state == 1) {
+            if (fn_set_fps) fn_set_fps(p);
+            if (vm_apply) ((void(*)(void*, int))vm_apply)(p, 1);
+            wr32((uint64_t)p + OFF_PLAYER_VIEW_MODE, 1);
         }
-        tps(p);
+        vis_state = opt_tps ? 1 : 0;
     }
+
     ((void(*)(void*))lu_mp)(p);
-    if (is_local && vis_state != (int)opt_tps) {
-        vis_state = (int)opt_tps;
-        int cur = rd32((uint64_t)p + 0x134);
-        uint64_t cfps = rd64((uint64_t)p + 0x50);
-        if (!opt_tps && cur != 1) {
-            if (vm_apply) ((void(*)(void*, int))vm_apply)((void*)p, 1);
-            if (cfps) wr32(cfps + 0x30, 1);
-        }
-        wr32((uint64_t)p + 0x134, opt_tps ? 2 : 1);
+
+    if (is_local) {
+        if (opt_tps) third_view(p);
+        aa_late_update(p);
     }
 }
 
@@ -1056,8 +1251,8 @@ static int draw_esp() {
 }
 
 static void draw_watermark() {
-    const char* brand = "privet";
-    const char* line = "menu · 0.39.2";
+    const char* brand = "xxxstux";
+    const char* line = "t.me · 0.39.2";
 
     ImGui::SetNextWindowPos(ImVec2(16.f, 16.f), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.0f);
@@ -1151,10 +1346,10 @@ static void draw_menu() {
 
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, menu_alpha);
     ImGui::SetNextWindowPos(ImVec2(16.f, 96.f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(420.f, 360.f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(ImVec2(360.f, 280.f), ImVec2(700.f, 700.f));
+    ImGui::SetNextWindowSize(ImVec2(460.f, 520.f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(380.f, 320.f), ImVec2(800.f, 900.f));
 
-    if (ImGui::Begin("##privet_melo", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar)) {
+    if (ImGui::Begin("##xxxstux_melo", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar)) {
         for (int i = 0; i < 8; i++) {
             ImColor borderCol = ImColor(35, 35, 35, 255);
             if (i == 1 || i == 7) borderCol = ImColor(55, 55, 55, 255);
@@ -1167,18 +1362,37 @@ static void draw_menu() {
         }
 
         ImGui::Dummy(ImVec2(0, 8));
-        ImGui::Text("privet");
+        ImGui::Text("xxxstux");
         ImGui::Separator();
         ImGui::Dummy(ImVec2(0, 6));
 
-        if (ImGui::BeginChild("esp", ImVec2(0, 0), ImGuiChildFlags_Border)) {
+        float half = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+        if (ImGui::BeginChild("visuals", ImVec2(half, 0), ImGuiChildFlags_Border)) {
+            ImGui::Text("visuals");
             melo_checkbox("box", &opt_box);
             melo_checkbox("health", &opt_health);
             melo_checkbox("distance", &opt_dist);
             melo_checkbox("skeleton", &opt_skeleton);
             melo_checkbox("third person", &opt_tps);
             if (opt_tps)
-                ImGui::SliderFloat("tps dist", &tps_dist, 2.f, 6.f, "%.1f");
+                ImGui::SliderFloat("distance", &tps_dist, 2.f, 6.f, "%.1f");
+        }
+        ImGui::EndChild();
+        ImGui::SameLine();
+        if (ImGui::BeginChild("antiaim", ImVec2(0, 0), ImGuiChildFlags_Border)) {
+            ImGui::Text("anti aims");
+            melo_checkbox("anti aims", &opt_aa);
+            const char* pitch_items = "local\0up\0down\0";
+            const char* yaw_items = "local\0backward\0spiral\0chaos\0";
+            ImGui::Combo("pitch", &opt_aa_pitch, pitch_items);
+            ImGui::Combo("yaw", &opt_aa_yaw, yaw_items);
+            melo_checkbox("jitter", &opt_aa_jitter);
+            if (opt_aa_jitter) {
+                ImGui::SliderInt("range", &opt_aa_range, 0, 50);
+                ImGui::SliderInt("frames", &opt_aa_frames, 0, 30);
+            }
+            ImGui::SliderFloat("spin speed", &opt_aa_spin, 0.f, 180.f, "%.0f");
+            melo_checkbox("random in jump", &opt_aa_chaos);
         }
         ImGui::EndChild();
     }
@@ -1457,6 +1671,7 @@ static void* thread_main(void*) {
         if (!g_il2) g_il2 = resolve_il2();
         try_hook_egl();
         try_hook_input();
+        try_hook_aa_filter();
         try_hook_lu();
         if (!touch_count_fn || !get_touch_fn) touch_init();
         if (done < 5) { resolve_view_methods(); done++; }
@@ -1496,10 +1711,14 @@ static void start_once() {
 }
 
 // Custom inj + KittyMemoryEx look these up by name; keep them exported and sized.
-extern "C" __attribute__((visibility("default"))) void payload_entry(void* base) {
+extern "C" __attribute__((visibility("default"))) void xxxstux_entry(void* base) {
     (void)base;
     try_hook_egl();
     start_once();
+}
+
+extern "C" __attribute__((visibility("default"))) void payload_entry(void* base) {
+    xxxstux_entry(base);
 }
 
 extern "C" __attribute__((visibility("default"))) void EntryPoint(void) {
