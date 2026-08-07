@@ -717,9 +717,6 @@ static void* (*cm)();
 static void* (*cgt)(void*);
 static Vector3 (*tgf)(void*);
 static void (*tsp)(void*, Vector3);
-static Vector3 (*tgp)(void*);
-static Vector3 (*tge)(void*);
-static void (*tse)(void*, Vector3);
 static MethodInfo* lu_mi;
 static void* lu_mp;
 static MethodInfo* up_mi;
@@ -739,8 +736,9 @@ static void* mp(const void* m) {
 static void* vm_apply;
 static void* vm_settps2;
 
-// Resolve the two obfuscated PlayerController view helpers by scanning for
-// void(int) / void() pairs — RVA tables from other cheats do not match here.
+// The two obfuscated PlayerController view helpers, matched by name.
+// Their names come from a 0.39.2 dump and may be absent on other builds,
+// in which case third person falls back to plain field writes.
 static void resolve_view_methods() {
     if ((vm_apply && vm_settps2) || !il2cpp::class_get_methods || !il2cpp::method_get_name) return;
     Il2CppDomain* d = il2cpp::domain_get();
@@ -793,18 +791,16 @@ static bool tps_init(){
     cgt=(void* (*)(void*))mp(il2cpp::class_get_method_from_name(c,"get_transform",0));
     tgf=(Vector3 (*)(void*))mp(il2cpp::class_get_method_from_name(t,"get_forward",0));
     tsp=(void (*)(void*,Vector3))mp(il2cpp::class_get_method_from_name(t,"set_position",1));
-    tgp=(Vector3 (*)(void*))mp(il2cpp::class_get_method_from_name(t,"get_position",0));
-    tge=(Vector3 (*)(void*))mp(il2cpp::class_get_method_from_name(t,"get_eulerAngles",0));
-    tse=(void (*)(void*,Vector3))mp(il2cpp::class_get_method_from_name(t,"set_eulerAngles",1));
     resolve_view_methods();
     resolve_lu();
     return cm && cgt && tgf && tsp;
 }
 
 static inline float norm_yaw(float yaw) {
-    while (yaw > 180.f) yaw -= 360.f;
-    while (yaw < -180.f) yaw += 360.f;
-    return yaw;
+    if (!std::isfinite(yaw)) return 0.f;
+    yaw = fmodf(yaw + 180.f, 360.f);
+    if (yaw < 0.f) yaw += 360.f;
+    return yaw - 180.f;
 }
 static inline float clamp_pitch(float p, float m = 70.f) {
     if (p > m) p = m;
@@ -862,10 +858,10 @@ static void tps_set_view(void* p, bool on) {
     if (vm_apply) ((void(*)(void*, int))vm_apply)(p, on ? 2 : 1);
 }
 
-// ---- Anti-aim: fake angles in Update, real camera restored in LateUpdate ----
+// ---- Anti-aim: fake angles only while the game's Update runs ----
 struct Euler { float pitch, yaw, roll; };
 static Euler aa_real{};
-static bool aa_real_set = false;
+static uint64_t aa_data = 0;
 
 static float aa_fake_yaw(float real_yaw) {
     float yaw = real_yaw;
@@ -900,8 +896,10 @@ static float aa_fake_yaw(float real_yaw) {
     return yaw;
 }
 
-static void aa_update(void* local) {
-    if (!local) { aa_real_set = false; return; }
+// Write fake angles right before the game's Update reads them.
+static void aa_begin(void* local) {
+    aa_data = 0;
+    if (!opt_aa || !local) return;
     uint64_t aim = rd64((uint64_t)local + OFF_PLAYER_AIM);
     if (!ok(aim)) return;
     uint64_t ad = rd64(aim + OFF_AIM_AIMING_DATA);
@@ -909,12 +907,11 @@ static void aa_update(void* local) {
 
     float pitch = rdf(ad + OFF_AIMDATA_CUR_AIM);
     float yaw = rdf(ad + OFF_AIMDATA_CUR_EULER + 4);
-    if (!(pitch > -720.f && pitch < 720.f && yaw > -720.f && yaw < 720.f)) return;
+    if (!std::isfinite(pitch) || !std::isfinite(yaw)) return;
+    if (pitch < -720.f || pitch > 720.f || yaw < -720.f || yaw > 720.f) return;
 
-    // Remember the angles the player actually aims with before faking them.
     aa_real = {pitch, yaw, 0.f};
-    aa_real_set = true;
-    if (!opt_aa) return;
+    aa_data = ad;
 
     float fake_pitch = pitch;
     switch (opt_aa_pitch) {
@@ -929,13 +926,13 @@ static void aa_update(void* local) {
     wrf(ad + OFF_AIMDATA_CUR_EULER + 4, aa_fake_yaw(yaw));
 }
 
-// Restore the view so the local player still sees their real angles.
-static void aa_late_update(void* local) {
-    if (!opt_aa || !local || !aa_real_set || !tse) return;
-    uint64_t holder = rd64((uint64_t)local + OFF_PLAYER_CAM_HOLDER);
-    if (!ok(holder)) return;
-    Vector3 e{aa_real.pitch, aa_real.yaw, 0.f};
-    tse((void*)holder, e);
+// Put the player's own angles back so the next frame reads real values
+// and the local view is unaffected.
+static void aa_end() {
+    if (!aa_data) return;
+    wrf(aa_data + OFF_AIMDATA_CUR_AIM, aa_real.pitch);
+    wrf(aa_data + OFF_AIMDATA_CUR_EULER + 4, aa_real.yaw);
+    aa_data = 0;
 }
 
 static bool is_local_player(void* p) {
@@ -948,15 +945,16 @@ static int vis_state = -1;
 
 static void hk_up(void* p) {
     if (!up_mp) return;
-    if (is_local_player(p)) aa_update(p);
+    bool local = is_local_player(p);
+    if (local) aa_begin(p);
     ((void(*)(void*))up_mp)(p);
+    if (local) aa_end();
 }
 
 static void hk_lu(void* p){
     if (!lu_mp) return;
     bool is_local = is_local_player(p);
     if (is_local) {
-        resolve_view_methods();
         if (opt_tps) {
             tps_set_view(p, true);
             vis_state = 1;
@@ -968,10 +966,7 @@ static void hk_lu(void* p){
 
     ((void(*)(void*))lu_mp)(p);
 
-    if (is_local) {
-        if (opt_tps) third_view(p);
-        aa_late_update(p);
-    }
+    if (is_local && opt_tps) third_view(p);
 }
 
 // Swap MethodInfo::methodPointer; il2cpp keeps it at 0x0 or 0x8 depending on build.
@@ -1617,7 +1612,7 @@ static void* thread_main(void*) {
         try_hook_input();
         try_hook_lu();
         if (!touch_count_fn || !get_touch_fn) touch_init();
-        if (!cm || !cgt || !tgf || !tsp || !tse) tps_init();
+        if (!cm || !cgt || !tgf || !tsp) tps_init();
         if (done < 5) { resolve_view_methods(); done++; }
         uint64_t new_base = pick_base();
         if (!new_base) new_base = find_lib("libil2cpp.so");

@@ -96,9 +96,7 @@
 #define OFF_INPUT_GET_TOUCH_COUNT   0x684E370ULL
 
 // PlayerController fields (AcademicDLC 0.39.2 dump)
-#define OFF_PLAYER_CAM_HOLDER       0x28
 #define OFF_PLAYER_AIM              0x80
-#define OFF_PLAYER_TRANSFORM        0x100
 #define OFF_PLAYER_VIEW_MODE        0x134
 #define OFF_AIM_AIMING_DATA         0x90
 #define OFF_AIMDATA_CUR_AIM         0x18
