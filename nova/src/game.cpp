@@ -1,11 +1,10 @@
 #include "game.hpp"
 #include "offsets.hpp"
 #include "mem.hpp"
-#include "stealth.hpp"
+#include "module_base.hpp"
 
 #include <cstdio>
 #include <cstring>
-#include <fstream>
 #include <string>
 #include <vector>
 #include <cmath>
@@ -16,99 +15,85 @@ bool finite3(const Vec3& v) {
     return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
 }
 
-bool finite4(const Mat4& m) {
-    float sum = 0.f;
-    for (int i = 0; i < 16; ++i) {
-        if (!std::isfinite(m.m[i])) return false;
-        sum += std::fabs(m.m[i]);
-    }
-    return sum > 0.01f;
+bool matrix_nonzero(const Mat4& m) {
+    return m.m[0] != 0.f || m.m[5] != 0.f || m.m[10] != 0.f || m.m[15] != 0.f ||
+           m.m[1] != 0.f || m.m[2] != 0.f;
 }
 
-uintptr_t module_base(const char* name) {
-    std::ifstream maps("/proc/self/maps");
-    std::string line;
-    uintptr_t best = 0;
-    while (std::getline(maps, line)) {
-        if (line.find(name) == std::string::npos) continue;
-        if (line.find("r-xp") == std::string::npos) continue;
-        uintptr_t start = 0;
-        if (sscanf(line.c_str(), "%lx-", &start) == 1 && start) {
-            if (!best || start < best) best = start;
-        }
-    }
-    return best;
+// Melodium: reject pure view (last row ~ 0,0,0,1) — need VP for boxes
+bool looks_like_vp(const Mat4& m) {
+    if (!matrix_nonzero(m)) return false;
+    // row-major last row indices 12..15 in Melodium struct = our m[12..15] if same pack
+    // For float[16] column-major Unity: last row is m[3],m[7],m[11],m[15]
+    // Melodium Matrix packs as m00,m01,m02,m03,... so last row m30..m33 at bytes 48-63 = indices 12-15
+    // They memcpy from game memory the same 64 bytes — so use their check on indices 12-15:
+    const bool last_row_id =
+        m.m[12] == 0.f && m.m[13] == 0.f && m.m[14] == 0.f &&
+        (m.m[15] == 1.f || m.m[15] == 0.f);
+    return !last_row_id;
 }
 
-uintptr_t chain_manager(uintptr_t sf) {
+uintptr_t chain_manager_from_klass(uintptr_t klass) {
+    if (!klass) return 0;
+    const uintptr_t sf = mem::read_ptr(klass + off::mgr::kStaticFields); // 0x90
     if (!sf) return 0;
-    // AcademicDLC: static_fields +0x10 -> +0x0
-    const uintptr_t p2 = mem::read_ptr(sf + off::mgr::kPtr2);
-    if (p2) {
-        const uintptr_t inst = mem::read_ptr(p2 + off::mgr::kPtr3);
-        if (inst) return inst;
+    // Community: +0x10 then +0x0
+    uintptr_t inst = mem::read_ptr(sf + off::mgr::kPtr2); // 0x10
+    if (inst) {
+        // sometimes 0x10 already is instance; sometimes need +0
+        const uintptr_t via0 = mem::read_ptr(inst + off::mgr::kPtr3);
+        if (via0) return via0;
+        return inst;
     }
-    // Sometimes instance lives at static_fields+0
-    return mem::read_ptr(sf);
+    return mem::read_ptr(sf + off::mgr::kPtr3); // +0
 }
 
 uintptr_t resolve_manager(uintptr_t il2cpp) {
+    // Melodium/Halalium: TypeInfo RVA is POINTER to Il2CppClass*
+    //   klass = *(base + TypeInfo)
     const uintptr_t ti_loc = il2cpp + off::kPlayerManagerTI;
 
-    // A) RVA points at Il2CppClass object directly (AcademicDLC style: ti+0x90)
-    uintptr_t sf = mem::read_ptr(ti_loc + off::mgr::kStaticFields);
-    uintptr_t inst = chain_manager(sf);
-    if (inst) return inst;
-
-    // B) RVA is a global Il2CppClass* — one dereference first
     const uintptr_t klass = mem::read_ptr(ti_loc);
-    if (klass && klass != ti_loc) {
-        sf = mem::read_ptr(klass + off::mgr::kStaticFields);
-        inst = chain_manager(sf);
-        if (inst) return inst;
+    if (klass) {
+        if (uintptr_t inst = chain_manager_from_klass(klass))
+            return inst;
     }
-    return 0;
+    // Fallback: treat as embedded class (rare)
+    return chain_manager_from_klass(ti_loc);
 }
 
-bool read_matrix_at_native(uintptr_t native, Mat4& out) {
-    if (!native) return false;
+bool try_matrix_at(uintptr_t base, uintptr_t off, Mat4& out) {
     Mat4 m{};
-    // AcademicDLC 0.39.2: matrix @ +0xF0
-    if (mem::read_into(native + off::cam::kMatrix, m) && finite4(m)) {
-        out = m;
-        return true;
-    }
-    // Older public dumps used 0x100
-    if (mem::read_into(native + 0x100, m) && finite4(m)) {
-        out = m;
-        return true;
-    }
-    return false;
-}
-
-bool read_matrix_from_pmc(uintptr_t pmc, Mat4& out) {
-    if (!pmc) return false;
-    // nest: +0x20 -> +0x10 -> matrix
-    const uintptr_t t = mem::read_ptr(pmc + off::cam::kTransform);
-    if (!t) return false;
-    const uintptr_t native = mem::read_ptr(t + off::cam::kPtr);
-    return read_matrix_at_native(native, out);
+    if (!base || !mem::read_into(base + off, m)) return false;
+    if (!matrix_nonzero(m)) return false;
+    out = m;
+    return true;
 }
 
 bool read_matrix(uintptr_t local, Mat4& out) {
     if (!local) return false;
-
+    // Melodium: PlayerMainCamera = local+0xE8
+    // nest: +0x20 → +0x10 → matrix @ 0xF0 / 0x100
     const uintptr_t pmc = mem::read_ptr(local + off::player::kMainCamera);
-    if (read_matrix_from_pmc(pmc, out)) return true;
+    if (!pmc) return false;
 
-    // player.main_camera_holder @ 0x28
+    const uintptr_t a = mem::read_ptr(pmc + 0x20);
+    if (a) {
+        const uintptr_t b = mem::read_ptr(a + 0x10);
+        if (b) {
+            if (try_matrix_at(b, 0xF0, out) || try_matrix_at(b, 0x100, out))
+                return true;
+        }
+    }
+
+    // Holder path: local+0x28
     const uintptr_t holder = mem::read_ptr(local + off::player::kMainCameraHolder);
-    if (holder && holder != pmc) {
-        if (read_matrix_from_pmc(holder, out)) return true;
-        const uintptr_t nested = mem::read_ptr(holder + off::cam::kTransform);
-        if (nested) {
-            const uintptr_t native = mem::read_ptr(nested + off::cam::kPtr);
-            if (read_matrix_at_native(native, out)) return true;
+    if (holder) {
+        const uintptr_t a2 = mem::read_ptr(holder + 0x20);
+        if (a2) {
+            const uintptr_t b2 = mem::read_ptr(a2 + 0x10);
+            if (b2 && (try_matrix_at(b2, 0xF0, out) || try_matrix_at(b2, 0x100, out)))
+                return true;
         }
     }
     return false;
@@ -119,8 +104,7 @@ bool read_transform_pos(uintptr_t transform, Vec3& out) {
     const uintptr_t data = mem::read_ptr(transform + off::xform::kData);
     if (!data) return false;
     Vec3 v{};
-    if (!mem::read_into(data + off::xform::kPosition, v)) return false;
-    if (!finite3(v)) return false;
+    if (!mem::read_into(data + off::xform::kPosition, v) || !finite3(v)) return false;
     out = v;
     return true;
 }
@@ -132,8 +116,6 @@ bool read_bone_pos(uintptr_t player, int bone_off, Vec3& out) {
     if (!map) return false;
     const uintptr_t bone = mem::read_ptr(map + bone_off);
     if (!bone) return false;
-
-    // AcademicDLC: bone + transform_object(0x10) -> Transform
     const uintptr_t xf = mem::read_ptr(bone + off::biped::kTransformObject);
     if (xf && read_transform_pos(xf, out)) return true;
     return read_transform_pos(bone, out);
@@ -142,12 +124,10 @@ bool read_bone_pos(uintptr_t player, int bone_off, Vec3& out) {
 bool read_feet_fallback(uintptr_t player, Vec3& out) {
     const uintptr_t mov = mem::read_ptr(player + off::player::kMovement);
     if (!mov) return false;
-    // movement.translation_data @ 0xB0 (AcademicDLC)
     const uintptr_t data = mem::read_ptr(mov + 0xB0);
     if (!data) return false;
     Vec3 v{};
-    if (!mem::read_into(data + off::xform::kPosition, v)) return false;
-    if (!finite3(v)) return false;
+    if (!mem::read_into(data + off::xform::kPosition, v) || !finite3(v)) return false;
     out = v;
     return true;
 }
@@ -156,16 +136,11 @@ std::string read_il2cpp_string(uintptr_t str) {
     if (!str) return {};
     const int32_t len = mem::read<int32_t>(str + 0x10, 0);
     if (len <= 0 || len > 64) return {};
-
-    // 64-bit Il2CppString chars usually @ 0x14; some builds pad to 0x18
-    uintptr_t chars_at = str + 0x14;
     std::vector<char16_t> u16(static_cast<size_t>(len));
-    if (!mem::read_bytes(chars_at, u16.data(), static_cast<size_t>(len) * 2)) {
-        chars_at = str + 0x18;
-        if (!mem::read_bytes(chars_at, u16.data(), static_cast<size_t>(len) * 2))
+    if (!mem::read_bytes(str + 0x14, u16.data(), static_cast<size_t>(len) * 2)) {
+        if (!mem::read_bytes(str + 0x18, u16.data(), static_cast<size_t>(len) * 2))
             return {};
     }
-
     std::string out;
     out.reserve(static_cast<size_t>(len));
     for (char16_t c : u16) {
@@ -183,13 +158,11 @@ std::string read_name(uintptr_t player) {
 
 bool looks_like_player(uintptr_t pl) {
     if (!pl || pl < 0x10000) return false;
-    // Accept if team looks sane OR any gameplay pointer exists
     const uint8_t team = mem::read<uint8_t>(pl + off::player::kTeam, 0xFF);
     if (team <= 8) return true;
-    if (mem::read_ptr(pl + off::player::kMovement)) return true;
-    if (mem::read_ptr(pl + off::player::kPhoton)) return true;
-    if (mem::read_ptr(pl + off::player::kCharacterView)) return true;
-    return false;
+    return mem::read_ptr(pl + off::player::kMovement) ||
+           mem::read_ptr(pl + off::player::kPhoton) ||
+           mem::read_ptr(pl + off::player::kCharacterView);
 }
 
 void push_player(uintptr_t pl, uintptr_t local, std::vector<PlayerSnap>& out) {
@@ -209,7 +182,6 @@ void push_player(uintptr_t pl, uintptr_t local, std::vector<PlayerSnap>& out) {
         snap.head = snap.feet;
         snap.head.y += 1.7f;
     }
-
     const float dy = std::fabs(snap.head.y - snap.feet.y);
     if (dy < 0.4f || dy > 3.2f) {
         snap.head = snap.feet;
@@ -217,7 +189,6 @@ void push_player(uintptr_t pl, uintptr_t local, std::vector<PlayerSnap>& out) {
     }
     if (!finite3(snap.feet) || !finite3(snap.head)) return;
     if (snap.feet.x == 0.f && snap.feet.y == 0.f && snap.feet.z == 0.f) return;
-
     out.push_back(std::move(snap));
 }
 
@@ -226,71 +197,37 @@ void collect_players(uintptr_t manager, uintptr_t local, std::vector<PlayerSnap>
     if (!manager) return;
 
     const uintptr_t list = mem::read_ptr(manager + off::mgr::kList);
-    if (!list) {
-        // Still push local so status shows something in match
-        if (local) push_player(local, local, out);
-        return;
-    }
-
     int size = mem::read<int>(manager + off::mgr::kListSize, 0);
-    if (size <= 0 || size > 64)
-        size = mem::read<int>(list + 0x18, 0);
-    if (size <= 0 || size > 64)
-        size = mem::read<int>(list + off::mgr::kListSize, 0);
-    if (size <= 0 || size > 64) size = 16; // probe a few slots anyway
+    if (list) {
+        int sz = mem::read<int>(list + 0x18, 0);
+        if (sz > 0 && sz <= 64) size = sz;
+        else {
+            sz = mem::read<int>(list + 0x20, 0);
+            if (sz > 0 && sz <= 64) size = sz;
+        }
+    }
+    if (size <= 0 || size > 64) size = 16;
 
-    const uintptr_t acad_buf = mem::read_ptr(list + off::list::kBuffer);
-    const uintptr_t items = mem::read_ptr(list + 0x10);
-
-    // Try Academic layout
-    if (acad_buf) {
-        for (int i = 0; i < size; ++i) {
-            push_player(mem::read_ptr(
-                acad_buf + off::list::kEntry +
-                static_cast<uintptr_t>(i) * off::list::kStride), local, out);
+    if (list) {
+        const uintptr_t buf = mem::read_ptr(list + off::list::kBuffer); // 0x18
+        const uintptr_t items = mem::read_ptr(list + 0x10);
+        if (buf) {
+            for (int i = 0; i < size; ++i)
+                push_player(mem::read_ptr(buf + off::list::kEntry +
+                                          (uintptr_t)i * off::list::kStride), local, out);
+        }
+        if (items) {
+            for (int i = 0; i < size; ++i)
+                push_player(mem::read_ptr(items + 0x20 + (uintptr_t)i * 8), local, out);
+        }
+        if (out.empty() && buf) {
+            for (int i = 0; i < size; ++i)
+                push_player(mem::read_ptr(buf + 0x20 + (uintptr_t)i * 8), local, out);
         }
     }
-    // Also Unity List layout (merge unique)
-    if (items) {
-        for (int i = 0; i < size; ++i) {
-            push_player(mem::read_ptr(
-                items + 0x20 + static_cast<uintptr_t>(i) * sizeof(uintptr_t)), local, out);
-        }
-    }
-    // If buffer was actually the array itself
-    if (out.empty() && acad_buf) {
-        for (int i = 0; i < size; ++i) {
-            push_player(mem::read_ptr(
-                acad_buf + 0x20 + static_cast<uintptr_t>(i) * sizeof(uintptr_t)), local, out);
-        }
-    }
+    // alt local @ 0x68 (Melodium)
+    if (!local) local = mem::read_ptr(manager + 0x68);
     if (local) push_player(local, local, out);
-}
-
-// Column-major M * vec4
-inline bool w2s_col(const float* m, const Vec3& w, float sw, float sh, float& ox, float& oy) {
-    const float clip_x = m[0] * w.x + m[4] * w.y + m[8] * w.z + m[12];
-    const float clip_y = m[1] * w.x + m[5] * w.y + m[9] * w.z + m[13];
-    const float clip_w = m[3] * w.x + m[7] * w.y + m[11] * w.z + m[15];
-    if (clip_w <= 0.01f) return false;
-    const float inv = 1.0f / clip_w;
-    const float ndc_x = clip_x * inv;
-    const float ndc_y = clip_y * inv;
-    ox = (ndc_x + 1.0f) * 0.5f * sw;
-    oy = (1.0f - ndc_y) * 0.5f * sh; // Unity NDC Y up → screen Y down
-    return std::isfinite(ox) && std::isfinite(oy);
-}
-
-// Row-major fallback (some dumps store transposed)
-inline bool w2s_row(const float* m, const Vec3& w, float sw, float sh, float& ox, float& oy) {
-    const float clip_x = m[0] * w.x + m[1] * w.y + m[2] * w.z + m[3];
-    const float clip_y = m[4] * w.x + m[5] * w.y + m[6] * w.z + m[7];
-    const float clip_w = m[12] * w.x + m[13] * w.y + m[14] * w.z + m[15];
-    if (clip_w <= 0.01f) return false;
-    const float inv = 1.0f / clip_w;
-    ox = (clip_x * inv + 1.0f) * 0.5f * sw;
-    oy = (1.0f - clip_y * inv) * 0.5f * sh;
-    return std::isfinite(ox) && std::isfinite(oy);
 }
 
 } // namespace
@@ -301,7 +238,7 @@ void game_tick(GameState& st) {
     st.frame++;
 
     if (!st.il2cpp) {
-        st.il2cpp = module_base(XS("libil2cpp.so"));
+        st.il2cpp = mods::resolve_il2cpp();
         if (!st.il2cpp) {
             st.status = "wait";
             st.ready = false;
@@ -319,7 +256,18 @@ void game_tick(GameState& st) {
     }
 
     st.local = mem::read_ptr(st.manager + off::mgr::kLocal);
-    st.has_matrix = read_matrix(st.local, st.view_proj);
+    if (!st.local) st.local = mem::read_ptr(st.manager + 0x68);
+
+    Mat4 mat{};
+    st.has_matrix = read_matrix(st.local, mat);
+    if (st.has_matrix) {
+        // Prefer VP-looking matrix; still keep if only nonzero
+        if (looks_like_vp(mat) || matrix_nonzero(mat))
+            st.view_proj = mat;
+        else
+            st.has_matrix = false;
+    }
+
     collect_players(st.manager, st.local, st.players);
 
     st.ready = true;
@@ -329,25 +277,18 @@ void game_tick(GameState& st) {
     else st.status = "ok";
 }
 
+// Melodium world2screen (proven) — treats float[16] as their Matrix field order
 bool world_to_screen(const Mat4& vp, const Vec3& world, float sw, float sh, float& out_x, float& out_y) {
-    if (sw < 1.f || sh < 1.f) return false;
-    if (!finite3(world)) return false;
-
-    float x = 0, y = 0;
-    if (w2s_col(vp.m, world, sw, sh, x, y)) {
-        // Accept on-screen or slightly off (box edges)
-        if (x >= -sw && x <= sw * 2.f && y >= -sh && y <= sh * 2.f) {
-            out_x = x;
-            out_y = y;
-            return true;
-        }
-    }
-    if (w2s_row(vp.m, world, sw, sh, x, y)) {
-        if (x >= -sw && x <= sw * 2.f && y >= -sh && y <= sh * 2.f) {
-            out_x = x;
-            out_y = y;
-            return true;
-        }
-    }
-    return false;
+    if (sw < 1.f || sh < 1.f || !finite3(world)) return false;
+    const float* m = vp.m;
+    // Melodium: clip = row-style against packed floats
+    const float clipX = world.x * m[0] + world.y * m[1] + world.z * m[2] + m[3];
+    const float clipY = world.x * m[4] + world.y * m[5] + world.z * m[6] + m[7];
+    const float clipW = world.x * m[12] + world.y * m[13] + world.z * m[14] + m[15];
+    if (clipW < 0.001f) return false;
+    const float ndcX = clipX / clipW;
+    const float ndcY = clipY / clipW;
+    out_x = (ndcX * 0.5f + 0.5f) * sw;
+    out_y = (1.f - (ndcY * 0.5f + 0.5f)) * sh;
+    return std::isfinite(out_x) && std::isfinite(out_y);
 }

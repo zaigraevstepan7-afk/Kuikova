@@ -10,6 +10,7 @@
 namespace off {
 
 // TypeInfo RVAs (relative to libil2cpp.so)
+// Melodium: *(libil2cpp + TI) -> Il2CppClass*
 constexpr uintptr_t kPlayerManagerTI = 180740496; // 0xAC5E190
 
 namespace mgr {
