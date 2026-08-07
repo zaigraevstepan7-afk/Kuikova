@@ -1663,6 +1663,7 @@ static void* thread_main(void*) {
     try_hook_lu();
     try_hook_egl();
     try_hook_input();
+    try_hook_aa_filter();
 
     static int done;
     while (true) {
