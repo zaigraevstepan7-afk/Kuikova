@@ -17,6 +17,7 @@
 #include <sys/mman.h>
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>
+#include <android/input.h>
 #include <jni.h>
 #include <atomic>
 
@@ -313,6 +314,22 @@ struct UnityTouch {
 
 static int (*touch_count_fn)(const void* method);
 static void (*get_touch_fn)(UnityTouch* out, int index, const void* method);
+static const void* touch_count_mi = nullptr;
+static const void* get_touch_mi = nullptr;
+
+// Primary path: android::InputConsumer::consume (same as Melodium/Halalium).
+static std::mutex g_touch_mu;
+static float g_touch_x = 0.f, g_touch_y = 0.f;
+static bool g_touch_down = false;
+static bool g_touch_have = false;
+
+static void feed_touch(float x, float y, bool down) {
+    std::lock_guard<std::mutex> lk(g_touch_mu);
+    g_touch_x = x;
+    g_touch_y = y;
+    g_touch_down = down;
+    g_touch_have = true;
+}
 
 static const Il2CppMethod* find_method(Il2CppClass* c, const char* name) {
     if (!c || !il2cpp::class_get_methods || !il2cpp::method_get_name) return nullptr;
@@ -353,6 +370,8 @@ static bool touch_init() {
         if (!pc || !pt) continue;
         touch_count_fn = (int (*)(const void*))pc;
         get_touch_fn = (void (*)(UnityTouch*, int, const void*))pt;
+        touch_count_mi = mc;
+        get_touch_mi = mt;
         return true;
     }
     return false;
@@ -360,33 +379,57 @@ static bool touch_init() {
 
 static void handle_touch() {
     ImGuiIO& io = ImGui::GetIO();
-    if (!touch_count_fn || !get_touch_fn) return;
-    int n = touch_count_fn(nullptr);
-    if (n < 0) n = 0;
-    static bool active = false;
-    bool down = false;
     float x = 0.f, y = 0.f;
-    for (int i = 0; i < n; i++) {
-        UnityTouch t{};
-        get_touch_fn(&t, i, nullptr);
-        int ph = t.phase;
-        // 0=Began, 1=Moved, 2=Stationary, 3=Ended, 4=Canceled
-        if (ph == 0 || ph == 1 || ph == 2) {
-            x = t.px;
-            y = (float)scr_h - t.py;
-            down = true;
-            break;
+    bool down = false;
+    bool have = false;
+
+    {
+        std::lock_guard<std::mutex> lk(g_touch_mu);
+        if (g_touch_have) {
+            x = g_touch_x;
+            y = g_touch_y;
+            down = g_touch_down;
+            have = true;
         }
     }
-    if (down) {
-        io.AddMousePosEvent(x, y);
-        if (!active) io.AddMouseButtonEvent(0, true);
-        active = true;
-    } else if (active) {
-        io.AddMouseButtonEvent(0, false);
-        active = false;
+
+    // Backup: Unity Input (often empty on GL thread — InputConsumer is primary).
+    if (!have && touch_count_fn && get_touch_fn) {
+        int n = touch_count_fn(touch_count_mi);
+        if (n < 0) n = 0;
+        for (int i = 0; i < n; i++) {
+            UnityTouch t{};
+            get_touch_fn(&t, i, get_touch_mi);
+            int ph = t.phase;
+            if (ph == 0 || ph == 1 || ph == 2) {
+                x = t.px;
+                y = (float)scr_h - t.py;
+                down = true;
+                have = true;
+                break;
+            }
+        }
     }
+
+    static bool prev_down = false;
+    static float prev_x = -1.f, prev_y = -1.f;
+
+    if (!have) {
+        if (prev_down) {
+            io.AddMouseButtonEvent(0, false);
+            prev_down = false;
+        }
+        return;
+    }
+
     io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
+    if (x != prev_x || y != prev_y || down != prev_down)
+        io.AddMousePosEvent(x, y);
+    if (down != prev_down)
+        io.AddMouseButtonEvent(0, down);
+    prev_down = down;
+    prev_x = x;
+    prev_y = y;
 }
 
 static bool str_contains(uint64_t s, const char* needle) {
@@ -1131,8 +1174,89 @@ static void inline_hook(void* target, void* hook, void** orig) {
     mprotect((void*)page, (size_t)pg * 2, PROT_READ | PROT_EXEC);
 }
 
+using input_consume_fn = int32_t (*)(void*, void*, bool, int64_t, uint32_t*, AInputEvent**);
+static input_consume_fn g_old_consume = nullptr;
+static std::atomic<bool> g_input_hooked{false};
+
+using ain_get_type_fn = int32_t (*)(const AInputEvent*);
+using am_get_action_fn = int32_t (*)(const AInputEvent*);
+using am_get_xy_fn = float (*)(const AInputEvent*, size_t);
+static ain_get_type_fn g_ain_type = nullptr;
+static am_get_action_fn g_am_action = nullptr;
+static am_get_xy_fn g_am_x = nullptr;
+static am_get_xy_fn g_am_y = nullptr;
+
+static bool resolve_ainput() {
+    void* lib = dlopen("libandroid.so", RTLD_NOW);
+    void* h = lib ? lib : RTLD_DEFAULT;
+    g_ain_type = (ain_get_type_fn)dlsym(h, "AInputEvent_getType");
+    g_am_action = (am_get_action_fn)dlsym(h, "AMotionEvent_getAction");
+    g_am_x = (am_get_xy_fn)dlsym(h, "AMotionEvent_getX");
+    g_am_y = (am_get_xy_fn)dlsym(h, "AMotionEvent_getY");
+    if (!g_ain_type) g_ain_type = &AInputEvent_getType;
+    if (!g_am_action) g_am_action = &AMotionEvent_getAction;
+    if (!g_am_x) g_am_x = &AMotionEvent_getX;
+    if (!g_am_y) g_am_y = &AMotionEvent_getY;
+    return g_ain_type && g_am_action && g_am_x && g_am_y;
+}
+
+static int32_t hk_input_consume(void* thiz, void* factory, bool consumeBatches,
+                                int64_t frameTime, uint32_t* outSeq, AInputEvent** outEvent) {
+    int32_t status = g_old_consume
+                         ? g_old_consume(thiz, factory, consumeBatches, frameTime, outSeq, outEvent)
+                         : -1;
+    if (status != 0 || !outEvent || !*outEvent) return status;
+    if (!g_ain_type || !g_am_action || !g_am_x || !g_am_y) return status;
+
+    AInputEvent* ev = *outEvent;
+    if (g_ain_type(ev) != AINPUT_EVENT_TYPE_MOTION) return status;
+
+    const int32_t action = g_am_action(ev);
+    const int32_t masked = action & AMOTION_EVENT_ACTION_MASK;
+    const size_t idx = (size_t)((action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >>
+                                 AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT);
+    const float x = g_am_x(ev, idx);
+    const float y = g_am_y(ev, idx);
+
+    static bool down = false;
+    if (masked == AMOTION_EVENT_ACTION_DOWN || masked == AMOTION_EVENT_ACTION_POINTER_DOWN)
+        down = true;
+    else if (masked == AMOTION_EVENT_ACTION_UP || masked == AMOTION_EVENT_ACTION_POINTER_UP ||
+             masked == AMOTION_EVENT_ACTION_CANCEL)
+        down = false;
+    // MOVE / HOVER: keep previous down, refresh position
+    feed_touch(x, y, down);
+    return status;
+}
+
+static void try_hook_input() {
+    if (g_input_hooked.load()) return;
+    if (!resolve_ainput()) return;
+
+    static const char* kConsume =
+        "_ZN7android13InputConsumer7consumeEPNS_26InputEventFactoryInterfaceEblPjPPNS_10InputEventE";
+
+    void* sym = nullptr;
+    const char* libs[] = { "libinput.so", "libandroid.so", "libunity.so", "libmain.so" };
+    for (int i = 0; i < 4 && !sym; i++) {
+        void* lib = dlopen(libs[i], RTLD_NOW);
+        if (lib) sym = dlsym(lib, kConsume);
+    }
+    if (!sym) sym = dlsym(RTLD_DEFAULT, kConsume);
+    if (!sym) return;
+
+    void* orig = nullptr;
+    inline_hook(sym, (void*)hk_input_consume, &orig);
+    if (!orig) return;
+    g_old_consume = (input_consume_fn)orig;
+    g_input_hooked.store(true);
+}
+
 static void try_hook_egl() {
-    if (orig_swap) return;
+    if (orig_swap) {
+        try_hook_input();
+        return;
+    }
     // Prefer already-loaded EGL; avoid dlopen while linker may still hold locks (ctor path).
     void* egl = dlsym(RTLD_DEFAULT, "eglSwapBuffers");
     if (!egl) egl = dlsym(RTLD_NEXT, "eglSwapBuffers");
@@ -1140,7 +1264,10 @@ static void try_hook_egl() {
         void* eh = dlopen("libEGL.so", RTLD_NOW);
         if (eh) egl = dlsym(eh, "eglSwapBuffers");
     }
-    if (egl) inline_hook(egl, (void*)hk_swap, (void**)&orig_swap);
+    if (egl) {
+        inline_hook(egl, (void*)hk_swap, (void**)&orig_swap);
+        try_hook_input();
+    }
 }
 
 static void* thread_main(void*) {
@@ -1169,6 +1296,7 @@ static void* thread_main(void*) {
         sleep(1);
         build_maps();
         try_hook_egl();
+        try_hook_input();
         try_hook_lu();
         if (!touch_count_fn || !get_touch_fn) touch_init();
         if (done < 5) { resolve_view_methods(); done++; }
