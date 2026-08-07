@@ -98,6 +98,7 @@ static int opt_aa_frames = 2;
 static float opt_aa_spin = 0.f;
 static bool menu_open = false;
 static float menu_alpha = 0.f;
+static int menu_tab = 0; // 0 visuals, 1 aim, 2 setup
 static float tps_dist = 2.5f;
 static std::atomic<bool> g_hooks_armed{false}; // PC Update/LateUpdate only after match/setup
 static int scr_w = 0, scr_h = 0;
@@ -739,10 +740,17 @@ static get_transform_fn fn_get_transform = nullptr;
 static set_localpos_fn fn_set_localpos = nullptr;
 static go_set_active_fn fn_go_set_active = nullptr;
 static rend_set_enabled_fn fn_rend_set_enabled = nullptr;
+static void* mi_set_tps = nullptr;
+static void* mi_set_fps = nullptr;
+static void* mi_set_visible = nullptr;
 static void* mi_go_set_active = nullptr;
 static void* mi_rend_set_enabled = nullptr;
 static bool g_unity_helpers_tried = false;
 static bool g_view_rva_tried = false;
+
+// Halalium's set_tps thunk keeps a non-null x1 (player). A null MethodInfo can
+// early-out inside some IL2CPP wrappers — prefer a real MI, else mirror Halalium.
+static void* mi_or_self(void* mi, void* self) { return mi ? mi : self; }
 
 static void* mp(const void* m) {
     if (!m || !ok((uint64_t)m)) return nullptr;
@@ -766,6 +774,8 @@ static bool looks_like_a64(void* p) {
 
 static void* bind_game_rva(uint64_t rva) {
     if (!rva) return nullptr;
+    // Halalium RVAs are against libunity (g_base). Only fall back to libil2cpp
+    // if unity is missing — never bind a "looks like a64" hit in the wrong module first.
     uintptr_t bases[2] = { (uintptr_t)g_base, (uintptr_t)g_il2 };
     for (uintptr_t mod : bases) {
         if (!mod) continue;
@@ -860,7 +870,7 @@ static Il2CppClass* player_controller_class() {
 // Match the obfuscated view helpers by name so we never call a guessed address.
 static void resolve_view_fns(Il2CppClass* pc) {
     resolve_view_rvas();
-    if (fn_set_tps && fn_set_fps && fn_set_visible && fn_set_view_mode) return;
+    if (fn_set_tps && fn_set_fps && fn_set_visible && mi_set_tps && mi_set_fps) return;
     if (!pc || !il2cpp::class_get_methods || !il2cpp::method_get_name) return;
     void* it = nullptr;
     while (const Il2CppMethod* m = il2cpp::class_get_methods(pc, &it)) {
@@ -868,12 +878,20 @@ static void resolve_view_fns(Il2CppClass* pc) {
         if (!nm) continue;
         void* p = mp(m);
         if (!p) continue;
-        if (!fn_set_tps && strcmp(nm, NAME_PC_SET_TPS) == 0) fn_set_tps = (pc_void_fn)p;
-        else if (!fn_set_fps && strcmp(nm, NAME_PC_SET_FPS) == 0) fn_set_fps = (pc_void_fn)p;
-        else if (!fn_set_visible && strcmp(nm, NAME_PC_SET_VISIBLE) == 0) fn_set_visible = (pc_void_fn)p;
-        else if (!fn_set_view_mode && strcmp(nm, NAME_PC_SET_VIEW_MODE) == 0) fn_set_view_mode = (pc_view_fn)p;
+        if (strcmp(nm, NAME_PC_SET_TPS) == 0) {
+            if (!fn_set_tps) fn_set_tps = (pc_void_fn)p;
+            mi_set_tps = (void*)m;
+        } else if (strcmp(nm, NAME_PC_SET_FPS) == 0) {
+            if (!fn_set_fps) fn_set_fps = (pc_void_fn)p;
+            mi_set_fps = (void*)m;
+        } else if (strcmp(nm, NAME_PC_SET_VISIBLE) == 0) {
+            if (!fn_set_visible) fn_set_visible = (pc_void_fn)p;
+            mi_set_visible = (void*)m;
+        } else if (!fn_set_view_mode && strcmp(nm, NAME_PC_SET_VIEW_MODE) == 0) {
+            fn_set_view_mode = (pc_view_fn)p;
+        }
     }
-    g_body_ok.store(fn_set_tps != nullptr);
+    g_body_ok.store(fn_set_tps != nullptr && fn_set_localpos != nullptr);
 }
 
 static void resolve_lu(){
@@ -900,16 +918,22 @@ static void resolve_lu(){
 }
 
 // Exactly what libhalalium does in its LateUpdate cave, with the RVAs recovered
-// from that binary. The game's own set_tps swaps the arms rig for the full body,
-// so no field fighting is needed.
+// from that binary. The game's own set_tps swaps the arms rig for the full body.
 static void apply_body_view(void* player, bool tps_on) {
     if (!player || !ok((uint64_t)player)) return;
+    uint64_t lp = (uint64_t)player;
     if (tps_on) {
-        if (fn_set_tps) fn_set_tps(player, nullptr);
+        // view_mode_t: fps=1, tps=2 (Academic 0.39.2 dump)
+        wr8(lp + OFF_PLAYER_VIEW_MODE, 2);
+        wr8(lp + OFF_PLAYER_CHAR_VISIBLE, 1);
+        if (fn_set_tps) fn_set_tps(player, mi_or_self(mi_set_tps, player));
+        // Halalium Update forces the mesh via CharacterVisible + set_visible.
+        if (fn_set_visible) fn_set_visible(player, mi_or_self(mi_set_visible, player));
         push_main_camera(-tps_dist);
         g_tps_ok.store(true);
     } else {
-        if (fn_set_fps) fn_set_fps(player, nullptr);
+        wr8(lp + OFF_PLAYER_VIEW_MODE, 1);
+        if (fn_set_fps) fn_set_fps(player, mi_or_self(mi_set_fps, player));
         push_main_camera(0.f);
         g_tps_ok.store(false);
     }
@@ -925,35 +949,6 @@ static inline float clamp_pitch(float p, float m = 70.f) {
     if (p > m) p = m;
     if (p < -m) p = -m;
     return p;
-}
-
-// Resolve native TransformAccess matrix entry.
-// Tries ESP layout (0x28/0x30) first, then wintex (0x38/0x40).
-static uint64_t native_tm_entry_ex(uint64_t transform, uint64_t mat_off, uint64_t idx_off) {
-    if (!ok(transform)) return 0;
-    uint64_t native = rd64(transform + 0x10);
-    if (!ok(native)) return 0;
-    uint64_t matrix = rd64(native + mat_off);
-    if (!ok(matrix)) return 0;
-    int32_t index = rd32(native + idx_off);
-    if (index < 0 || index > 100000) return 0;
-    uint64_t list = rd64(matrix + OFF_MATRIX_LIST);
-    if (!ok(list)) return 0;
-    uint64_t entry = list + (uint64_t)index * (uint64_t)TRANSFORM_MATRIX_SIZE;
-    return readable(entry, TRANSFORM_MATRIX_SIZE) ? entry : 0;
-}
-
-static uint64_t native_tm_entry(uint64_t transform) {
-    uint64_t e = native_tm_entry_ex(transform, OFF_NATIVE_TR_MATRIX, OFF_NATIVE_TR_INDEX);
-    if (e) return e;
-    return native_tm_entry_ex(transform, OFF_NATIVE_TR_MATRIX_ALT, OFF_NATIVE_TR_INDEX_ALT);
-}
-
-static bool write_tm_local_z(uint64_t transform, float z) {
-    uint64_t entry = native_tm_entry(transform);
-    if (!entry) return false;
-    wrf(entry + 8, z);
-    return true;
 }
 
 // Undo the arms yeet older builds left behind, and keep the local body drawn.
@@ -1065,24 +1060,30 @@ static bool is_local_player(void* p) {
     return ok(pm) && (uint64_t)p == rd64(pm + OFF_PM_LOCAL_PLAYER);
 }
 
-static void hk_up(void* p) {
+static void hk_up(void* p, void* mi) {
     if (!up_mp) return;
     bool local = opt_aa && is_local_player(p);
     if (local) aa_begin(p);
-    ((void(*)(void*))up_mp)(p);
+    ((void(*)(void*, void*))up_mp)(p, mi);
     if (local) aa_end();
 }
 
 // Halalium runs the original first, then applies the view for the local player.
-static void hk_lu(void* p){
+// Must forward MethodInfo — dropping x1 corrupts the original LateUpdate.
+static void hk_lu(void* p, void* mi) {
     if (!lu_mp) return;
-    ((void(*)(void*))lu_mp)(p);
+    ((void(*)(void*, void*))lu_mp)(p, mi);
     if (!is_local_player(p)) return;
 
     static bool applied = false;
     if (opt_tps) {
-        float hp = rdf((uint64_t)p + OFF_PLAYER_HEALTH);
-        if (!(hp > 0.f && hp < 10000.f)) return; // dead / spectating
+        // Prefer living check, but don't block TPS solely on photon health parse.
+        int hp = health_of((uint64_t)p);
+        if (hp == 0) {
+            // 0x7C is localTime on 0.39.2 — treat "no parsed hp" as alive if we have a cam.
+            uint64_t cam = rd64((uint64_t)p + OFF_PLAYER_MAIN_CAMERA);
+            if (!ok(cam)) return;
+        }
         apply_body_view(p, true);
         third_person_model();
         applied = true;
@@ -1171,6 +1172,7 @@ static void try_hook_lu(){
 static void setup_hooks_now() {
     g_hooks_armed.store(true);
     resolve_view_rvas();
+    resolve_lu(); // also resolve MethodInfo for set_tps / set_fps / set_visible
     try_hook_lu();
 }
 
@@ -1367,13 +1369,13 @@ static int draw_esp() {
 static void draw_watermark() {
     const char* brand = "xxxstux";
     char line[96];
-    snprintf(line, sizeof(line), "t.me · 0.39.2 · tps%c body%c %c%c",
+    snprintf(line, sizeof(line), "0.39.2  tps%c body%c  %c%c",
              g_tps_ok.load() ? '+' : '-',
-             (g_body_ok.load() || g_hooks_armed.load()) ? '+' : '-',
+             g_body_ok.load() ? '+' : '-',
              lu_hooked ? 'L' : '-',
              up_hooked ? 'U' : '-');
 
-    ImGui::SetNextWindowPos(ImVec2(16.f, 16.f), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(14.f, 14.f), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.0f);
     ImGui::Begin("##watermark", nullptr,
                  ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
@@ -1383,24 +1385,25 @@ static void draw_watermark() {
 
     ImVec2 brand_sz = ImGui::CalcTextSize(brand);
     ImVec2 line_sz = ImGui::CalcTextSize(line);
-    float width = (brand_sz.x > line_sz.x ? brand_sz.x : line_sz.x) + 24.f;
-    float height = brand_sz.y + line_sz.y + 18.f;
+    float width = (brand_sz.x > line_sz.x ? brand_sz.x : line_sz.x) + 28.f;
+    float height = brand_sz.y + line_sz.y + 20.f;
 
     ImVec2 p = ImGui::GetCursorScreenPos();
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 rmin = p;
     ImVec2 rmax = ImVec2(p.x + width, p.y + height);
 
-    dl->AddRectFilled(rmin, rmax, IM_COL32(18, 18, 18, 170), 6.0f);
-    dl->AddRect(rmin, rmax, IM_COL32(70, 70, 70, 180), 6.0f, 0, 1.2f);
-    dl->AddRectFilled(ImVec2(rmin.x, rmin.y), ImVec2(rmin.x + 3.f, rmax.y), IM_COL32(220, 220, 220, 220), 2.0f);
+    dl->AddRectFilled(rmin, rmax, IM_COL32(12, 12, 12, 200), 8.0f);
+    dl->AddRect(rmin, rmax, IM_COL32(55, 55, 55, 200), 8.0f, 0, 1.0f);
+    dl->AddRectFilled(ImVec2(rmin.x, rmin.y + 6.f), ImVec2(rmin.x + 3.f, rmax.y - 6.f),
+                      IM_COL32(240, 240, 240, 230), 2.0f);
 
-    ImVec2 brand_pos = ImVec2(p.x + 12.f, p.y + 5.f);
-    ImVec2 line_pos = ImVec2(p.x + 12.f, p.y + 5.f + brand_sz.y + 2.f);
+    ImVec2 brand_pos = ImVec2(p.x + 14.f, p.y + 6.f);
+    ImVec2 line_pos = ImVec2(p.x + 14.f, p.y + 6.f + brand_sz.y + 2.f);
     dl->AddText(ImVec2(brand_pos.x + 1, brand_pos.y + 1), IM_COL32(0, 0, 0, 160), brand);
-    dl->AddText(brand_pos, IM_COL32(235, 235, 235, 255), brand);
+    dl->AddText(brand_pos, IM_COL32(245, 245, 245, 255), brand);
     dl->AddText(ImVec2(line_pos.x + 1, line_pos.y + 1), IM_COL32(0, 0, 0, 140), line);
-    dl->AddText(line_pos, IM_COL32(180, 180, 180, 240), line);
+    dl->AddText(line_pos, IM_COL32(160, 160, 160, 245), line);
 
     ImGui::Dummy(ImVec2(width, height));
     ImGui::SetCursorScreenPos(rmin);
@@ -1410,7 +1413,6 @@ static void draw_watermark() {
     ImGui::End();
 }
 
-// Melodium-style checkbox (ButtonBehavior + filled mark).
 static bool melo_checkbox(const char* label, bool* v) {
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     if (window->SkipItems) return false;
@@ -1420,10 +1422,10 @@ static bool melo_checkbox(const char* label, bool* v) {
     const ImGuiID id = window->GetID(label);
     const ImVec2 label_size = ImGui::CalcTextSize(label, nullptr, true);
 
-    const float square_sz = ImGui::GetFrameHeight();
+    const float square_sz = ImGui::GetFrameHeight() + 4.f;
     const ImVec2 pos = window->DC.CursorPos;
-    const ImRect total_bb(pos, ImVec2(pos.x + square_sz + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f) + 10,
-                                      pos.y + label_size.y + style.FramePadding.y * 2.0f));
+    const ImRect total_bb(pos, ImVec2(pos.x + square_sz + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f) + 8,
+                                      pos.y + label_size.y + style.FramePadding.y * 2.0f + 4.f));
     ImGui::ItemSize(total_bb, style.FramePadding.y);
     if (!ImGui::ItemAdd(total_bb, id)) return false;
 
@@ -1438,116 +1440,182 @@ static bool melo_checkbox(const char* label, bool* v) {
     }
 
     const ImRect check_bb(pos, ImVec2(square_sz + pos.x, square_sz + pos.y));
-    window->DrawList->AddRectFilledMultiColor(
-        check_bb.Min, check_bb.Max,
-        ImColor(0, 0, 0, 255), ImColor(0, 0, 0, 255),
-        ImGui::GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg),
-        ImGui::GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg));
+    ImU32 bg = IM_COL32(18, 18, 18, 255);
+    if (held && hovered) bg = IM_COL32(40, 40, 40, 255);
+    else if (hovered) bg = IM_COL32(28, 28, 28, 255);
+    window->DrawList->AddRectFilled(check_bb.Min, check_bb.Max, bg, 4.0f);
+    window->DrawList->AddRect(check_bb.Min, check_bb.Max, IM_COL32(70, 70, 70, 255), 4.0f);
     if (*v) {
-        window->DrawList->AddRectFilled(ImVec2(check_bb.Min.x + 1, check_bb.Min.y + 1),
-                                        ImVec2(check_bb.Max.x - 1, check_bb.Max.y - 1),
-                                        ImGui::GetColorU32(ImGuiCol_CheckMark), style.FrameRounding);
+        window->DrawList->AddRectFilled(ImVec2(check_bb.Min.x + 5, check_bb.Min.y + 5),
+                                        ImVec2(check_bb.Max.x - 5, check_bb.Max.y - 5),
+                                        IM_COL32(235, 235, 235, 255), 2.0f);
     }
-    window->DrawList->AddRect(check_bb.Min, check_bb.Max, ImGui::GetColorU32(ImGuiCol_Border));
     if (label_size.x > 0.0f)
-        ImGui::RenderText(ImVec2(check_bb.Max.x + style.ItemInnerSpacing.x + 10, check_bb.Min.y + style.FramePadding.y), label);
+        ImGui::RenderText(ImVec2(check_bb.Max.x + style.ItemInnerSpacing.x + 8,
+                                 check_bb.Min.y + (square_sz - label_size.y) * 0.5f), label);
+    return pressed;
+}
+
+static bool tab_btn(const char* label, bool active, float w) {
+    ImGui::PushStyleColor(ImGuiCol_Button, active ? ImVec4(0.18f, 0.18f, 0.18f, 1.f)
+                                                  : ImVec4(0.07f, 0.07f, 0.07f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.22f, 0.22f, 0.22f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.28f, 0.28f, 0.28f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_Text, active ? ImVec4(1.f, 1.f, 1.f, 1.f)
+                                                : ImVec4(0.55f, 0.55f, 0.55f, 1.f));
+    bool pressed = ImGui::Button(label, ImVec2(w, 46.f));
+    ImGui::PopStyleColor(4);
     return pressed;
 }
 
 static void draw_menu() {
     draw_watermark();
 
-    if (menu_open && menu_alpha < 1.f) menu_alpha += 0.05f;
-    else if (!menu_open && menu_alpha > 0.f) menu_alpha -= 0.05f;
+    if (menu_open && menu_alpha < 1.f) menu_alpha += 0.08f;
+    else if (!menu_open && menu_alpha > 0.f) menu_alpha -= 0.08f;
     if (menu_alpha < 0.f) menu_alpha = 0.f;
     if (menu_alpha > 1.f) menu_alpha = 1.f;
     if (menu_alpha <= 0.01f) return;
 
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, menu_alpha);
-    ImGui::SetNextWindowPos(ImVec2(16.f, 96.f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(460.f, 520.f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(ImVec2(380.f, 320.f), ImVec2(800.f, 900.f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(14.f, 14.f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(18.f, 16.f));
 
-    if (ImGui::Begin("##xxxstux_melo", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar)) {
-        for (int i = 0; i < 8; i++) {
-            ImColor borderCol = ImColor(35, 35, 35, 255);
-            if (i == 1 || i == 7) borderCol = ImColor(55, 55, 55, 255);
-            else if (i == 0) borderCol = ImColor(0, 0, 0, 255);
-            ImGui::GetWindowDrawList()->AddRect(
-                ImVec2(ImGui::GetWindowPos().x + i, ImGui::GetWindowPos().y + i),
-                ImVec2(ImGui::GetWindowPos().x + ImGui::GetWindowSize().x - i,
-                       ImGui::GetWindowPos().y + ImGui::GetWindowSize().y - i),
-                borderCol);
-        }
+    const float menu_w = 520.f;
+    const float menu_h = 560.f;
+    ImGui::SetNextWindowPos(ImVec2(((float)scr_w - menu_w) * 0.5f, ((float)scr_h - menu_h) * 0.42f),
+                            ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(menu_w, menu_h), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(420.f, 400.f), ImVec2(720.f, 900.f));
 
-        ImGui::Dummy(ImVec2(0, 8));
+    if (ImGui::Begin("##xxxstux_menu", nullptr,
+                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+                         ImGuiWindowFlags_NoScrollbar)) {
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        ImVec2 wp = ImGui::GetWindowPos();
+        ImVec2 ws = ImGui::GetWindowSize();
+        dl->AddRect(wp, ImVec2(wp.x + ws.x, wp.y + ws.y), IM_COL32(48, 48, 48, 255), 10.f, 0, 1.2f);
+
         ImGui::Text("xxxstux");
-        ImGui::Separator();
-        ImGui::Dummy(ImVec2(0, 6));
-
-        float half = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
-        if (ImGui::BeginChild("visuals", ImVec2(half, 0), ImGuiChildFlags_Border)) {
-            ImGui::Text("visuals");
-            melo_checkbox("box", &opt_box);
-            melo_checkbox("health", &opt_health);
-            melo_checkbox("distance", &opt_dist);
-            melo_checkbox("skeleton", &opt_skeleton);
-            melo_checkbox("third person", &opt_tps);
-            if (opt_tps)
-                ImGui::SliderFloat("distance", &tps_dist, 2.f, 6.f, "%.1f");
-            ImGui::Spacing();
-            if (g_hooks_armed.load()) {
-                ImGui::TextDisabled("tps armed");
-            } else if (ImGui::Button("setup hooks", ImVec2(-1, 0))) {
-                setup_hooks_now();
-            }
-            if (!g_hooks_armed.load())
-                ImGui::TextDisabled("press in match");
-        }
-        ImGui::EndChild();
         ImGui::SameLine();
-        if (ImGui::BeginChild("antiaim", ImVec2(0, 0), ImGuiChildFlags_Border)) {
-            ImGui::Text("anti aims");
-            melo_checkbox("anti aims", &opt_aa);
-            const char* pitch_items = "local\0up\0down\0";
-            const char* yaw_items = "local\0backward\0spiral\0chaos\0";
-            ImGui::Combo("pitch", &opt_aa_pitch, pitch_items);
-            ImGui::Combo("yaw", &opt_aa_yaw, yaw_items);
-            melo_checkbox("jitter", &opt_aa_jitter);
-            if (opt_aa_jitter) {
-                ImGui::SliderInt("range", &opt_aa_range, 0, 50);
-                ImGui::SliderInt("frames", &opt_aa_frames, 0, 30);
+        ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 70.f);
+        if (ImGui::SmallButton("x")) menu_open = false;
+        ImGui::Dummy(ImVec2(0, 2));
+
+        float tab_w = (ImGui::GetContentRegionAvail().x - 20.f) / 3.f;
+        if (tab_btn("visuals", menu_tab == 0, tab_w)) menu_tab = 0;
+        ImGui::SameLine(0, 10.f);
+        if (tab_btn("aim", menu_tab == 1, tab_w)) menu_tab = 1;
+        ImGui::SameLine(0, 10.f);
+        if (tab_btn("setup", menu_tab == 2, tab_w)) menu_tab = 2;
+
+        ImGui::Dummy(ImVec2(0, 4));
+        ImGui::Separator();
+        ImGui::Dummy(ImVec2(0, 4));
+
+        if (ImGui::BeginChild("##content", ImVec2(0, 0), ImGuiChildFlags_None)) {
+            if (menu_tab == 0) {
+                ImGui::TextDisabled("esp");
+                melo_checkbox("box", &opt_box);
+                melo_checkbox("health", &opt_health);
+                melo_checkbox("distance", &opt_dist);
+                melo_checkbox("skeleton", &opt_skeleton);
+                ImGui::Dummy(ImVec2(0, 8));
+                ImGui::TextDisabled("camera");
+                melo_checkbox("third person", &opt_tps);
+                if (opt_tps) {
+                    ImGui::SetNextItemWidth(-1);
+                    ImGui::SliderFloat("##tpsdist", &tps_dist, 1.5f, 6.f, "distance %.1f");
+                }
+            } else if (menu_tab == 1) {
+                ImGui::TextDisabled("anti aim");
+                melo_checkbox("enable", &opt_aa);
+                ImGui::SetNextItemWidth(-1);
+                ImGui::Combo("pitch", &opt_aa_pitch, "local\0up\0down\0");
+                ImGui::SetNextItemWidth(-1);
+                ImGui::Combo("yaw", &opt_aa_yaw, "local\0backward\0spiral\0chaos\0");
+                melo_checkbox("jitter", &opt_aa_jitter);
+                if (opt_aa_jitter) {
+                    ImGui::SetNextItemWidth(-1);
+                    ImGui::SliderInt("##aarng", &opt_aa_range, 0, 50, "range %d");
+                    ImGui::SetNextItemWidth(-1);
+                    ImGui::SliderInt("##aafr", &opt_aa_frames, 0, 30, "frames %d");
+                }
+                ImGui::SetNextItemWidth(-1);
+                ImGui::SliderFloat("##aaspin", &opt_aa_spin, 0.f, 180.f, "spin %.0f");
+                melo_checkbox("random", &opt_aa_chaos);
+            } else {
+                ImGui::TextDisabled("hooks");
+                ImGui::TextWrapped(
+                    "1. Enter a match\n"
+                    "2. Press setup hooks\n"
+                    "3. Enable third person in visuals");
+                ImGui::Dummy(ImVec2(0, 8));
+                auto status_line = [](const char* name, bool ok) {
+                    if (ok) ImGui::Text("%-12s ready", name);
+                    else ImGui::TextDisabled("%-12s waiting", name);
+                };
+                status_line("LateUpdate", lu_hooked);
+                status_line("Update", up_hooked);
+                status_line("set_tps", g_body_ok.load());
+                status_line("in match", in_match());
+                ImGui::Dummy(ImVec2(0, 12));
+                if (ImGui::Button(g_hooks_armed.load() ? "re-setup hooks" : "setup hooks",
+                                  ImVec2(-1, 56.f))) {
+                    setup_hooks_now();
+                }
+                ImGui::Dummy(ImVec2(0, 4));
+                if (!in_match())
+                    ImGui::TextDisabled("lobby — wait for round spawn");
+                else if (lu_hooked && g_body_ok.load())
+                    ImGui::TextDisabled("armed — toggle third person");
+                else
+                    ImGui::TextDisabled("in match — press setup hooks");
             }
-            ImGui::SliderFloat("spin speed", &opt_aa_spin, 0.f, 180.f, "%.0f");
-            melo_checkbox("random", &opt_aa_chaos);
         }
         ImGui::EndChild();
     }
     ImGui::End();
-    ImGui::PopStyleVar();
+    ImGui::PopStyleVar(6);
 }
 
 static void apply_melo_style() {
     ImGuiStyle& style = ImGui::GetStyle();
     ImGui::StyleColorsDark();
-    style.WindowBorderSize = 1.f;
-    style.ChildBorderSize = 1.f;
-    style.FrameBorderSize = 1.f;
-    style.WindowPadding = ImVec2(20, 20);
-    style.FramePadding = ImVec2(8, 6);
-    style.ItemSpacing = ImVec2(15, 15);
-    style.ScrollbarRounding = 0;
-    style.ScrollbarSize = 20;
-    style.TouchExtraPadding = ImVec2(10.f, 10.f);
-    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+    style.WindowBorderSize = 0.f;
+    style.ChildBorderSize = 0.f;
+    style.FrameBorderSize = 0.f;
+    style.WindowRounding = 10.f;
+    style.ChildRounding = 8.f;
+    style.FrameRounding = 6.f;
+    style.GrabRounding = 4.f;
+    style.WindowPadding = ImVec2(18, 16);
+    style.FramePadding = ImVec2(12, 10);
+    style.ItemSpacing = ImVec2(14, 14);
+    style.ScrollbarRounding = 6;
+    style.ScrollbarSize = 18;
+    style.TouchExtraPadding = ImVec2(12.f, 12.f);
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.05f, 0.05f, 0.05f, 0.97f);
     style.Colors[ImGuiCol_ChildBg] = ImVec4(0.06f, 0.06f, 0.06f, 1.00f);
-    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
-    style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
-    style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.10f, 0.10f, 0.10f, 1.00f);
+    style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
+    style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
     style.Colors[ImGuiCol_CheckMark] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
-    style.Colors[ImGuiCol_SliderGrab] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
-    style.Colors[ImGuiCol_Border] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
-    style.Colors[ImGuiCol_Text] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    style.Colors[ImGuiCol_SliderGrab] = ImVec4(0.85f, 0.85f, 0.85f, 1.00f);
+    style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    style.Colors[ImGuiCol_Button] = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
+    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+    style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
+    style.Colors[ImGuiCol_Header] = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
+    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+    style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.24f, 0.24f, 0.24f, 1.00f);
+    style.Colors[ImGuiCol_Border] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+    style.Colors[ImGuiCol_Text] = ImVec4(0.95f, 0.95f, 0.95f, 1.00f);
+    style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.45f, 0.45f, 0.45f, 1.00f);
+    style.Colors[ImGuiCol_Separator] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
 }
 
 static void render_frame() {
@@ -1815,12 +1883,17 @@ static void* thread_main(void*) {
             up_mp = nullptr;
             fn_set_tps = fn_set_fps = fn_set_visible = nullptr;
             fn_set_view_mode = nullptr;
+            fn_cam_main = nullptr;
+            fn_get_transform = nullptr;
+            fn_set_localpos = nullptr;
             fn_go_set_active = nullptr;
             fn_rend_set_enabled = nullptr;
+            mi_set_tps = mi_set_fps = mi_set_visible = nullptr;
             mi_go_set_active = mi_rend_set_enabled = nullptr;
             g_unity_helpers_tried = false;
             g_view_rva_tried = false;
             g_body_ok.store(false);
+            g_tps_ok.store(false);
             // Keep armed flag; reinstall only if still armed (user already set up).
             if (g_hooks_armed.load()) try_hook_lu();
         }
