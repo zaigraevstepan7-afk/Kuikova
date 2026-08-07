@@ -717,8 +717,13 @@ static void* (*cm)();
 static void* (*cgt)(void*);
 static Vector3 (*tgf)(void*);
 static void (*tsp)(void*, Vector3);
+static Vector3 (*tgp)(void*);
+static Vector3 (*tge)(void*);
+static void (*tse)(void*, Vector3);
 static MethodInfo* lu_mi;
 static void* lu_mp;
+static MethodInfo* up_mi;
+static void* up_mp;
 
 static void* mp(const void* m) {
     if (!m) return nullptr;
@@ -733,23 +738,10 @@ static void* mp(const void* m) {
 
 static void* vm_apply;
 static void* vm_settps2;
-static void (*fn_set_tps)(void*) = nullptr;
-static void (*fn_set_fps)(void*) = nullptr;
-static void (*fn_set_euler)(void*, Vector3) = nullptr;
-static Vector3 (*fn_get_pos_ret)(void*) = nullptr;
-static Vector3 (*fn_get_fwd)(void*) = nullptr;
-static void (*fn_set_pos)(void*, Vector3) = nullptr;
 
+// Resolve the two obfuscated PlayerController view helpers by scanning for
+// void(int) / void() pairs — RVA tables from other cheats do not match here.
 static void resolve_view_methods() {
-    if (!g_il2) g_il2 = resolve_il2();
-    if (g_il2) {
-        if (!fn_set_tps) fn_set_tps = (void (*)(void*))(g_il2 + OFF_SET_TPS);
-        if (!fn_set_fps) fn_set_fps = (void (*)(void*))(g_il2 + OFF_SET_FPS);
-        if (!fn_set_euler) fn_set_euler = (void (*)(void*, Vector3))(g_il2 + OFF_SET_EULER_ANGLES);
-        if (!fn_get_fwd) fn_get_fwd = (Vector3 (*)(void*))(g_il2 + OFF_GET_FORWARD);
-        if (!fn_set_pos) fn_set_pos = (void (*)(void*, Vector3))(g_il2 + OFF_SET_POSITION);
-        if (!fn_get_pos_ret) fn_get_pos_ret = (Vector3 (*)(void*))(g_il2 + OFF_GET_POSITION);
-    }
     if ((vm_apply && vm_settps2) || !il2cpp::class_get_methods || !il2cpp::method_get_name) return;
     Il2CppDomain* d = il2cpp::domain_get();
     if (!d) return;
@@ -767,7 +759,7 @@ static void resolve_view_methods() {
 }
 
 static void resolve_lu(){
-    if(lu_mi)return;
+    if(lu_mi && up_mi)return;
     if(!il2cpp::domain_get||!il2cpp::domain_assembly_open||!il2cpp::assembly_get_image||!il2cpp::class_from_name||!il2cpp::class_get_method_from_name)return;
     Il2CppDomain* d=il2cpp::domain_get();
     if(!d)return;
@@ -775,8 +767,14 @@ static void resolve_lu(){
     if(!gi)return;
     Il2CppClass* pc=il2cpp::class_from_name(gi,"Axlebolt.Standoff.Player","PlayerController");
     if(!pc)return;
-    lu_mi=(MethodInfo*)il2cpp::class_get_method_from_name(pc,"LateUpdate",0);
-    if(!lu_mi)lu_mi=(MethodInfo*)find_method(pc,"LateUpdate");
+    if(!lu_mi){
+        lu_mi=(MethodInfo*)il2cpp::class_get_method_from_name(pc,"LateUpdate",0);
+        if(!lu_mi)lu_mi=(MethodInfo*)find_method(pc,"LateUpdate");
+    }
+    if(!up_mi){
+        up_mi=(MethodInfo*)il2cpp::class_get_method_from_name(pc,"Update",0);
+        if(!up_mi)up_mi=(MethodInfo*)find_method(pc,"Update");
+    }
 }
 
 static bool tps_init(){
@@ -795,9 +793,12 @@ static bool tps_init(){
     cgt=(void* (*)(void*))mp(il2cpp::class_get_method_from_name(c,"get_transform",0));
     tgf=(Vector3 (*)(void*))mp(il2cpp::class_get_method_from_name(t,"get_forward",0));
     tsp=(void (*)(void*,Vector3))mp(il2cpp::class_get_method_from_name(t,"set_position",1));
+    tgp=(Vector3 (*)(void*))mp(il2cpp::class_get_method_from_name(t,"get_position",0));
+    tge=(Vector3 (*)(void*))mp(il2cpp::class_get_method_from_name(t,"get_eulerAngles",0));
+    tse=(void (*)(void*,Vector3))mp(il2cpp::class_get_method_from_name(t,"set_eulerAngles",1));
     resolve_view_methods();
     resolve_lu();
-    return cm && cgt && (tgf || fn_get_fwd) && (tsp || fn_set_pos);
+    return cm && cgt && tgf && tsp;
 }
 
 static inline float norm_yaw(float yaw) {
@@ -811,219 +812,158 @@ static inline float clamp_pitch(float p, float m = 70.f) {
     return p;
 }
 
-// Melodium visual::third_view (without sphere_cast — soft pullback)
+// Third person: pull the main camera back along its own forward vector.
+// Everything is resolved by name through the il2cpp API — no RVA tables.
 static void third_view(void* player) {
     if (!opt_tps || !player) return;
-    Vector3 (*get_fwd_v)(void*) = fn_get_fwd ? fn_get_fwd : tgf;
-    void (*set_pos)(void*, Vector3) = fn_set_pos ? fn_set_pos : tsp;
-    if (!cm || !cgt || !get_fwd_v || !set_pos) return;
+    if (!cm || !cgt || !tgf || !tsp) return;
 
     Vector3 location = player_pos((uint64_t)player);
-    if (!(location.x > -20000 && location.x < 20000)) return;
+    if (!(location.x > -20000.f && location.x < 20000.f &&
+          location.y > -20000.f && location.y < 20000.f &&
+          location.z > -20000.f && location.z < 20000.f)) return;
 
     void* cam = cm();
     if (!cam) return;
     void* tr = cgt(cam);
     if (!tr) return;
-    Vector3 forward = get_fwd_v(tr);
-    if (forward.x * forward.x + forward.y * forward.y + forward.z * forward.z < 0.01f) return;
+    Vector3 forward = tgf(tr);
+    float flen = forward.x * forward.x + forward.y * forward.y + forward.z * forward.z;
+    if (flen < 0.01f || flen > 100.f) return;
 
-    Vector3 camera_position;
-    camera_position.x = location.x + forward.x * -tps_dist;
-    camera_position.y = location.y + 1.50f + forward.y * -tps_dist;
-    camera_position.z = location.z + forward.z * -tps_dist;
+    Vector3 want;
+    want.x = location.x + forward.x * -tps_dist;
+    want.y = location.y + 1.50f + forward.y * -tps_dist;
+    want.z = location.z + forward.z * -tps_dist;
 
     static Vector3 smoothed(0, 0, 0);
     static bool init = false;
-    if (!init) { smoothed = camera_position; init = true; }
-    float jdx = camera_position.x - smoothed.x;
-    float jdy = camera_position.y - smoothed.y;
-    float jdz = camera_position.z - smoothed.z;
+    if (!init) { smoothed = want; init = true; }
+    float jdx = want.x - smoothed.x, jdy = want.y - smoothed.y, jdz = want.z - smoothed.z;
     if (jdx * jdx + jdy * jdy + jdz * jdz > 25.f) {
-        smoothed = camera_position;
+        smoothed = want;
     } else {
-        // Melodium ImLerp factor 0.688
-        smoothed.x += (camera_position.x - smoothed.x) * 0.688f;
-        smoothed.y += (camera_position.y - smoothed.y) * 0.688f;
-        smoothed.z += (camera_position.z - smoothed.z) * 0.688f;
+        smoothed.x += jdx * 0.688f;
+        smoothed.y += jdy * 0.688f;
+        smoothed.z += jdz * 0.688f;
     }
-    set_pos(tr, smoothed);
+    tsp(tr, smoothed);
 }
 
-// ---- Melodium antiaim (input filter + late camera restore) ----
+// Make the local body render while in third person (field writes, no obfuscated calls).
+static void tps_set_view(void* p, bool on) {
+    uint64_t pl = (uint64_t)p;
+    if (!ok(pl)) return;
+    wr32(pl + OFF_PLAYER_VIEW_MODE, on ? 2 : 1);
+    wr8(pl + OFF_PLAYER_CHAR_VISIBLE, on ? 1 : 0);
+    uint64_t cv = rd64(pl + OFF_PLAYER_CHAR_VIEW);
+    if (ok(cv)) wr8(cv + OFF_CHAR_VIEW_OCCLUSION, on ? 0 : 1);
+    if (vm_settps2 && on) ((void(*)(void*))vm_settps2)(p);
+    if (vm_apply) ((void(*)(void*, int))vm_apply)(p, on ? 2 : 1);
+}
+
+// ---- Anti-aim: fake angles in Update, real camera restored in LateUpdate ----
 struct Euler { float pitch, yaw, roll; };
-static Euler aa_orig{};
-static bool aa_orig_set = false;
-static void (*og_input_filter)(void* thiz, void* inputs) = nullptr;
-static std::atomic<bool> g_aa_hooked{false};
+static Euler aa_real{};
+static bool aa_real_set = false;
 
-static uint64_t game_controller() {
-    if (!g_il2) g_il2 = resolve_il2();
-    if (!g_il2) return 0;
-    uint64_t v1 = rd64(g_il2 + OFF_GAME_CONTROLLER);
-    if (!ok(v1)) return 0;
-    // static_fields path
-    uint64_t sf = rd64(v1 + 0x90);
-    if (ok(sf)) {
-        uint64_t inst = rd64(sf + 0x10);
-        if (ok(inst)) return inst;
-    }
-    // lazy path (same as PlayerManager)
-    uint64_t v2 = rd64(v1 + 0x58);
-    if (!ok(v2)) return 0;
-    uint64_t v3 = rd64(v2 + 0xB8);
-    if (!ok(v3)) return 0;
-    return rd64(v3 + 0x0);
-}
-
-static void aa_apply_to_inputs(void* local, void* inputs) {
-    if (!opt_aa || !local || !inputs) {
-        aa_orig_set = false;
-        return;
-    }
-    uint64_t aim = rd64((uint64_t)local + OFF_PLAYER_AIM);
-    if (!ok(aim)) return;
-    uint64_t ad = rd64(aim + OFF_AIM_AIMING_DATA);
-    if (!ok(ad)) return;
-
-    float aim_pitch = rdf(ad + OFF_AIMDATA_CUR_AIM + 0);
-    float euler_yaw = rdf(ad + OFF_AIMDATA_CUR_EULER + 4);
-    float dx = rdf((uint64_t)inputs + OFF_INPUTS_DELTA_AIM);
-    float dy = rdf((uint64_t)inputs + OFF_INPUTS_DELTA_AIM + 4);
-    bool jump = rd8((uint64_t)inputs + OFF_INPUTS_JUMP) != 0;
-    bool fire = rd8((uint64_t)inputs + OFF_INPUTS_FIRE) != 0;
-
-    if (!aa_orig_set) {
-        aa_orig = {aim_pitch, euler_yaw, 0.f};
-        aa_orig_set = true;
-    }
-    aa_orig.pitch = clamp_pitch(aa_orig.pitch - dx);
-    aa_orig.yaw = norm_yaw(aa_orig.yaw + dy);
-
-    Euler aa = aa_orig;
-    switch (opt_aa_pitch) {
-        case 1: aa.pitch = -90.f; break;
-        case 2: aa.pitch = 90.f; break;
-        default: break;
-    }
-
-    float base_yaw = aa_orig.yaw;
+static float aa_fake_yaw(float real_yaw) {
+    float yaw = real_yaw;
     switch (opt_aa_yaw) {
-        case 1: base_yaw = 165.f; break;
+        case 1: yaw = norm_yaw(real_yaw + 165.f); break;
         case 2: {
             static float ang = 0.f, rad = 0.f;
-            ang += 8.f; rad += 0.5f;
+            ang += 8.f;
+            rad += 0.5f;
             if (ang >= 360.f) ang = rad = 0.f;
-            base_yaw = ang + (sinf(rad) * 180.f);
+            yaw = norm_yaw(ang + sinf(rad) * 180.f);
             break;
         }
-        case 3:
-            aa.pitch = (float)(rand() % 179 - 89);
-            base_yaw = (float)(rand() % 360);
-            break;
+        case 3: yaw = norm_yaw((float)(rand() % 360)); break;
         default: break;
     }
-
-    if (opt_aa_chaos && jump) {
-        aa.pitch = (float)(rand() % 179 - 89);
-        base_yaw = (float)(rand() % 360);
-    }
-
     if (opt_aa_spin != 0.f) {
         static float spin = 0.f;
         spin += opt_aa_spin;
         if (spin >= 360.f) spin -= 360.f;
-        if (spin < 0.f) spin += 360.f;
-        base_yaw = spin;
+        yaw = norm_yaw(spin);
     }
-
+    if (opt_aa_chaos) yaw = norm_yaw((float)(rand() % 360));
     if (opt_aa_jitter && opt_aa_spin == 0.f) {
         static int frames = 0;
         static bool flip = false;
         int need = opt_aa_frames > 0 ? opt_aa_frames : 1;
         if (frames >= need) { frames = 0; flip = !flip; }
         ++frames;
-        base_yaw = norm_yaw(base_yaw + (flip ? (float)opt_aa_range : (float)-opt_aa_range));
+        yaw = norm_yaw(yaw + (flip ? (float)opt_aa_range : (float)-opt_aa_range));
     }
-
-    // Melodium: yaw_angle = Normalize(orig_yaw + base_yaw) except spin/chaos replace base entirely
-    if (opt_aa_spin != 0.f || opt_aa_yaw == 2 || opt_aa_yaw == 3 || (opt_aa_chaos && jump))
-        aa.yaw = norm_yaw(base_yaw);
-    else if (opt_aa_yaw == 1 || opt_aa_jitter)
-        aa.yaw = norm_yaw(aa_orig.yaw + base_yaw);
-    else
-        aa.yaw = aa_orig.yaw;
-    aa.pitch = clamp_pitch(aa.pitch);
-
-    if (!fire) {
-        wrf(ad + OFF_AIMDATA_CUR_AIM + 0, aa.pitch);
-        wrf(ad + OFF_AIMDATA_CUR_EULER + 4, aa.yaw);
-    } else {
-        wrf(ad + OFF_AIMDATA_CUR_AIM + 0, aa_orig.pitch);
-        wrf(ad + OFF_AIMDATA_CUR_EULER + 4, aa_orig.yaw);
-    }
+    return yaw;
 }
 
-static void hk_input_filter(void* thiz, void* inputs) {
-    uint64_t pm = player_manager();
-    void* local = nullptr;
-    if (ok(pm)) local = (void*)rd64(pm + OFF_PM_LOCAL_PLAYER);
-    if (local && inputs) aa_apply_to_inputs(local, inputs);
-    else aa_orig_set = false;
-    if (og_input_filter) og_input_filter(thiz, inputs);
+static void aa_update(void* local) {
+    if (!local) { aa_real_set = false; return; }
+    uint64_t aim = rd64((uint64_t)local + OFF_PLAYER_AIM);
+    if (!ok(aim)) return;
+    uint64_t ad = rd64(aim + OFF_AIM_AIMING_DATA);
+    if (!ok(ad)) return;
+
+    float pitch = rdf(ad + OFF_AIMDATA_CUR_AIM);
+    float yaw = rdf(ad + OFF_AIMDATA_CUR_EULER + 4);
+    if (!(pitch > -720.f && pitch < 720.f && yaw > -720.f && yaw < 720.f)) return;
+
+    // Remember the angles the player actually aims with before faking them.
+    aa_real = {pitch, yaw, 0.f};
+    aa_real_set = true;
+    if (!opt_aa) return;
+
+    float fake_pitch = pitch;
+    switch (opt_aa_pitch) {
+        case 1: fake_pitch = -89.f; break;
+        case 2: fake_pitch = 89.f; break;
+        default: break;
+    }
+    if (opt_aa_yaw == 3 || opt_aa_chaos)
+        fake_pitch = (float)(rand() % 179 - 89);
+
+    wrf(ad + OFF_AIMDATA_CUR_AIM, clamp_pitch(fake_pitch, 89.f));
+    wrf(ad + OFF_AIMDATA_CUR_EULER + 4, aa_fake_yaw(yaw));
 }
 
+// Restore the view so the local player still sees their real angles.
 static void aa_late_update(void* local) {
-    if (!opt_aa || !local || !aa_orig_set) return;
+    if (!opt_aa || !local || !aa_real_set || !tse) return;
     uint64_t holder = rd64((uint64_t)local + OFF_PLAYER_CAM_HOLDER);
-    if (!ok(holder) || !fn_set_euler) return;
-    Vector3 e{aa_orig.pitch, aa_orig.yaw, 0.f};
-    fn_set_euler((void*)holder, e);
+    if (!ok(holder)) return;
+    Vector3 e{aa_real.pitch, aa_real.yaw, 0.f};
+    tse((void*)holder, e);
 }
 
-static void try_hook_aa_filter() {
-    if (g_aa_hooked.load()) return;
-    uint64_t gc = game_controller();
-    if (!ok(gc)) return;
-    uint64_t controls = rd64(gc + OFF_GC_PLAYER_CONTROLS);
-    if (!ok(controls)) return;
-    uint64_t filter = rd64(controls + OFF_PC_INPUT_FILTER);
-    if (!ok(filter)) return;
-    // Melodium c_delegate: invoke_impl at +0x18 (after pad[16] + method_ptr at 0x10)
-    // struct: pad[16], method_ptr@0x10, invoke_impl@0x18
-    void** p_invoke = (void**)(filter + 0x18);
-    if (!ok((uint64_t)p_invoke) || !readable((uint64_t)p_invoke, 8)) return;
-    void* cur = *p_invoke;
-    if (!cur || cur == (void*)hk_input_filter) return;
-    if (!og_input_filter) og_input_filter = (void (*)(void*, void*))cur;
-    *p_invoke = (void*)hk_input_filter;
-    g_aa_hooked.store(true);
+static bool is_local_player(void* p) {
+    if (!p || !ok((uint64_t)p)) return false;
+    uint64_t pm = player_manager();
+    return ok(pm) && (uint64_t)p == rd64(pm + OFF_PM_LOCAL_PLAYER);
 }
 
 static int vis_state = -1;
 
+static void hk_up(void* p) {
+    if (!up_mp) return;
+    if (is_local_player(p)) aa_update(p);
+    ((void(*)(void*))up_mp)(p);
+}
+
 static void hk_lu(void* p){
     if (!lu_mp) return;
-    int is_local = 0;
-    if (p && ok((uint64_t)p)) {
-        uint64_t pm = player_manager();
-        if (ok(pm) && (uint64_t)p == rd64(pm + OFF_PM_LOCAL_PLAYER)) is_local = 1;
-    }
+    bool is_local = is_local_player(p);
     if (is_local) {
         resolve_view_methods();
         if (opt_tps) {
-            // Melodium: set_tps() then third_view in LateUpdate
-            if (fn_set_tps) fn_set_tps(p);
-            else if (vm_settps2) ((void(*)(void*))vm_settps2)(p);
-            int cur = rd32((uint64_t)p + OFF_PLAYER_VIEW_MODE);
-            if (cur != 2 && vm_apply) ((void(*)(void*, int))vm_apply)(p, 2);
-            wr32((uint64_t)p + OFF_PLAYER_VIEW_MODE, 2);
+            tps_set_view(p, true);
+            vis_state = 1;
         } else if (vis_state == 1) {
-            if (fn_set_fps) fn_set_fps(p);
-            if (vm_apply) ((void(*)(void*, int))vm_apply)(p, 1);
-            wr32((uint64_t)p + OFF_PLAYER_VIEW_MODE, 1);
+            tps_set_view(p, false);
+            vis_state = 0;
         }
-        vis_state = opt_tps ? 1 : 0;
     }
 
     ((void(*)(void*))lu_mp)(p);
@@ -1034,38 +974,39 @@ static void hk_lu(void* p){
     }
 }
 
-static void hook_lu(){
-    if(!lu_mi)return;
-    // MethodInfo::methodPointer — offset 0x0 on many Unity builds, 0x8 on others.
-    // Prefer the value already stored by resolve; fall back to both common slots.
-    uintptr_t slot0 = *(uintptr_t*)((uintptr_t)lu_mi + 0x0);
-    uintptr_t slot8 = *(uintptr_t*)((uintptr_t)lu_mi + 0x8);
+// Swap MethodInfo::methodPointer; il2cpp keeps it at 0x0 or 0x8 depending on build.
+static bool hook_method_ptr(MethodInfo* mi, void* hook, void** orig) {
+    if (!mi) return false;
+    uintptr_t slot0 = *(uintptr_t*)((uintptr_t)mi + 0x0);
+    uintptr_t slot8 = *(uintptr_t*)((uintptr_t)mi + 0x8);
     uintptr_t a = 0;
     size_t ptr_off = 0x8;
     if (ok(slot8) && slot8 > 0x100000) { a = slot8; ptr_off = 0x8; }
     else if (ok(slot0) && slot0 > 0x100000) { a = slot0; ptr_off = 0x0; }
-    if (!a) return;
-    // Don't re-hook if already pointing at us
-    if ((void*)a == (void*)hk_lu) {
-        lu_mp = lu_mp ? lu_mp : (void*)a;
-        return;
+    if (!a) return false;
+    if ((void*)a == hook) {
+        if (!*orig) *orig = (void*)a;
+        return true;
     }
-    lu_mp = (void*)a;
+    *orig = (void*)a;
     long pg = sysconf(_SC_PAGESIZE);
-    uintptr_t page = ((uintptr_t)lu_mi + ptr_off) & ~(uintptr_t)(pg - 1);
-    if (mprotect((void*)page, (size_t)pg, PROT_READ | PROT_WRITE) != 0) return;
-    *(void**)((uintptr_t)lu_mi + ptr_off) = (void*)hk_lu;
-    __builtin___clear_cache((char*)((uintptr_t)lu_mi + ptr_off),
-                            (char*)((uintptr_t)lu_mi + ptr_off + sizeof(void*)));
+    uintptr_t page = ((uintptr_t)mi + ptr_off) & ~(uintptr_t)(pg - 1);
+    if (mprotect((void*)page, (size_t)pg, PROT_READ | PROT_WRITE) != 0) return false;
+    *(void**)((uintptr_t)mi + ptr_off) = hook;
+    __builtin___clear_cache((char*)((uintptr_t)mi + ptr_off),
+                            (char*)((uintptr_t)mi + ptr_off + sizeof(void*)));
+    return true;
 }
 
 static bool lu_hooked;
+static bool up_hooked;
 
 static void try_hook_lu(){
-    if (lu_hooked && lu_mp) return;
-    if (!lu_mi) resolve_lu();
-    if (lu_mi) hook_lu();
-    if (lu_mp) lu_hooked = true;
+    if (!lu_mi || !up_mi) resolve_lu();
+    if (!lu_hooked && lu_mi && hook_method_ptr(lu_mi, (void*)hk_lu, &lu_mp) && lu_mp)
+        lu_hooked = true;
+    if (!up_hooked && up_mi && hook_method_ptr(up_mi, (void*)hk_up, &up_mp) && up_mp)
+        up_hooked = true;
 }
 
 static bool view_matrix(float out[16]) {
@@ -1392,7 +1333,10 @@ static void draw_menu() {
                 ImGui::SliderInt("frames", &opt_aa_frames, 0, 30);
             }
             ImGui::SliderFloat("spin speed", &opt_aa_spin, 0.f, 180.f, "%.0f");
-            melo_checkbox("random in jump", &opt_aa_chaos);
+            melo_checkbox("random", &opt_aa_chaos);
+            ImGui::Separator();
+            ImGui::Text("hooks %c%c%c cam %c", lu_hooked ? 'L' : '-', up_hooked ? 'U' : '-',
+                        vm_apply ? 'V' : '-', (cm && cgt && tgf && tsp) ? '+' : '-');
         }
         ImGui::EndChild();
     }
@@ -1663,7 +1607,6 @@ static void* thread_main(void*) {
     try_hook_lu();
     try_hook_egl();
     try_hook_input();
-    try_hook_aa_filter();
 
     static int done;
     while (true) {
@@ -1672,9 +1615,9 @@ static void* thread_main(void*) {
         if (!g_il2) g_il2 = resolve_il2();
         try_hook_egl();
         try_hook_input();
-        try_hook_aa_filter();
         try_hook_lu();
         if (!touch_count_fn || !get_touch_fn) touch_init();
+        if (!cm || !cgt || !tgf || !tsp || !tse) tps_init();
         if (done < 5) { resolve_view_methods(); done++; }
         uint64_t new_base = pick_base();
         if (!new_base) new_base = find_lib("libil2cpp.so");
@@ -1688,8 +1631,11 @@ static void* thread_main(void*) {
             build_segs();
             il2cpp::init_api(g_base);
             lu_hooked = false;
+            up_hooked = false;
             lu_mi = nullptr;
             lu_mp = nullptr;
+            up_mi = nullptr;
+            up_mp = nullptr;
             vm_apply = nullptr;
             vm_settps2 = nullptr;
             tps_init();

@@ -95,33 +95,12 @@
 #define OFF_INPUT_GET_TOUCH         0x684EDACULL
 #define OFF_INPUT_GET_TOUCH_COUNT   0x684E370ULL
 
-// Melodium 0.39.2 — PlayerController view / transform / physics
-#define OFF_SET_TPS                 0x8E7E63CULL
-#define OFF_SET_FPS                 0x8E7EC48ULL
-#define OFF_SET_VISIBLE             0x8E880E4ULL
-#define OFF_SET_VIEW_MODE           0x8E91C64ULL
-#define OFF_GET_POSITION            0x6005138ULL
-#define OFF_SET_POSITION            0x6009694ULL
-#define OFF_GET_FORWARD             0x60062E0ULL
-#define OFF_SET_EULER_ANGLES        0x5FEC6CCULL
-#define OFF_SPHERE_CAST             0x79FFF6CULL
-
-#define OFF_GAME_CONTROLLER         0xAC58BB0ULL
-#define OFF_GC_PLAYER_CONTROLS      0x2B0
-#define OFF_PC_INPUT_FILTER         0xC0
-
+// PlayerController fields (AcademicDLC 0.39.2 dump)
 #define OFF_PLAYER_CAM_HOLDER       0x28
 #define OFF_PLAYER_AIM              0x80
 #define OFF_PLAYER_TRANSFORM        0x100
 #define OFF_PLAYER_VIEW_MODE        0x134
 #define OFF_AIM_AIMING_DATA         0x90
-#define OFF_AIMDATA_CUR_AIM         0x18  // euler pitch/yaw/roll
+#define OFF_AIMDATA_CUR_AIM         0x18
 #define OFF_AIMDATA_CUR_EULER       0x24
-
-#define OFF_INPUTS_HORIZONTAL       0x10
-#define OFF_INPUTS_VERTICAL         0x14
-#define OFF_INPUTS_DUCK             0x18
-#define OFF_INPUTS_FIRE             0x21
-#define OFF_INPUTS_JUMP             0x22
-#define OFF_INPUTS_DELTA_AIM        0x28  // ImVec2 x,y
 
