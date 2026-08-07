@@ -713,14 +713,12 @@ static void sch(SK& s, float px, float py, float pz) {
         if (s.v[i]) { s.b[i].x += ox; s.b[i].y += oy; s.b[i].z += oz; }
 }
 
-static void* (*cm)();
-static void* (*cgt)(void*);
-static Vector3 (*tgf)(void*);
-static void (*tsp)(void*, Vector3);
 static MethodInfo* lu_mi;
 static void* lu_mp;
 static MethodInfo* up_mi;
 static void* up_mp;
+static std::atomic<bool> g_tps_ok{false};
+static std::atomic<bool> g_tps_hf_started{false};
 
 static void* mp(const void* m) {
     if (!m) return nullptr;
@@ -731,29 +729,6 @@ static void* mp(const void* m) {
     if (ok(p0) && p0 > 0x100000) return (void*)p0;
     uintptr_t po = *(uintptr_t*)((uintptr_t)m + il2cpp::offset::il2cpp_method_pointer);
     return ok(po) ? (void*)po : nullptr;
-}
-
-static void* vm_apply;
-static void* vm_settps2;
-
-// The two obfuscated PlayerController view helpers, matched by name.
-// Their names come from a 0.39.2 dump and may be absent on other builds,
-// in which case third person falls back to plain field writes.
-static void resolve_view_methods() {
-    if ((vm_apply && vm_settps2) || !il2cpp::class_get_methods || !il2cpp::method_get_name) return;
-    Il2CppDomain* d = il2cpp::domain_get();
-    if (!d) return;
-    Il2CppImage* gi = il2cpp::assembly_get_image(il2cpp::domain_assembly_open(d, "Assembly-CSharp"));
-    if (!gi) return;
-    Il2CppClass* pc = il2cpp::class_from_name(gi, "Axlebolt.Standoff.Player", "PlayerController");
-    if (!pc) return;
-    void* it = nullptr;
-    while (const Il2CppMethod* m = il2cpp::class_get_methods(pc, &it)) {
-        const char* nm = il2cpp::method_get_name(m);
-        if (!nm) continue;
-        if (!vm_apply && strcmp(nm, "ADEAAACFHADDAFG") == 0) vm_apply = mp(m);
-        else if (!vm_settps2 && strcmp(nm, "EHDGAFDBHCAECDH") == 0) vm_settps2 = mp(m);
-    }
 }
 
 static void resolve_lu(){
@@ -775,27 +750,6 @@ static void resolve_lu(){
     }
 }
 
-static bool tps_init(){
-    il2cpp::init_api(g_base);
-    if(!il2cpp::domain_get||!il2cpp::domain_assembly_open||!il2cpp::assembly_get_image||!il2cpp::class_from_name||!il2cpp::class_get_method_from_name)return false;
-    Il2CppDomain* d=il2cpp::domain_get();
-    if(!d)return false;
-    if(il2cpp::thread_attach)il2cpp::thread_attach(d);
-    Il2CppImage* im=il2cpp::assembly_get_image(il2cpp::domain_assembly_open(d,"UnityEngine.CoreModule"));
-    if(!im)return false;
-    Il2CppClass* ca=il2cpp::class_from_name(im,"UnityEngine","Camera");
-    Il2CppClass* c=il2cpp::class_from_name(im,"UnityEngine","Component");
-    Il2CppClass* t=il2cpp::class_from_name(im,"UnityEngine","Transform");
-    if(!ca||!c||!t)return false;
-    cm=(void* (*)())mp(il2cpp::class_get_method_from_name(ca,"get_main",0));
-    cgt=(void* (*)(void*))mp(il2cpp::class_get_method_from_name(c,"get_transform",0));
-    tgf=(Vector3 (*)(void*))mp(il2cpp::class_get_method_from_name(t,"get_forward",0));
-    tsp=(void (*)(void*,Vector3))mp(il2cpp::class_get_method_from_name(t,"set_position",1));
-    resolve_view_methods();
-    resolve_lu();
-    return cm && cgt && tgf && tsp;
-}
-
 static inline float norm_yaw(float yaw) {
     if (!std::isfinite(yaw)) return 0.f;
     yaw = fmodf(yaw + 180.f, 360.f);
@@ -808,54 +762,115 @@ static inline float clamp_pitch(float p, float m = 70.f) {
     return p;
 }
 
-// Third person: pull the main camera back along its own forward vector.
-// Everything is resolved by name through the il2cpp API — no RVA tables.
-static void third_view(void* player) {
-    if (!opt_tps || !player) return;
-    if (!cm || !cgt || !tgf || !tsp) return;
-
-    Vector3 location = player_pos((uint64_t)player);
-    if (!(location.x > -20000.f && location.x < 20000.f &&
-          location.y > -20000.f && location.y < 20000.f &&
-          location.z > -20000.f && location.z < 20000.f)) return;
-
-    void* cam = cm();
-    if (!cam) return;
-    void* tr = cgt(cam);
-    if (!tr) return;
-    Vector3 forward = tgf(tr);
-    float flen = forward.x * forward.x + forward.y * forward.y + forward.z * forward.z;
-    if (flen < 0.01f || flen > 100.f) return;
-
-    Vector3 want;
-    want.x = location.x + forward.x * -tps_dist;
-    want.y = location.y + 1.50f + forward.y * -tps_dist;
-    want.z = location.z + forward.z * -tps_dist;
-
-    static Vector3 smoothed(0, 0, 0);
-    static bool init = false;
-    if (!init) { smoothed = want; init = true; }
-    float jdx = want.x - smoothed.x, jdy = want.y - smoothed.y, jdz = want.z - smoothed.z;
-    if (jdx * jdx + jdy * jdy + jdz * jdz > 25.f) {
-        smoothed = want;
-    } else {
-        smoothed.x += jdx * 0.688f;
-        smoothed.y += jdy * 0.688f;
-        smoothed.z += jdz * 0.688f;
-    }
-    tsp(tr, smoothed);
+// Resolve native TransformAccess matrix entry (wintex external path).
+// transform_il2cpp → (+0x10) native → matrix@0x38, index@0x40, list@+0x18
+static uint64_t native_tm_entry(uint64_t transform) {
+    if (!ok(transform)) return 0;
+    uint64_t native = rd64(transform + 0x10);
+    if (!ok(native)) return 0;
+    uint64_t matrix = rd64(native + OFF_NATIVE_TR_MATRIX);
+    if (!ok(matrix)) return 0;
+    int32_t index = rd32(native + OFF_NATIVE_TR_INDEX);
+    if (index < 0 || index > 100000) return 0;
+    uint64_t list = rd64(matrix + OFF_MATRIX_LIST);
+    if (!ok(list)) return 0;
+    return list + (uint64_t)index * (uint64_t)TRANSFORM_MATRIX_SIZE;
 }
 
-// Make the local body render while in third person (field writes, no obfuscated calls).
-static void tps_set_view(void* p, bool on) {
-    uint64_t pl = (uint64_t)p;
-    if (!ok(pl)) return;
-    wr32(pl + OFF_PLAYER_VIEW_MODE, on ? 2 : 1);
-    wr8(pl + OFF_PLAYER_CHAR_VISIBLE, on ? 1 : 0);
-    uint64_t cv = rd64(pl + OFF_PLAYER_CHAR_VIEW);
-    if (ok(cv)) wr8(cv + OFF_CHAR_VIEW_OCCLUSION, on ? 0 : 1);
-    if (vm_settps2 && on) ((void(*)(void*))vm_settps2)(p);
-    if (vm_apply) ((void(*)(void*, int))vm_apply)(p, on ? 2 : 1);
+// Wintex third person: write camera Transform local Z = -distance via libunity R/W.
+// Game rebuilds the view matrix from this entry, so ESP stays aligned.
+static bool third_person_cam() {
+    if (!opt_tps) { g_tps_ok.store(false); return false; }
+    uint64_t pm = player_manager();
+    if (!ok(pm)) return false;
+    uint64_t lp = rd64(pm + OFF_PM_LOCAL_PLAYER);
+    if (!ok(lp)) return false;
+    uint64_t main_cam = rd64(lp + OFF_PLAYER_MAIN_CAMERA);
+    if (!ok(main_cam)) return false;
+    uint64_t cam_tr = rd64(main_cam + OFF_MAINCAM_TRANSFORM);
+    if (!ok(cam_tr)) return false;
+    uint64_t entry = native_tm_entry(cam_tr);
+    if (!ok(entry) || !readable(entry, TRANSFORM_MATRIX_SIZE)) return false;
+    // TMatrix.position is first Vector4; write local Z only (wintex).
+    wrf(entry + 8, -tps_dist);
+    g_tps_ok.store(true);
+    return true;
+}
+
+// Wintex thirdPersonModel: hide FP arms, force local body visible (field R/W only).
+static void third_person_model() {
+    uint64_t pm = player_manager();
+    if (!ok(pm)) return;
+    uint64_t lp = rd64(pm + OFF_PM_LOCAL_PLAYER);
+    if (!ok(lp)) return;
+    bool tp = opt_tps;
+
+    uint64_t arms = rd64(lp + OFF_PLAYER_ARMS_CTRL);
+    if (ok(arms) && readable(arms + OFF_ARMS_LOCAL_POS, 12)) {
+        if (tp) {
+            wrf(arms + OFF_ARMS_LOCAL_POS + 0, 0.f);
+            wrf(arms + OFF_ARMS_LOCAL_POS + 4, -1000.f);
+            wrf(arms + OFF_ARMS_LOCAL_POS + 8, 0.f);
+        } else {
+            wrf(arms + OFF_ARMS_LOCAL_POS + 0, 0.f);
+            wrf(arms + OFF_ARMS_LOCAL_POS + 4, 0.f);
+            wrf(arms + OFF_ARMS_LOCAL_POS + 8, 0.f);
+        }
+    }
+
+    wr32(lp + OFF_PLAYER_VIEW_MODE, tp ? 2 : 1);
+    if (!tp) return;
+
+    wr8(lp + OFF_PLAYER_CHAR_VISIBLE, 1);
+
+    uint64_t char_lod = rd64(lp + OFF_PLAYER_CHAR_LOD);
+    if (ok(char_lod)) wr8(char_lod + OFF_LOD_RENDER_ENABLED, 1);
+    uint64_t skin_lod = rd64(lp + OFF_PLAYER_SKIN_LOD);
+    if (ok(skin_lod)) wr8(skin_lod + OFF_LOD_RENDER_ENABLED, 1);
+
+    static const uint64_t cv_offs[] = { OFF_PLAYER_CHAR_VIEW, OFF_PLAYER_VIEW_2, OFF_PLAYER_CHAR_VIEW_TPS };
+    for (uint64_t off : cv_offs) {
+        uint64_t cv = rd64(lp + off);
+        if (ok(cv)) wr8(cv + OFF_CHAR_VIEW_OCCLUSION, 1);
+    }
+
+    // Restore body bone scale if FP zeroed it (wintex).
+    uint64_t map = bm(lp);
+    if (!ok(map)) return;
+    for (int i = 0; i < BIPED_BONE_COUNT; i++) {
+        uint64_t bone = rd64(map + OFF_BIPED_START + (uint64_t)i * OFF_BIPED_STRIDE);
+        uint64_t entry = native_tm_entry(bone);
+        if (!ok(entry) || !readable(entry, TRANSFORM_MATRIX_SIZE)) continue;
+        // scale is third Vector4 @ +0x20
+        wrf(entry + 0x20, 1.f);
+        wrf(entry + 0x24, 1.f);
+        wrf(entry + 0x28, 1.f);
+    }
+}
+
+static void tps_tick() {
+    third_person_cam();
+    third_person_model();
+}
+
+static void* tps_hf_thread(void*) {
+    while (true) {
+        if (opt_tps && g_base) tps_tick();
+        usleep(400);
+    }
+    return nullptr;
+}
+
+static void ensure_tps_hf() {
+    bool expected = false;
+    if (!g_tps_hf_started.compare_exchange_strong(expected, true)) return;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    pthread_t th;
+    if (pthread_create(&th, &attr, tps_hf_thread, nullptr) != 0)
+        g_tps_hf_started.store(false);
+    pthread_attr_destroy(&attr);
 }
 
 // ---- Anti-aim: fake angles only while the game's Update runs ----
@@ -941,8 +956,6 @@ static bool is_local_player(void* p) {
     return ok(pm) && (uint64_t)p == rd64(pm + OFF_PM_LOCAL_PLAYER);
 }
 
-static int vis_state = -1;
-
 static void hk_up(void* p) {
     if (!up_mp) return;
     bool local = is_local_player(p);
@@ -953,20 +966,10 @@ static void hk_up(void* p) {
 
 static void hk_lu(void* p){
     if (!lu_mp) return;
-    bool is_local = is_local_player(p);
-    if (is_local) {
-        if (opt_tps) {
-            tps_set_view(p, true);
-            vis_state = 1;
-        } else if (vis_state == 1) {
-            tps_set_view(p, false);
-            vis_state = 0;
-        }
-    }
-
     ((void(*)(void*))lu_mp)(p);
-
-    if (is_local && opt_tps) third_view(p);
+    // TPS is driven by wintex-style libunity R/W on a HF thread + render tick.
+    // LateUpdate hook is only kept as a late out-write if it resolved.
+    if (is_local_player(p) && opt_tps) tps_tick();
 }
 
 // Swap MethodInfo::methodPointer; il2cpp keeps it at 0x0 or 0x8 depending on build.
@@ -1330,8 +1333,10 @@ static void draw_menu() {
             ImGui::SliderFloat("spin speed", &opt_aa_spin, 0.f, 180.f, "%.0f");
             melo_checkbox("random", &opt_aa_chaos);
             ImGui::Separator();
-            ImGui::Text("hooks %c%c%c cam %c", lu_hooked ? 'L' : '-', up_hooked ? 'U' : '-',
-                        vm_apply ? 'V' : '-', (cm && cgt && tgf && tsp) ? '+' : '-');
+            ImGui::Text("tps %c hooks %c%c unity %c",
+                        g_tps_ok.load() ? '+' : '-',
+                        lu_hooked ? 'L' : '-', up_hooked ? 'U' : '-',
+                        g_base ? '+' : '-');
         }
         ImGui::EndChild();
     }
@@ -1395,6 +1400,7 @@ static void render_frame() {
     ImGui::NewFrame();
     handle_touch();
     draw_menu();
+    if (opt_tps) tps_tick();
     draw_esp();
     ImGui::EndFrame();
     ImGui::Render();
@@ -1581,14 +1587,10 @@ static void try_hook_egl() {
 static void* thread_main(void*) {
     il2cpp::resolve_rva = segment_resolve_rva;
 
-    // Inject can happen before libunity/libil2cpp are mapped — wait instead of exiting.
+    // Wait for libunity — all field R/W (ESP/TPS) goes through g_base = libunity.
     for (int i = 0; i < 600 && !g_base; i++) {
         build_maps();
         g_base = pick_base();
-        if (!g_base) {
-            g_base = find_lib("libil2cpp.so");
-            if (!g_base) g_base = find_lib("libil2cpp");
-        }
         if (!g_il2) g_il2 = resolve_il2();
         if (!g_base) usleep(100000);
     }
@@ -1596,14 +1598,14 @@ static void* thread_main(void*) {
     if (!g_il2) g_il2 = resolve_il2();
 
     build_segs();
-    il2cpp::init_api(g_base);
+    il2cpp::init_api(g_base); // AA MethodInfo hooks only; TPS/ESP use field R/W
     touch_init();
-    tps_init();
+    resolve_lu();
     try_hook_lu();
+    ensure_tps_hf();
     try_hook_egl();
     try_hook_input();
 
-    static int done;
     while (true) {
         sleep(1);
         build_maps();
@@ -1612,10 +1614,8 @@ static void* thread_main(void*) {
         try_hook_input();
         try_hook_lu();
         if (!touch_count_fn || !get_touch_fn) touch_init();
-        if (!cm || !cgt || !tgf || !tsp) tps_init();
-        if (done < 5) { resolve_view_methods(); done++; }
+        ensure_tps_hf();
         uint64_t new_base = pick_base();
-        if (!new_base) new_base = find_lib("libil2cpp.so");
         uintptr_t new_il2 = resolve_il2();
         if (new_il2 && new_il2 != g_il2) {
             g_il2 = new_il2;
@@ -1631,9 +1631,8 @@ static void* thread_main(void*) {
             lu_mp = nullptr;
             up_mi = nullptr;
             up_mp = nullptr;
-            vm_apply = nullptr;
-            vm_settps2 = nullptr;
-            tps_init();
+            resolve_lu();
+            try_hook_lu();
         }
     }
     return nullptr;

@@ -13,10 +13,15 @@
 #define OFF_PLAYER_MOVEMENT_CTRL    0x98
 #define OFF_PLAYER_PHOTON_PTR       0x160
 #define OFF_PLAYER_MAIN_CAMERA      0xE8
+#define OFF_MAINCAM_TRANSFORM       0x38   // PlayerMainCamera → Transform (dump 0.39.2)
 #define OFF_CAMERA_TRANSFORM        0x100
 #define OFF_CAM_TRANSFORM_MATRIX    0x10
 #define OFF_CAM_MATRIX_DATA         0xF0
 #define PLAYER_HEIGHT               1.67f
+
+// Native TransformAccess (wintex external path) — used for camera local Z write
+#define OFF_NATIVE_TR_MATRIX        0x38
+#define OFF_NATIVE_TR_INDEX         0x40
 
 #define OFF_PHOTON_NAME             0x20
 #define OFF_PHOTON_PROPS_REG        0x38
@@ -50,13 +55,17 @@
 #define OFF_LOD_MESH_ARRAY          0x48
 #define OFF_UNITY_ARRAY_LENGTH      0x18
 #define OFF_UNITY_ARRAY_DATA        0x20
+#define OFF_PLAYER_ARMS_CTRL        0xA0   // ArmsAnimationController
+#define OFF_ARMS_LOCAL_POS          0xE8   // Vector3 used to hide FP arms
 #define OFF_PLAYER_ARMS_LOD         0xC8
 #define OFF_ARMS_MESH_RENDERER      0x28
 #define OFF_ARMS_GLOVES_RENDERER    0x30
 #define OFF_PLAYER_CHAR_VIEW_TPS    0xD0
 #define OFF_CHAR_VIEW_OCCLUSION     0x30
 #define OFF_PLAYER_CHAR_VISIBLE     0xD8
+#define OFF_PLAYER_SKIN_LOD         0x120
 #define OFF_PLAYER_CHAR_LOD         0x128
+#define OFF_LOD_RENDER_ENABLED      0x20
 #define OFF_CHAR_LOD_MESH_RENDERER  0x30
 
 #define OFF_BIPED_START             0x20
