@@ -22,11 +22,13 @@
 #include <atomic>
 
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "backends/imgui_impl_opengl3.h"
 #include "font.h"
 #include "offsets.hpp"
 #include "vector3.h"
 #include "il2cpp.hpp"
+#include "a64_inline_hook.hpp"
 
 extern "C" {
 __attribute__((visibility("hidden"), used)) void* memset(void* s, int c, size_t n) {
@@ -86,8 +88,10 @@ __attribute__((visibility("hidden"), used)) char* strstr(const char* h, const ch
 }
 
 static uintptr_t g_base = 0;
+static uintptr_t g_il2 = 0;
 static bool opt_box = true, opt_health = true, opt_dist = true, opt_skeleton = false, opt_tps = false;
-static bool menu_open = true;
+static bool menu_open = false;
+static float menu_alpha = 0.f;
 static float tps_dist = 3.5f;
 static int scr_w = 0, scr_h = 0;
 static std::mutex g_mtx;
@@ -95,6 +99,8 @@ static std::mutex g_mtx;
 static inline bool ok(uint64_t p) {
     return p > 0x10000 && p < 0x0000FFFFFFFFFFFFull;
 }
+
+static uintptr_t find_lib(const char* n);
 
 struct map_range { uint64_t start, end; };
 static std::vector<map_range> g_maps;
@@ -294,7 +300,7 @@ static void* segment_resolve_rva(uint64_t rva) {
     return any;
 }
 
-// UnityEngine.Touch layout (sequential). On arm64 this is returned via sret (>16 bytes).
+// Melodium UnityEngine.Touch (return-by-value ABI; compiler emits sret on arm64).
 struct UnityTouch {
     int32_t fingerId;
     float px, py;
@@ -312,12 +318,10 @@ struct UnityTouch {
     float azAngle;
 };
 
-static int (*touch_count_fn)(const void* method);
-static void (*get_touch_fn)(UnityTouch* out, int index, const void* method);
-static const void* touch_count_mi = nullptr;
-static const void* get_touch_mi = nullptr;
+static int (*touch_count_fn)() = nullptr;
+static UnityTouch (*get_touch_fn)(int) = nullptr;
 
-// Primary path: android::InputConsumer::consume (same as Melodium/Halalium).
+// InputConsumer feed (Halalium/Melodium overlay path) — applied Melodium-style after NewFrame.
 static std::mutex g_touch_mu;
 static float g_touch_x = 0.f, g_touch_y = 0.f;
 static bool g_touch_down = false;
@@ -331,6 +335,51 @@ static void feed_touch(float x, float y, bool down) {
     g_touch_have = true;
 }
 
+static uintptr_t resolve_il2() {
+    uintptr_t b = find_lib("libil2cpp.so");
+    if (!b) b = find_lib("libil2cpp");
+    if (!b) {
+        // maps fallback
+        size_t n = 0;
+        char* buf = load_maps_full(&n);
+        if (buf) {
+            char* p = buf;
+            while (*p) {
+                char* le = p;
+                while (*le && *le != '\n') le++;
+                if (*le) *le = 0;
+                uint64_t st = 0, en = 0;
+                int k = 0;
+                while (ishex(p[k])) { st = st * 16 + (uint64_t)hexv(p[k]); k++; }
+                if (p[k] == '-') {
+                    k++;
+                    while (ishex(p[k])) { en = en * 16 + (uint64_t)hexv(p[k]); k++; }
+                }
+                while (p[k] == ' ') k++;
+                if (p[k] == 'r' && p[k + 3] == 'x') {
+                    const char* q = p;
+                    while (*q && *q != '/') q++;
+                    if (*q == '/' && strstr(q, "libil2cpp.so") && en > st) {
+                        free(buf);
+                        return st;
+                    }
+                }
+                p = le + 1;
+            }
+            free(buf);
+        }
+    }
+    return b;
+}
+
+static bool touch_init() {
+    if (!g_il2) g_il2 = resolve_il2();
+    if (!g_il2) return false;
+    touch_count_fn = (int (*)())(g_il2 + OFF_INPUT_GET_TOUCH_COUNT);
+    get_touch_fn = (UnityTouch (*)(int))(g_il2 + OFF_INPUT_GET_TOUCH);
+    return touch_count_fn && get_touch_fn;
+}
+
 static const Il2CppMethod* find_method(Il2CppClass* c, const char* name) {
     if (!c || !il2cpp::class_get_methods || !il2cpp::method_get_name) return nullptr;
     for (Il2CppClass* k = c; k && il2cpp::class_get_parent; k = il2cpp::class_get_parent(k)) {
@@ -339,50 +388,22 @@ static const Il2CppMethod* find_method(Il2CppClass* c, const char* name) {
             const char* nm = il2cpp::method_get_name(m);
             if (nm && strcmp(nm, name) == 0) return m;
         }
-        if (k == c) { if (il2cpp::class_get_method_from_name) { const Il2CppMethod* m = il2cpp::class_get_method_from_name(c, name, 0); if (m) return m; } }
+        if (k == c && il2cpp::class_get_method_from_name) {
+            const Il2CppMethod* m = il2cpp::class_get_method_from_name(c, name, 0);
+            if (m) return m;
+        }
     }
     return nullptr;
 }
 
-static bool touch_init() {
-    il2cpp::init_api(g_base);
-    if (!il2cpp::domain_get || !il2cpp::domain_assembly_open || !il2cpp::assembly_get_image ||
-        !il2cpp::class_from_name || !il2cpp::class_get_method_from_name) return false;
-    Il2CppDomain* dom = il2cpp::domain_get();
-    if (!dom) return false;
-    if (il2cpp::thread_attach) il2cpp::thread_attach(dom);
-
-    const char* asm_names[] = { "UnityEngine.CoreModule", "UnityEngine.InputLegacyModule", "UnityEngine.InputModule" };
-    for (int a = 0; a < 3; a++) {
-        Il2CppAssembly* asm_ = il2cpp::domain_assembly_open(dom, asm_names[a]);
-        if (!asm_) continue;
-        Il2CppImage* img = il2cpp::assembly_get_image(asm_);
-        if (!img) continue;
-        Il2CppClass* input = il2cpp::class_from_name(img, "UnityEngine", "Input");
-        if (!input) continue;
-        const Il2CppMethod* mc = il2cpp::class_get_method_from_name(input, "get_touchCount", 0);
-        const Il2CppMethod* mt = il2cpp::class_get_method_from_name(input, "GetTouch", 1);
-        if (!mc) mc = find_method(input, "get_touchCount");
-        if (!mt) mt = find_method(input, "GetTouch");
-        if (!mc || !mt) continue;
-        void* pc = *(void**)((uintptr_t)mc + il2cpp::offset::il2cpp_method_pointer);
-        void* pt = *(void**)((uintptr_t)mt + il2cpp::offset::il2cpp_method_pointer);
-        if (!pc || !pt) continue;
-        touch_count_fn = (int (*)(const void*))pc;
-        get_touch_fn = (void (*)(UnityTouch*, int, const void*))pt;
-        touch_count_mi = mc;
-        get_touch_mi = mt;
-        return true;
-    }
-    return false;
-}
-
+// Melodium order: call AFTER ImGui::NewFrame(), write MousePos/MouseDown directly.
 static void handle_touch() {
-    ImGuiIO& io = ImGui::GetIO();
+    auto& io = ImGui::GetIO();
+    static bool touch_active = false;
+
+    bool have = false;
     float x = 0.f, y = 0.f;
     bool down = false;
-    bool have = false;
-
     {
         std::lock_guard<std::mutex> lk(g_touch_mu);
         if (g_touch_have) {
@@ -393,43 +414,39 @@ static void handle_touch() {
         }
     }
 
-    // Backup: Unity Input (often empty on GL thread — InputConsumer is primary).
-    if (!have && touch_count_fn && get_touch_fn) {
-        int n = touch_count_fn(touch_count_mi);
-        if (n < 0) n = 0;
-        for (int i = 0; i < n; i++) {
-            UnityTouch t{};
-            get_touch_fn(&t, i, get_touch_mi);
-            int ph = t.phase;
-            if (ph == 0 || ph == 1 || ph == 2) {
-                x = t.px;
-                y = (float)scr_h - t.py;
-                down = true;
-                have = true;
-                break;
-            }
-        }
-    }
-
-    static bool prev_down = false;
-    static float prev_x = -1.f, prev_y = -1.f;
-
     if (!have) {
-        if (prev_down) {
-            io.AddMouseButtonEvent(0, false);
-            prev_down = false;
+        if (!touch_count_fn || !get_touch_fn) return;
+        int touch_count = touch_count_fn();
+        if (touch_count <= 0) {
+            if (touch_active) {
+                io.MouseDown[0] = false;
+                touch_active = false;
+            }
+            return;
+        }
+        for (int i = 0; i < touch_count; i++) {
+            UnityTouch it = get_touch_fn(i);
+            int phase = it.phase;
+            x = it.px;
+            y = io.DisplaySize.y - it.py;
+            if (phase == 0 || phase == 1 || phase == 2) {
+                io.MousePos = ImVec2(x, y);
+                io.MouseDown[0] = true;
+                touch_active = true;
+                return;
+            }
+            if (phase == 3 || phase == 4) {
+                io.MouseDown[0] = false;
+                touch_active = false;
+            }
         }
         return;
     }
 
-    io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
-    if (x != prev_x || y != prev_y || down != prev_down)
-        io.AddMousePosEvent(x, y);
-    if (down != prev_down)
-        io.AddMouseButtonEvent(0, down);
-    prev_down = down;
-    prev_x = x;
-    prev_y = y;
+    // InputConsumer path (screen space, top-left origin — no Y flip)
+    io.MousePos = ImVec2(x, y);
+    io.MouseDown[0] = down;
+    touch_active = down;
 }
 
 static bool str_contains(uint64_t s, const char* needle) {
@@ -1038,31 +1055,158 @@ static int draw_esp() {
     return drawn;
 }
 
+static void draw_watermark() {
+    const char* brand = "privet";
+    const char* line = "menu · 0.39.2";
+
+    ImGui::SetNextWindowPos(ImVec2(16.f, 16.f), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.0f);
+    ImGui::Begin("##watermark", nullptr,
+                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse |
+                     ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings |
+                     ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_AlwaysAutoResize);
+
+    ImVec2 brand_sz = ImGui::CalcTextSize(brand);
+    ImVec2 line_sz = ImGui::CalcTextSize(line);
+    float width = (brand_sz.x > line_sz.x ? brand_sz.x : line_sz.x) + 24.f;
+    float height = brand_sz.y + line_sz.y + 18.f;
+
+    ImVec2 p = ImGui::GetCursorScreenPos();
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImVec2 rmin = p;
+    ImVec2 rmax = ImVec2(p.x + width, p.y + height);
+
+    dl->AddRectFilled(rmin, rmax, IM_COL32(18, 18, 18, 170), 6.0f);
+    dl->AddRect(rmin, rmax, IM_COL32(70, 70, 70, 180), 6.0f, 0, 1.2f);
+    dl->AddRectFilled(ImVec2(rmin.x, rmin.y), ImVec2(rmin.x + 3.f, rmax.y), IM_COL32(220, 220, 220, 220), 2.0f);
+
+    ImVec2 brand_pos = ImVec2(p.x + 12.f, p.y + 5.f);
+    ImVec2 line_pos = ImVec2(p.x + 12.f, p.y + 5.f + brand_sz.y + 2.f);
+    dl->AddText(ImVec2(brand_pos.x + 1, brand_pos.y + 1), IM_COL32(0, 0, 0, 160), brand);
+    dl->AddText(brand_pos, IM_COL32(235, 235, 235, 255), brand);
+    dl->AddText(ImVec2(line_pos.x + 1, line_pos.y + 1), IM_COL32(0, 0, 0, 140), line);
+    dl->AddText(line_pos, IM_COL32(180, 180, 180, 240), line);
+
+    ImGui::Dummy(ImVec2(width, height));
+    ImGui::SetCursorScreenPos(rmin);
+    if (ImGui::InvisibleButton("##wm_click", ImVec2(width, height)))
+        menu_open = !menu_open;
+
+    ImGui::End();
+}
+
+// Melodium-style checkbox (ButtonBehavior + filled mark).
+static bool melo_checkbox(const char* label, bool* v) {
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems) return false;
+
+    ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const ImGuiID id = window->GetID(label);
+    const ImVec2 label_size = ImGui::CalcTextSize(label, nullptr, true);
+
+    const float square_sz = ImGui::GetFrameHeight();
+    const ImVec2 pos = window->DC.CursorPos;
+    const ImRect total_bb(pos, ImVec2(pos.x + square_sz + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f) + 10,
+                                      pos.y + label_size.y + style.FramePadding.y * 2.0f));
+    ImGui::ItemSize(total_bb, style.FramePadding.y);
+    if (!ImGui::ItemAdd(total_bb, id)) return false;
+
+    bool checked = *v;
+    bool hovered, held;
+    bool pressed = ImGui::ButtonBehavior(total_bb, id, &hovered, &held);
+    if (pressed) checked = !checked;
+    if (*v != checked) {
+        *v = checked;
+        pressed = true;
+        ImGui::MarkItemEdited(id);
+    }
+
+    const ImRect check_bb(pos, ImVec2(square_sz + pos.x, square_sz + pos.y));
+    window->DrawList->AddRectFilledMultiColor(
+        check_bb.Min, check_bb.Max,
+        ImColor(0, 0, 0, 255), ImColor(0, 0, 0, 255),
+        ImGui::GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg),
+        ImGui::GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg));
+    if (*v) {
+        window->DrawList->AddRectFilled(ImVec2(check_bb.Min.x + 1, check_bb.Min.y + 1),
+                                        ImVec2(check_bb.Max.x - 1, check_bb.Max.y - 1),
+                                        ImGui::GetColorU32(ImGuiCol_CheckMark), style.FrameRounding);
+    }
+    window->DrawList->AddRect(check_bb.Min, check_bb.Max, ImGui::GetColorU32(ImGuiCol_Border));
+    if (label_size.x > 0.0f)
+        ImGui::RenderText(ImVec2(check_bb.Max.x + style.ItemInnerSpacing.x + 10, check_bb.Min.y + style.FramePadding.y), label);
+    return pressed;
+}
+
 static void draw_menu() {
-    // Always-visible open/close button (top-left)
-    ImGui::SetNextWindowPos(ImVec2(16.f, 16.f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(0.f, 0.f));
-    ImGuiWindowFlags bf = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
-                          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
-                          ImGuiWindowFlags_NoNav;
-    if (ImGui::Begin("##privet_menu_btn", nullptr, bf)) {
-        if (ImGui::Button(menu_open ? "CLOSE" : "MENU", ImVec2(160.f, 64.f)))
-            menu_open = !menu_open;
+    draw_watermark();
+
+    if (menu_open && menu_alpha < 1.f) menu_alpha += 0.05f;
+    else if (!menu_open && menu_alpha > 0.f) menu_alpha -= 0.05f;
+    if (menu_alpha < 0.f) menu_alpha = 0.f;
+    if (menu_alpha > 1.f) menu_alpha = 1.f;
+    if (menu_alpha <= 0.01f) return;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, menu_alpha);
+    ImGui::SetNextWindowPos(ImVec2(16.f, 96.f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(420.f, 360.f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(360.f, 280.f), ImVec2(700.f, 700.f));
+
+    if (ImGui::Begin("##privet_melo", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar)) {
+        for (int i = 0; i < 8; i++) {
+            ImColor borderCol = ImColor(35, 35, 35, 255);
+            if (i == 1 || i == 7) borderCol = ImColor(55, 55, 55, 255);
+            else if (i == 0) borderCol = ImColor(0, 0, 0, 255);
+            ImGui::GetWindowDrawList()->AddRect(
+                ImVec2(ImGui::GetWindowPos().x + i, ImGui::GetWindowPos().y + i),
+                ImVec2(ImGui::GetWindowPos().x + ImGui::GetWindowSize().x - i,
+                       ImGui::GetWindowPos().y + ImGui::GetWindowSize().y - i),
+                borderCol);
+        }
+
+        ImGui::Dummy(ImVec2(0, 8));
+        ImGui::Text("privet");
+        ImGui::Separator();
+        ImGui::Dummy(ImVec2(0, 6));
+
+        if (ImGui::BeginChild("esp", ImVec2(0, 0), ImGuiChildFlags_Border)) {
+            melo_checkbox("box", &opt_box);
+            melo_checkbox("health", &opt_health);
+            melo_checkbox("distance", &opt_dist);
+            melo_checkbox("skeleton", &opt_skeleton);
+            melo_checkbox("third person", &opt_tps);
+            if (opt_tps)
+                ImGui::SliderFloat("tps dist", &tps_dist, 2.f, 6.f, "%.1f");
+        }
+        ImGui::EndChild();
     }
     ImGui::End();
+    ImGui::PopStyleVar();
+}
 
-    if (!menu_open) return;
-
-    ImGui::SetNextWindowPos(ImVec2(16.f, 100.f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(460.f, 500.f), ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("ya pidoras", &menu_open, ImGuiWindowFlags_NoCollapse)) {
-        ImGui::Checkbox("box", &opt_box);
-        ImGui::Checkbox("health", &opt_health);
-        ImGui::Checkbox("distance", &opt_dist);
-        ImGui::Checkbox("skeleton", &opt_skeleton);
-        ImGui::Checkbox("third person", &opt_tps);
-    }
-    ImGui::End();
+static void apply_melo_style() {
+    ImGuiStyle& style = ImGui::GetStyle();
+    ImGui::StyleColorsDark();
+    style.WindowBorderSize = 1.f;
+    style.ChildBorderSize = 1.f;
+    style.FrameBorderSize = 1.f;
+    style.WindowPadding = ImVec2(20, 20);
+    style.FramePadding = ImVec2(8, 6);
+    style.ItemSpacing = ImVec2(15, 15);
+    style.ScrollbarRounding = 0;
+    style.ScrollbarSize = 20;
+    style.TouchExtraPadding = ImVec2(10.f, 10.f);
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+    style.Colors[ImGuiCol_ChildBg] = ImVec4(0.06f, 0.06f, 0.06f, 1.00f);
+    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+    style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+    style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+    style.Colors[ImGuiCol_CheckMark] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    style.Colors[ImGuiCol_SliderGrab] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    style.Colors[ImGuiCol_Border] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+    style.Colors[ImGuiCol_Text] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
 }
 
 static void render_frame() {
@@ -1075,14 +1219,10 @@ static void render_frame() {
         io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
         ImFontConfig fc;
         fc.FontDataOwnedByAtlas = false;
-        // ~2x previous UI (font was 30)
-        io.Fonts->AddFontFromMemoryTTF(pixeloperator, sizeof(pixeloperator), 60.f, &fc, io.Fonts->GetGlyphRangesCyrillic());
-        ImGui::StyleColorsDark();
-        ImGuiStyle& st = ImGui::GetStyle();
-        st.ScaleAllSizes(2.0f);
-        st.TouchExtraPadding = ImVec2(12.f, 12.f);
-        st.ItemSpacing = ImVec2(16.f, 14.f);
-        st.FramePadding = ImVec2(14.f, 10.f);
+        fc.OversampleH = fc.OversampleV = 3;
+        // Melodium uses ~30px verdana; keep readable on mobile
+        io.Fonts->AddFontFromMemoryTTF(pixeloperator, sizeof(pixeloperator), 36.f, &fc, io.Fonts->GetGlyphRangesCyrillic());
+        apply_melo_style();
         ImGui_ImplOpenGL3_Init("#version 300 es");
         ready = true;
     }
@@ -1096,9 +1236,11 @@ static void render_frame() {
     io.DeltaTime = last_t > 0.0 ? (float)(now - last_t) : (1.f / 60.f);
     if (io.DeltaTime <= 0.f || io.DeltaTime > 1.f) io.DeltaTime = 1.f / 60.f;
     last_t = now;
-    handle_touch();
+
+    // Melodium frame order
     ImGui_ImplOpenGL3_NewFrame();
     ImGui::NewFrame();
+    handle_touch();
     draw_menu();
     draw_esp();
     ImGui::EndFrame();
@@ -1211,45 +1353,58 @@ static int32_t hk_input_consume(void* thiz, void* factory, bool consumeBatches,
     AInputEvent* ev = *outEvent;
     if (g_ain_type(ev) != AINPUT_EVENT_TYPE_MOTION) return status;
 
+    // Melodium/nova action mask
     const int32_t action = g_am_action(ev);
-    const int32_t masked = action & AMOTION_EVENT_ACTION_MASK;
-    const size_t idx = (size_t)((action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >>
-                                 AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT);
-    const float x = g_am_x(ev, idx);
-    const float y = g_am_y(ev, idx);
-
+    const int32_t masked = action & 0xfd;
+    const float x = g_am_x(ev, 0);
+    const float y = g_am_y(ev, 0);
     static bool down = false;
-    if (masked == AMOTION_EVENT_ACTION_DOWN || masked == AMOTION_EVENT_ACTION_POINTER_DOWN)
-        down = true;
-    else if (masked == AMOTION_EVENT_ACTION_UP || masked == AMOTION_EVENT_ACTION_POINTER_UP ||
-             masked == AMOTION_EVENT_ACTION_CANCEL)
-        down = false;
-    // MOVE / HOVER: keep previous down, refresh position
+    if (masked == 0) down = true;
+    else if (masked == 1) down = false;
     feed_touch(x, y, down);
     return status;
+}
+
+static void* find_sym_in_libs(const char* name) {
+    static const char* libs[] = {
+        "libinput.so", "libandroid.so", "libgui.so", "libui.so",
+        "libunity.so", "libmain.so", "libil2cpp.so"
+    };
+    for (int i = 0; i < 7; i++) {
+        void* lib = dlopen(libs[i], RTLD_NOW);
+        if (!lib) continue;
+        void* s = dlsym(lib, name);
+        if (s) return s;
+    }
+    return dlsym(RTLD_DEFAULT, name);
 }
 
 static void try_hook_input() {
     if (g_input_hooked.load()) return;
     if (!resolve_ainput()) return;
 
-    static const char* kConsume =
-        "_ZN7android13InputConsumer7consumeEPNS_26InputEventFactoryInterfaceEblPjPPNS_10InputEventE";
-
+    static const char* kNames[] = {
+        "_ZN7android13InputConsumer7consumeEPNS_26InputEventFactoryInterfaceEblPjPPNS_10InputEventE",
+        "_ZN7android13InputConsumer7consumeEPNS_26InputEventFactoryInterfaceEbxPjPPNS_10InputEventE",
+    };
     void* sym = nullptr;
-    const char* libs[] = { "libinput.so", "libandroid.so", "libunity.so", "libmain.so" };
-    for (int i = 0; i < 4 && !sym; i++) {
-        void* lib = dlopen(libs[i], RTLD_NOW);
-        if (lib) sym = dlsym(lib, kConsume);
-    }
-    if (!sym) sym = dlsym(RTLD_DEFAULT, kConsume);
+    for (int i = 0; i < 2 && !sym; i++)
+        sym = find_sym_in_libs(kNames[i]);
     if (!sym) return;
 
+    void* tramp = nullptr;
+    if (a64hook::install(sym, (void*)hk_input_consume, &tramp) && tramp) {
+        g_old_consume = (input_consume_fn)tramp;
+        g_input_hooked.store(true);
+        return;
+    }
+    // fallback to local inline_hook
     void* orig = nullptr;
     inline_hook(sym, (void*)hk_input_consume, &orig);
-    if (!orig) return;
-    g_old_consume = (input_consume_fn)orig;
-    g_input_hooked.store(true);
+    if (orig) {
+        g_old_consume = (input_consume_fn)orig;
+        g_input_hooked.store(true);
+    }
 }
 
 static void try_hook_egl() {
@@ -1281,20 +1436,25 @@ static void* thread_main(void*) {
             g_base = find_lib("libil2cpp.so");
             if (!g_base) g_base = find_lib("libil2cpp");
         }
+        if (!g_il2) g_il2 = resolve_il2();
         if (!g_base) usleep(100000);
     }
     if (!g_base) return nullptr;
+    if (!g_il2) g_il2 = resolve_il2();
 
     build_segs();
     il2cpp::init_api(g_base);
+    touch_init();
     tps_init();
     try_hook_lu();
     try_hook_egl();
+    try_hook_input();
 
     static int done;
     while (true) {
         sleep(1);
         build_maps();
+        if (!g_il2) g_il2 = resolve_il2();
         try_hook_egl();
         try_hook_input();
         try_hook_lu();
@@ -1302,6 +1462,11 @@ static void* thread_main(void*) {
         if (done < 5) { resolve_view_methods(); done++; }
         uint64_t new_base = pick_base();
         if (!new_base) new_base = find_lib("libil2cpp.so");
+        uintptr_t new_il2 = resolve_il2();
+        if (new_il2 && new_il2 != g_il2) {
+            g_il2 = new_il2;
+            touch_init();
+        }
         if (new_base && new_base != g_base) {
             g_base = new_base;
             build_segs();

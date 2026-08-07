@@ -90,3 +90,7 @@
 
 #define OFF_UNITY_STRING_LENGTH     0x10
 #define OFF_UNITY_STRING_CHARS      0x14
+
+// Melodium 0.39.2 — UnityEngine.Input (libil2cpp RVAs)
+#define OFF_INPUT_GET_TOUCH         0x684EDACULL
+#define OFF_INPUT_GET_TOUCH_COUNT   0x684E370ULL
