@@ -738,6 +738,8 @@ static void* mi_rend_set_enabled = nullptr;
 static bool g_unity_helpers_tried = false;
 static bool g_view_rva_tried = false;
 
+static void third_person_cam_restore(); // defined with TPS cam helpers below
+
 static void* mp(const void* m) {
     if (!m || !ok((uint64_t)m)) return nullptr;
     // Try common MethodInfo::methodPointer slots (0x0 and 0x8)
@@ -877,43 +879,31 @@ static void resolve_lu(){
     resolve_view_fns(pc);
 }
 
-// Game thread only (LateUpdate/Update) — calling il2cpp methods from the render or
-// helper thread is what crashed when third person was switched on.
+// Game thread only (LateUpdate/Update).
 static void apply_body_view(void* player, bool tps_on) {
     if (!player || !ok((uint64_t)player)) return;
-    resolve_unity_helpers();
+    resolve_view_rvas();
     uint64_t lp = (uint64_t)player;
 
     if (tps_on) {
-        wr8(lp + OFF_PLAYER_VIEW_MODE, 2); // GGBGGDAGBGGGACD.TPS
+        wr8(lp + OFF_PLAYER_VIEW_MODE, 2);
         wr8(lp + OFF_PLAYER_CHAR_VISIBLE, 1);
         if (fn_set_view_mode) fn_set_view_mode(player, 2);
         if (fn_set_tps) fn_set_tps(player);
         if (fn_set_visible) fn_set_visible(player);
-
-        // Kill FP camera/arms holders (dump: GameObject* @ 0x30 / 0x38).
-        set_go_active((void*)rd64(lp + OFF_PLAYER_FPS_HOLDER), false);
-        set_go_active((void*)rd64(lp + OFF_PLAYER_FPS_DIRECTIVE), false);
-
-        // ArmsLodGroup mesh renderers off.
         uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
-        if (ok(arms_lod)) {
-            wr8(arms_lod + OFF_LOD_RENDER_ENABLED, 0);
-            set_renderer_enabled((void*)rd64(arms_lod + OFF_ARMS_MESH_RENDERER), false);
-            set_renderer_enabled((void*)rd64(arms_lod + OFF_ARMS_GLOVES_RENDERER), false);
-        }
+        if (ok(arms_lod)) wr8(arms_lod + OFF_LOD_RENDER_ENABLED, 0);
+        uint64_t char_lod = rd64(lp + OFF_PLAYER_CHAR_LOD);
+        if (ok(char_lod)) wr8(char_lod + OFF_LOD_RENDER_ENABLED, 1);
+        uint64_t skin_lod = rd64(lp + OFF_PLAYER_SKIN_LOD);
+        if (ok(skin_lod)) wr8(skin_lod + OFF_LOD_RENDER_ENABLED, 1);
     } else {
-        wr8(lp + OFF_PLAYER_VIEW_MODE, 1); // FPS
+        wr8(lp + OFF_PLAYER_VIEW_MODE, 1);
         if (fn_set_view_mode) fn_set_view_mode(player, 1);
         if (fn_set_fps) fn_set_fps(player);
-        set_go_active((void*)rd64(lp + OFF_PLAYER_FPS_HOLDER), true);
-        set_go_active((void*)rd64(lp + OFF_PLAYER_FPS_DIRECTIVE), true);
         uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
-        if (ok(arms_lod)) {
-            wr8(arms_lod + OFF_LOD_RENDER_ENABLED, 1);
-            set_renderer_enabled((void*)rd64(arms_lod + OFF_ARMS_MESH_RENDERER), true);
-            set_renderer_enabled((void*)rd64(arms_lod + OFF_ARMS_GLOVES_RENDERER), true);
-        }
+        if (ok(arms_lod)) wr8(arms_lod + OFF_LOD_RENDER_ENABLED, 1);
+        third_person_cam_restore();
     }
 }
 
@@ -958,94 +948,60 @@ static bool write_tm_local_z(uint64_t transform, float z) {
     return true;
 }
 
-// Resolve the live view-matrix storage (same chain ESP uses).
-static float* cam_matrix_ptr(uint64_t lp) {
-    if (!ok(lp)) return nullptr;
-    uint64_t cam = rd64(lp + OFF_PLAYER_MAIN_CAMERA);
-    if (!ok(cam)) return nullptr;
-    uint64_t cc = rd64(cam + OFF_MAINCAM_UNITY_CAM);
-    if (!ok(cc)) return nullptr;
-    uint64_t ct = rd64(cc + OFF_CAM_TRANSFORM_MATRIX);
-    if (!ok(ct)) return nullptr;
-    if (!readable(ct + OFF_CAM_MATRIX_DATA, 64)) return nullptr;
-    return (float*)(ct + OFF_CAM_MATRIX_DATA);
+// Camera TransformAccess uses wintex layout (0x38/0x40) — ESP bone layout first
+// can hit a wrong slot and freeze the view.
+static bool write_tm_local_z_cam(uint64_t transform, float z) {
+    uint64_t entry = native_tm_entry_ex(transform, OFF_NATIVE_TR_MATRIX_ALT, OFF_NATIVE_TR_INDEX_ALT);
+    if (!entry)
+        entry = native_tm_entry_ex(transform, OFF_NATIVE_TR_MATRIX, OFF_NATIVE_TR_INDEX);
+    if (!entry) return false;
+    wrf(entry + 8, z);
+    return true;
 }
 
-// Melodium-style pullback: place camera at player + up + forward*(-dist),
-// writing both Transform local Z (wintex) and the live view-matrix translation.
+// Wintex third person: only pull camera Transform local Z.
+// Do NOT rewrite the live view-matrix translation — that freezes the camera in world space.
 static bool third_person_cam() {
-    if (!opt_tps) { g_tps_ok.store(false); return false; }
+    if (!opt_tps) {
+        g_tps_ok.store(false);
+        return false;
+    }
     uint64_t pm = player_manager();
     if (!ok(pm)) return false;
     uint64_t lp = rd64(pm + OFF_PM_LOCAL_PLAYER);
     if (!ok(lp)) return false;
 
-    Vector3 loc = player_pos(lp);
-    if (!(loc.x > -20000.f && loc.x < 20000.f &&
-          loc.y > -20000.f && loc.y < 20000.f &&
-          loc.z > -20000.f && loc.z < 20000.f)) return false;
-
-    float* m = cam_matrix_ptr(lp);
-    float fx = 0.f, fy = 0.f, fz = 1.f;
-    if (m) {
-        // Camera forward from world-to-camera matrix (Unity -Z axis).
-        fx = -m[2]; fy = -m[6]; fz = -m[10];
-        float len = sqrtf(fx * fx + fy * fy + fz * fz);
-        if (len > 0.01f && len < 100.f) { fx /= len; fy /= len; fz /= len; }
-        else { fx = 0.f; fy = 0.f; fz = 1.f; }
-    }
-
-    float cx = loc.x + fx * -tps_dist;
-    float cy = loc.y + 1.50f + fy * -tps_dist;
-    float cz = loc.z + fz * -tps_dist;
-
-    static Vector3 smoothed(0, 0, 0);
-    static bool init = false;
-    if (!init) { smoothed = Vector3(cx, cy, cz); init = true; }
-    float jdx = cx - smoothed.x, jdy = cy - smoothed.y, jdz = cz - smoothed.z;
-    if (jdx * jdx + jdy * jdy + jdz * jdz > 25.f) {
-        smoothed = Vector3(cx, cy, cz);
-    } else {
-        smoothed.x += jdx * 0.688f;
-        smoothed.y += jdy * 0.688f;
-        smoothed.z += jdz * 0.688f;
-    }
-
-    bool wrote = false;
-
-    // 1) Live view-matrix translation (same buffer ESP/render read).
-    if (m) {
-        float sx = smoothed.x, sy = smoothed.y, sz = smoothed.z;
-        m[12] = -(m[0] * sx + m[4] * sy + m[8] * sz);
-        m[13] = -(m[1] * sx + m[5] * sy + m[9] * sz);
-        m[14] = -(m[2] * sx + m[6] * sy + m[10] * sz);
-        wrote = true;
-    }
-
-    // 2) Transform field writes — several candidates from the 0.39.2 dump.
     uint64_t main_cam = rd64(lp + OFF_PLAYER_MAIN_CAMERA);
-    uint64_t targets[6] = {};
-    int nt = 0;
-    auto push = [&](uint64_t t) {
-        if (ok(t) && nt < 6) targets[nt++] = t;
-    };
-    push(rd64(lp + OFF_PLAYER_CAM_HOLDER));                 // _mainCameraHolder
-    if (ok(main_cam)) {
-        push(rd64(main_cam + OFF_MAINCAM_TRANSFORM));       // PlayerMainCamera.Transform
-        uint64_t mc = rd64(main_cam + OFF_MAINCAM_MAIN);    // MainCamera component
-        if (ok(mc)) {
-            push(rd64(mc + OFF_CAMMOVE_TRANSFORM));
-            push(rd64(mc + OFF_CAMMOVE_TRANSFORM_ALT));
-        }
-    }
+    if (!ok(main_cam)) return false;
+    uint64_t cam_tr = rd64(main_cam + OFF_MAINCAM_TRANSFORM); // PlayerMainCamera+0x38
+    bool wrote = false;
+    if (ok(cam_tr) && write_tm_local_z_cam(cam_tr, -tps_dist))
+        wrote = true;
 
-    for (int i = 0; i < nt; i++) {
-        // Local-Z pullback (wintex) — Z is the look axis on the FPS camera rig.
-        if (write_tm_local_z(targets[i], -tps_dist)) wrote = true;
+    // Fallback: main camera holder only (same rig axis).
+    if (!wrote) {
+        uint64_t holder = rd64(lp + OFF_PLAYER_CAM_HOLDER);
+        if (ok(holder) && write_tm_local_z_cam(holder, -tps_dist))
+            wrote = true;
     }
 
     g_tps_ok.store(wrote);
     return wrote;
+}
+
+static void third_person_cam_restore() {
+    uint64_t pm = player_manager();
+    if (!ok(pm)) return;
+    uint64_t lp = rd64(pm + OFF_PM_LOCAL_PLAYER);
+    if (!ok(lp)) return;
+    uint64_t main_cam = rd64(lp + OFF_PLAYER_MAIN_CAMERA);
+    if (ok(main_cam)) {
+        uint64_t cam_tr = rd64(main_cam + OFF_MAINCAM_TRANSFORM);
+        if (ok(cam_tr)) write_tm_local_z_cam(cam_tr, 0.f);
+    }
+    uint64_t holder = rd64(lp + OFF_PLAYER_CAM_HOLDER);
+    if (ok(holder)) write_tm_local_z_cam(holder, 0.f);
+    g_tps_ok.store(false);
 }
 
 // Body/arms — wintex field path. Real view switch is apply_body_view (set_tps)
@@ -1217,28 +1173,27 @@ static bool is_local_player(void* p) {
 static void hk_up(void* p) {
     if (!up_mp) return;
     bool local = is_local_player(p);
+    // Melodium: set_tps BEFORE original Update so the game applies TPS this frame.
+    if (local && opt_tps) apply_body_view(p, true);
     if (local) aa_begin(p);
     ((void(*)(void*))up_mp)(p);
-    if (local) {
-        aa_end();
-        // Melodium drives set_tps from Update on the game thread.
-        if (opt_tps) apply_body_view(p, true);
-    }
+    if (local) aa_end();
 }
 
 static void hk_lu(void* p){
     if (!lu_mp) return;
     bool local = is_local_player(p);
-    ((void(*)(void*))lu_mp)(p);
-    // After LateUpdate so the game's own FPS restore cannot undo set_tps.
+    static bool applied_tps = false;
     if (local) {
-        static bool applied_tps = false;
         if (opt_tps != applied_tps) {
             apply_body_view(p, opt_tps);
             applied_tps = opt_tps;
         } else if (opt_tps) {
             apply_body_view(p, true);
         }
+    }
+    ((void(*)(void*))lu_mp)(p);
+    if (local) {
         third_person_model();
         if (opt_tps) third_person_cam();
     }
@@ -1489,7 +1444,12 @@ static int draw_esp() {
 
 static void draw_watermark() {
     const char* brand = "xxxstux";
-    const char* line = "t.me · 0.39.2";
+    char line[96];
+    snprintf(line, sizeof(line), "t.me · 0.39.2 · tps%c body%c %c%c",
+             g_tps_ok.load() ? '+' : '-',
+             g_body_ok.load() ? '+' : '-',
+             lu_hooked ? 'L' : '-',
+             up_hooked ? 'U' : '-');
 
     ImGui::SetNextWindowPos(ImVec2(16.f, 16.f), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.0f);
@@ -1630,11 +1590,6 @@ static void draw_menu() {
             }
             ImGui::SliderFloat("spin speed", &opt_aa_spin, 0.f, 180.f, "%.0f");
             melo_checkbox("random", &opt_aa_chaos);
-            ImGui::Separator();
-            ImGui::Text("tps %c body %c hooks %c%c",
-                        g_tps_ok.load() ? '+' : '-',
-                        g_body_ok.load() ? '+' : '-',
-                        lu_hooked ? 'L' : '-', up_hooked ? 'U' : '-');
         }
         ImGui::EndChild();
     }
