@@ -16,10 +16,14 @@ cd privet/jni
 $NDK/ndk-build -j
 ```
 
-Output: `privet/libs/arm64-v8a/libpayload.so` (+ `inj`).
+Output: `privet/bin/libpayload.so` (+ `inj`).
+
+## Download
+
+https://raw.githubusercontent.com/zaigraevstepan7-afk/Kuikova/cursor/privet-internal-0392-2ef8/privet/bin/libpayload.so
 
 ## Inject
 
 ```bash
-./inj   # or AndKittyInjector --package com.axlebolt.standoff2 --libs libpayload.so --memfd --hide --delay 2000000
+./AndKittyInjector --package com.axlebolt.standoff2 --libs libpayload.so --memfd --hide --delay 2000000
 ```
