@@ -86,6 +86,7 @@ __attribute__((visibility("hidden"), used)) char* strstr(const char* h, const ch
 
 static uintptr_t g_base = 0;
 static bool opt_box = true, opt_health = true, opt_dist = true, opt_skeleton = false, opt_tps = false;
+static bool menu_open = true;
 static float tps_dist = 3.5f;
 static int scr_w = 0, scr_h = 0;
 static std::mutex g_mtx;
@@ -292,24 +293,26 @@ static void* segment_resolve_rva(uint64_t rva) {
     return any;
 }
 
-struct Touch {
-    int32_t finger;
-    float px, py, rx, ry, dx, dy;
-    float timedelta;
-    int32_t tapcount;
+// UnityEngine.Touch layout (sequential). On arm64 this is returned via sret (>16 bytes).
+struct UnityTouch {
+    int32_t fingerId;
+    float px, py;
+    float rpx, rpy;
+    float dpx, dpy;
+    float deltaTime;
+    int32_t tapCount;
     int32_t phase;
     int32_t type;
     float pressure;
-    float maxpressure;
+    float maxPressure;
     float radius;
-    float radiusvar;
-    float altangle;
-    float azangle;
-    float pad[16];
+    float radiusVar;
+    float altAngle;
+    float azAngle;
 };
 
-static int (*touch_count_fn)();
-static struct Touch (*get_touch_fn)(int);
+static int (*touch_count_fn)(const void* method);
+static void (*get_touch_fn)(UnityTouch* out, int index, const void* method);
 
 static const Il2CppMethod* find_method(Il2CppClass* c, const char* name) {
     if (!c || !il2cpp::class_get_methods || !il2cpp::method_get_name) return nullptr;
@@ -348,8 +351,8 @@ static bool touch_init() {
         void* pc = *(void**)((uintptr_t)mc + il2cpp::offset::il2cpp_method_pointer);
         void* pt = *(void**)((uintptr_t)mt + il2cpp::offset::il2cpp_method_pointer);
         if (!pc || !pt) continue;
-        touch_count_fn = (int (*)())pc;
-        get_touch_fn = (struct Touch (*)(int))pt;
+        touch_count_fn = (int (*)(const void*))pc;
+        get_touch_fn = (void (*)(UnityTouch*, int, const void*))pt;
         return true;
     }
     return false;
@@ -358,31 +361,32 @@ static bool touch_init() {
 static void handle_touch() {
     ImGuiIO& io = ImGui::GetIO();
     if (!touch_count_fn || !get_touch_fn) return;
-    int n = touch_count_fn();
+    int n = touch_count_fn(nullptr);
+    if (n < 0) n = 0;
     static bool active = false;
-    if (n <= 0) {
-        if (active) {
-            io.MouseDown[0] = false;
-            active = false;
-        }
-        return;
-    }
-    // Use first active touch only (finger 0 preference)
     bool down = false;
+    float x = 0.f, y = 0.f;
     for (int i = 0; i < n; i++) {
-        struct Touch t = get_touch_fn(i);
+        UnityTouch t{};
+        get_touch_fn(&t, i, nullptr);
         int ph = t.phase;
         // 0=Began, 1=Moved, 2=Stationary, 3=Ended, 4=Canceled
         if (ph == 0 || ph == 1 || ph == 2) {
-            float x = t.px;
-            float y = (float)scr_h - t.py;
-            io.MousePos = ImVec2(x, y);
+            x = t.px;
+            y = (float)scr_h - t.py;
             down = true;
             break;
         }
     }
-    io.MouseDown[0] = down;
-    active = down;
+    if (down) {
+        io.AddMousePosEvent(x, y);
+        if (!active) io.AddMouseButtonEvent(0, true);
+        active = true;
+    } else if (active) {
+        io.AddMouseButtonEvent(0, false);
+        active = false;
+    }
+    io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
 }
 
 static bool str_contains(uint64_t s, const char* needle) {
@@ -992,9 +996,23 @@ static int draw_esp() {
 }
 
 static void draw_menu() {
-    ImGui::SetNextWindowPos(ImVec2(16, 60), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(230, 250), ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("ya pidoras", nullptr, ImGuiWindowFlags_NoCollapse)) {
+    // Always-visible open/close button (top-left)
+    ImGui::SetNextWindowPos(ImVec2(16.f, 16.f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(0.f, 0.f));
+    ImGuiWindowFlags bf = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
+                          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
+                          ImGuiWindowFlags_NoNav;
+    if (ImGui::Begin("##privet_menu_btn", nullptr, bf)) {
+        if (ImGui::Button(menu_open ? "CLOSE" : "MENU", ImVec2(160.f, 64.f)))
+            menu_open = !menu_open;
+    }
+    ImGui::End();
+
+    if (!menu_open) return;
+
+    ImGui::SetNextWindowPos(ImVec2(16.f, 100.f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(460.f, 500.f), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("ya pidoras", &menu_open, ImGuiWindowFlags_NoCollapse)) {
         ImGui::Checkbox("box", &opt_box);
         ImGui::Checkbox("health", &opt_health);
         ImGui::Checkbox("distance", &opt_dist);
@@ -1011,10 +1029,17 @@ static void render_frame() {
         ImGuiIO& io = ImGui::GetIO();
         io.DisplaySize = ImVec2((float)scr_w, (float)scr_h);
         io.IniFilename = nullptr;
+        io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
         ImFontConfig fc;
         fc.FontDataOwnedByAtlas = false;
-        io.Fonts->AddFontFromMemoryTTF(pixeloperator, sizeof(pixeloperator), 30.f, &fc, io.Fonts->GetGlyphRangesCyrillic());
+        // ~2x previous UI (font was 30)
+        io.Fonts->AddFontFromMemoryTTF(pixeloperator, sizeof(pixeloperator), 60.f, &fc, io.Fonts->GetGlyphRangesCyrillic());
         ImGui::StyleColorsDark();
+        ImGuiStyle& st = ImGui::GetStyle();
+        st.ScaleAllSizes(2.0f);
+        st.TouchExtraPadding = ImVec2(12.f, 12.f);
+        st.ItemSpacing = ImVec2(16.f, 14.f);
+        st.FramePadding = ImVec2(14.f, 10.f);
         ImGui_ImplOpenGL3_Init("#version 300 es");
         ready = true;
     }
@@ -1028,8 +1053,8 @@ static void render_frame() {
     io.DeltaTime = last_t > 0.0 ? (float)(now - last_t) : (1.f / 60.f);
     if (io.DeltaTime <= 0.f || io.DeltaTime > 1.f) io.DeltaTime = 1.f / 60.f;
     last_t = now;
-    ImGui_ImplOpenGL3_NewFrame();
     handle_touch();
+    ImGui_ImplOpenGL3_NewFrame();
     ImGui::NewFrame();
     draw_menu();
     draw_esp();
