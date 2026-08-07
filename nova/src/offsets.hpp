@@ -49,6 +49,7 @@ constexpr uintptr_t kMatSetColor  = 0x6A96904;
 constexpr uintptr_t kMatSetFloat  = 0x6A8BF28;
 constexpr uintptr_t kMatSetInt    = 0x6A84BE4;
 constexpr uintptr_t kRendererSet  = 0x6A91498;
+constexpr uintptr_t kSetVisible   = 0x8E880E4;
 }
 
 // libil2cpp API RVAs (api_0.39.2.txt)

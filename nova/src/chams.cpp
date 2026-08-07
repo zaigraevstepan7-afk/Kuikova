@@ -9,11 +9,13 @@
 #include <cstring>
 #include <dlfcn.h>
 
-// Halalium/Melodium chams:
-//   Shader.Find → Material(shader) → set_color / _ZTest=8 / _ZWrite=0
-//   Renderer.set_material on CharacterLOD.skinned_mesh (@ player+0x128 → +0x30)
-// Applied from PlayerController.Update (libunity+0x8E7C40C) on Unity thread.
-// CRITICAL: never allocate Material/strings every tick — that freezes the game.
+// Lemming / Halalium / Melodium chams (0.39.2):
+//   Update hook on libunity+0x8E7C40C
+//   Shader.Find(Diffuse / Internal-Colored / ...) → Material ctor
+//   set_color → Renderer.set_material(CharacterLOD+0x30) → _ZTest/_ZTestMode=8, _ZWrite=0
+//   Enemy: also force visible @ player+0xD8 (Halalium Through Walls bit)
+// Lag rule: cache Material + Il2Cpp strings; never object_new every tick.
+// Visual rule: re-set_material each Update like Melodium (game resets mats).
 
 namespace {
 
@@ -25,7 +27,9 @@ using fn_shader_find  = void* (*)(void* name);
 using fn_mat_ctor     = void (*)(void* mat, void* shader);
 using fn_mat_color    = void (*)(void* mat, Color4 c);
 using fn_mat_float    = void (*)(void* mat, void* name, float v);
+using fn_mat_int      = void (*)(void* mat, void* name, int v);
 using fn_renderer_set = void (*)(void* renderer, void* mat);
+using fn_set_visible  = void (*)(void* player);
 
 using fn_domain_get = void* (*)();
 using fn_domain_asm = void* (*)(void*, const char*);
@@ -49,7 +53,9 @@ fn_shader_find  p_shader_find = nullptr;
 fn_mat_ctor     p_mat_ctor = nullptr;
 fn_mat_color    p_mat_color = nullptr;
 fn_mat_float    p_mat_float = nullptr;
+fn_mat_int      p_mat_int = nullptr;
 fn_renderer_set p_renderer_set = nullptr;
+fn_set_visible  p_set_visible = nullptr;
 
 fn_domain_get p_domain_get = nullptr;
 fn_domain_asm p_domain_asm = nullptr;
@@ -61,22 +67,20 @@ fn_thread_att p_thread_attach = nullptr;
 
 void* g_unity_image = nullptr;
 void* g_mat_class = nullptr;
-
 fn_pc_update g_old_update = nullptr;
 
 void* g_local = nullptr;
 int   g_local_team = -1;
 
-// Cached Il2Cpp strings (created once)
 void* s_shader_names[5]{};
 void* s_prop_ztest = nullptr;
+void* s_prop_ztest_mode = nullptr; // Halalium string
 void* s_prop_zwrite = nullptr;
 void* s_prop_src = nullptr;
 void* s_prop_dst = nullptr;
 void* s_prop_metal = nullptr;
 void* s_prop_gloss = nullptr;
 
-// One shared material — Halalium-style reuse, not per-frame alloc
 void* g_mat = nullptr;
 int   g_mat_style = -1;
 float g_mat_col[4]{-1, -1, -1, -1};
@@ -115,11 +119,14 @@ bool resolve_apis() {
         return false;
     }
 
+    // Melodium/Halalium Unity RVAs (libunity)
     p_shader_find  = (fn_shader_find)bind_unity(off::unity::kShaderFind);
     p_mat_ctor     = (fn_mat_ctor)bind_unity(off::unity::kMatCtor);
     p_mat_color    = (fn_mat_color)bind_unity(off::unity::kMatSetColor);
     p_mat_float    = (fn_mat_float)bind_unity(off::unity::kMatSetFloat);
+    p_mat_int      = (fn_mat_int)bind_unity(off::unity::kMatSetInt);
     p_renderer_set = (fn_renderer_set)bind_unity(off::unity::kRendererSet);
+    p_set_visible  = (fn_set_visible)bind_unity(off::unity::kSetVisible);
 
     p_domain_get = (fn_domain_get)(dlsym_il2("il2cpp_domain_get")
                                    ?: bind_il2(off::api::kDomainGet));
@@ -167,6 +174,7 @@ bool ensure_runtime() {
         if (!g_mat_class) return false;
     }
 
+    // Same shader names as Lemming SO strings / Melodium chams.cpp
     static const char* shaders[] = {
         "Legacy Shaders/Diffuse",
         "Hidden/Internal-Colored",
@@ -177,17 +185,34 @@ bool ensure_runtime() {
     for (int i = 0; i < 5; ++i) {
         if (!s_shader_names[i]) s_shader_names[i] = p_string_new(shaders[i]);
     }
-    if (!s_prop_ztest)  s_prop_ztest  = p_string_new("_ZTest");
-    if (!s_prop_zwrite) s_prop_zwrite = p_string_new("_ZWrite");
-    if (!s_prop_src)    s_prop_src    = p_string_new("_SrcBlend");
-    if (!s_prop_dst)    s_prop_dst    = p_string_new("_DstBlend");
-    if (!s_prop_metal)  s_prop_metal  = p_string_new("_Metallic");
-    if (!s_prop_gloss)  s_prop_gloss  = p_string_new("_Glossiness");
-    return s_prop_ztest && s_shader_names[0];
+    if (!s_prop_ztest)      s_prop_ztest      = p_string_new("_ZTest");
+    if (!s_prop_ztest_mode) s_prop_ztest_mode = p_string_new("_ZTestMode");
+    if (!s_prop_zwrite)     s_prop_zwrite     = p_string_new("_ZWrite");
+    if (!s_prop_src)        s_prop_src        = p_string_new("_SrcBlend");
+    if (!s_prop_dst)        s_prop_dst        = p_string_new("_DstBlend");
+    if (!s_prop_metal)      s_prop_metal      = p_string_new("_Metallic");
+    if (!s_prop_gloss)      s_prop_gloss      = p_string_new("_Glossiness");
+    return s_prop_ztest && s_shader_names[0] && s_shader_names[1];
 }
 
 bool color_changed(const float a[4], const float b[4]) {
     return a[0] != b[0] || a[1] != b[1] || a[2] != b[2] || a[3] != b[3];
+}
+
+void wallhack_props(void* mat) {
+    if (!mat) return;
+    // Melodium: set_float _ZTest=8, _ZWrite=0 after set_material
+    // Halalium SO also has _ZTestMode
+    if (p_mat_float) {
+        if (s_prop_ztest) p_mat_float(mat, s_prop_ztest, 8.0f);
+        if (s_prop_ztest_mode) p_mat_float(mat, s_prop_ztest_mode, 8.0f);
+        if (s_prop_zwrite) p_mat_float(mat, s_prop_zwrite, 0.0f);
+    }
+    if (p_mat_int) {
+        if (s_prop_ztest) p_mat_int(mat, s_prop_ztest, 8);
+        if (s_prop_ztest_mode) p_mat_int(mat, s_prop_ztest_mode, 8);
+        if (s_prop_zwrite) p_mat_int(mat, s_prop_zwrite, 0);
+    }
 }
 
 void* rebuild_material() {
@@ -197,11 +222,13 @@ void* rebuild_material() {
     }
 
     int style = g_cfg.material;
-    if (style < 0 || style > 4) style = 1;
+    if (style < 0 || style > 4) style = 0; // Melodium default Diffuse
 
     void* shader = p_shader_find(s_shader_names[style]);
     if (!shader && style != 0)
         shader = p_shader_find(s_shader_names[0]);
+    if (!shader && style != 1)
+        shader = p_shader_find(s_shader_names[1]);
     if (!shader) {
         g_status = "sh";
         return nullptr;
@@ -229,9 +256,7 @@ void* rebuild_material() {
         style == 4 ? 0.5f : g_cfg.color[3]
     };
     p_mat_color(mat, c);
-    // Melodium order: set material first in apply; ZTest after — keep props on mat here
-    p_mat_float(mat, s_prop_ztest, 8.0f);
-    p_mat_float(mat, s_prop_zwrite, 0.0f);
+    wallhack_props(mat);
 
     g_mat = mat;
     g_mat_style = style;
@@ -248,7 +273,6 @@ void* get_material() {
     return rebuild_material();
 }
 
-// Direct LDR — safe on Unity thread inside PC.Update (Halalium style)
 uintptr_t ldr(uintptr_t base, uintptr_t off) {
     if (!base) return 0;
     return *reinterpret_cast<uintptr_t*>(base + off);
@@ -259,79 +283,73 @@ uint8_t ldrb(uintptr_t base, uintptr_t off) {
     return *reinterpret_cast<uint8_t*>(base + off);
 }
 
-void apply_to_player(void* player, bool gloves) {
+void force_visible(void* player) {
+    if (!player) return;
+    // Halalium Update: strb #1 → [player,#0xd8]
+    *reinterpret_cast<uint8_t*>((uintptr_t)player + off::player::kVisible) = 1;
+    if (p_set_visible) p_set_visible(player);
+}
+
+bool apply_mesh(void* player, void* mat) {
+    if (!player || !mat || !p_renderer_set) return false;
+    const uintptr_t lod = ldr((uintptr_t)player, off::player::kCharacterLod);
+    if (!lod) return false;
+    const uintptr_t mesh = ldr(lod, off::lod::kSkinnedMesh);
+    if (!mesh) return false;
+
+    // Melodium order: set_material then ZTest props
+    p_renderer_set((void*)mesh, mat);
+    wallhack_props(mat);
+    g_applied.fetch_add(1);
+    return true;
+}
+
+void apply_gloves(void* player, void* mat) {
+    if (!player || !mat || !p_renderer_set) return;
+    // Melodium: m_pLOD @0x120 → gloves @0x30
+    const uintptr_t arms = ldr((uintptr_t)player, off::player::kArmsLod);
+    if (!arms) return;
+    const uintptr_t gloves = ldr(arms, off::lod::kSkinnedMesh);
+    if (gloves) p_renderer_set((void*)gloves, mat);
+}
+
+void chams_enemy(void* player) {
     void* mat = get_material();
-    if (!mat || !player || !p_renderer_set) return;
-
-    const uintptr_t p = (uintptr_t)player;
-    const uintptr_t lod = ldr(p, off::player::kCharacterLod);
-    if (lod) {
-        const uintptr_t mesh = ldr(lod, off::lod::kSkinnedMesh);
-        if (mesh) {
-            p_renderer_set((void*)mesh, mat);
-            g_applied.fetch_add(1);
-        }
-    }
-
-    if (gloves) {
-        const uintptr_t arms = ldr(p, off::player::kArmsLod);
-        if (arms) {
-            const uintptr_t g = ldr(arms, off::lod::kSkinnedMesh);
-            if (g) p_renderer_set((void*)g, mat);
-        }
-    }
+    if (!mat) return;
+    force_visible(player);
+    apply_mesh(player, mat);
 }
 
-// Apply set_material once per player until menu cfg changes (re-set every frame = lag)
-void* g_done[48]{};
-int g_done_n = 0;
-uint32_t g_done_epoch = 0;
-
-bool already_done(void* player) {
-    if (g_done_epoch != g_cfg_epoch) {
-        g_done_n = 0;
-        g_done_epoch = g_cfg_epoch;
-        return false;
-    }
-    for (int i = 0; i < g_done_n; ++i)
-        if (g_done[i] == player) return true;
-    return false;
-}
-
-void mark_done(void* player) {
-    if (g_done_n >= 48) return;
-    g_done[g_done_n++] = player;
+void chams_local(void* player) {
+    void* mat = get_material();
+    if (!mat) return;
+    apply_mesh(player, mat);
+    apply_gloves(player, mat);
 }
 
 void hk_pc_update(void* player) {
-    if (g_old_update) g_old_update(player);
+    // Melodium: feature work then old_update at the end
+    if (player && g_cfg.enabled && g_ready.load()) {
+        const uintptr_t p = (uintptr_t)player;
+        const uintptr_t ph = ldr(p, off::player::kPhoton);
+        if (ph) {
+            const bool is_local = ldrb(ph, off::photon::kIsLocal) != 0;
+            const int team = (int)ldrb(p, off::player::kTeam);
 
-    // Fast path: chams off → zero work (hook stay for toggle later)
-    if (!g_cfg.enabled || !player || !g_ready.load()) return;
-
-    const uintptr_t p = (uintptr_t)player;
-    const uintptr_t ph = ldr(p, off::player::kPhoton);
-    if (!ph) return;
-
-    const bool is_local = ldrb(ph, off::photon::kIsLocal) != 0;
-    const int team = (int)ldrb(p, off::player::kTeam);
-
-    if (is_local) {
-        g_local = player;
-        g_local_team = team;
-        if (!g_cfg.local_chams) return;
-        if (already_done(player)) return;
-        apply_to_player(player, true);
-        mark_done(player);
-        return;
+            if (is_local) {
+                g_local = player;
+                g_local_team = team;
+                if (g_cfg.local_chams)
+                    chams_local(player);
+            } else if (g_local) {
+                // Melodium is_enemy: team != local team
+                if (!g_cfg.team_check || team != g_local_team)
+                    chams_enemy(player);
+            }
+        }
     }
 
-    if (!g_local) return;
-    if (g_cfg.team_check && team == g_local_team) return;
-    if (already_done(player)) return;
-
-    apply_to_player(player, false);
-    mark_done(player);
+    if (g_old_update) g_old_update(player);
 }
 
 bool hook_pc_update() {
@@ -342,7 +360,7 @@ bool hook_pc_update() {
         return false;
     }
 
-    // Halalium/Melodium: Dobby first for PC.Update
+    // Halalium: Dobby on PC.Update
     void* orig = nullptr;
     if (DobbyHook(target, (void*)hk_pc_update, &orig) == 0 && orig) {
         g_old_update = (fn_pc_update)orig;

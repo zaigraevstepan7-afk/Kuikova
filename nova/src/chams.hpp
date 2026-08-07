@@ -6,8 +6,8 @@ struct ChamsConfig {
     bool enabled = true;
     bool team_check = true;
     bool local_chams = false;
-    int  material = 1; // 0 Diffuse, 1 Internal-Colored, 2 Standard glass, 3 Standard metal, 4 Transparent
-    float color[4] = {1.f, 0.15f, 0.15f, 1.f};
+    int  material = 1; // Hidden/Internal-Colored — Lemming wallhack default look
+    float color[4] = {1.f, 0.2f, 0.2f, 1.f};
 };
 
 ChamsConfig& chams_cfg();
