@@ -407,29 +407,27 @@ inline bool init_api(uintptr_t base) {
         if (!p) p = dlsym(RTLD_DEFAULT, name);
         return p;
     };
-    auto or_rva = [&](const char* name, uintptr_t rva) -> void* {
-        void* d = dyn(name);
-        return d ? d : resolve_rva(rva);
-    };
+    // Only use live exports for APIs we actually CALL. Bad dump RVAs crash on inject.
+    auto must_dyn = [&](const char* name) -> void* { return dyn(name); };
 
     alloc                = (decltype(alloc))(resolve_rva(offset::il2cpp_alloc));
     free                 = (decltype(free))(resolve_rva(offset::il2cpp_free));
 
-    // Prefer exported symbols for hook resolution — dump RVAs drift across builds.
-    domain_get = (decltype(domain_get))or_rva("il2cpp_domain_get", offset::il2cpp_domain_get);
-    domain_assembly_open = (decltype(domain_assembly_open))or_rva("il2cpp_domain_assembly_open", offset::il2cpp_domain_assembly_open);
-    assembly_get_image = (decltype(assembly_get_image))or_rva("il2cpp_assembly_get_image", offset::il2cpp_assembly_get_image);
-    class_from_name = (decltype(class_from_name))or_rva("il2cpp_class_from_name", offset::il2cpp_class_from_name);
-    class_get_method_from_name = (decltype(class_get_method_from_name))or_rva("il2cpp_class_get_method_from_name", offset::il2cpp_class_get_method_from_name);
-    class_get_methods = (decltype(class_get_methods))or_rva("il2cpp_class_get_methods", offset::il2cpp_class_get_methods);
-    method_get_name = (decltype(method_get_name))or_rva("il2cpp_method_get_name", offset::il2cpp_method_get_name);
-    thread_attach = (decltype(thread_attach))or_rva("il2cpp_thread_attach", offset::il2cpp_thread_attach);
+    domain_get = (decltype(domain_get))must_dyn("il2cpp_domain_get");
+    domain_assembly_open = (decltype(domain_assembly_open))must_dyn("il2cpp_domain_assembly_open");
+    assembly_get_image = (decltype(assembly_get_image))must_dyn("il2cpp_assembly_get_image");
+    class_from_name = (decltype(class_from_name))must_dyn("il2cpp_class_from_name");
+    class_get_method_from_name = (decltype(class_get_method_from_name))must_dyn("il2cpp_class_get_method_from_name");
+    class_get_methods = (decltype(class_get_methods))must_dyn("il2cpp_class_get_methods");
+    method_get_name = (decltype(method_get_name))must_dyn("il2cpp_method_get_name");
+    thread_attach = (decltype(thread_attach))must_dyn("il2cpp_thread_attach");
+    class_get_parent = (decltype(class_get_parent))must_dyn("il2cpp_class_get_parent");
 
     class_from_il2cpp_type    = (decltype(class_from_il2cpp_type))(resolve_rva(offset::il2cpp_class_from_il2cpp_type));
     class_from_type           = (decltype(class_from_type))(resolve_rva(offset::il2cpp_class_from_type));
     class_get_name            = (decltype(class_get_name))(resolve_rva(offset::il2cpp_class_get_name));
     class_get_namespace       = (decltype(class_get_namespace))(resolve_rva(offset::il2cpp_class_get_namespace));
-    class_get_parent          = (decltype(class_get_parent))(resolve_rva(offset::il2cpp_class_get_parent));
+    // class_get_parent already set via dlsym above
     class_get_element_class   = (decltype(class_get_element_class))(resolve_rva(offset::il2cpp_class_get_element_class));
     class_get_declaring_type  = (decltype(class_get_declaring_type))(resolve_rva(offset::il2cpp_class_get_declaring_type));
     class_get_image           = (decltype(class_get_image))(resolve_rva(offset::il2cpp_class_get_image));

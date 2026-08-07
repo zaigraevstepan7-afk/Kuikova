@@ -721,8 +721,9 @@ static std::atomic<bool> g_tps_ok{false};
 static std::atomic<bool> g_tps_hf_started{false};
 static std::atomic<bool> g_body_ok{false};
 
-// Wintex body hook equivalent: call the game's own SetTPSView / set_visible
-// (Melodium names) on libunity — NOT a random helper.
+// Wintex body hook equivalent: call the game's own SetTPSView / set_visible.
+// Resolved by name through il2cpp metadata — the borrowed RVAs pointed at the
+// wrong code and crashed the moment third person was enabled.
 using pc_void_fn = void (*)(void*);
 using pc_view_fn = void (*)(void*, int);
 static pc_void_fn fn_set_tps = nullptr;
@@ -730,57 +731,49 @@ static pc_void_fn fn_set_fps = nullptr;
 static pc_void_fn fn_set_visible = nullptr;
 static pc_view_fn fn_set_view_mode = nullptr;
 
-static bool resolve_tps_view_fns() {
-    if (!g_base) return false;
-    if (fn_set_tps && fn_set_fps && fn_set_visible && fn_set_view_mode) return true;
-    auto okfn = [](uintptr_t p) { return p > 0x100000 && readable(p, 4); };
-    uintptr_t a_tps = g_base + OFF_PC_SET_TPS;
-    uintptr_t a_fps = g_base + OFF_PC_SET_FPS;
-    uintptr_t a_vis = g_base + OFF_PC_SET_VISIBLE;
-    uintptr_t a_vm  = g_base + OFF_PC_SET_VIEW_MODE;
-    if (!okfn(a_tps) || !okfn(a_fps) || !okfn(a_vis) || !okfn(a_vm)) return false;
-    fn_set_tps = (pc_void_fn)a_tps;
-    fn_set_fps = (pc_void_fn)a_fps;
-    fn_set_visible = (pc_void_fn)a_vis;
-    fn_set_view_mode = (pc_view_fn)a_vm;
-    return true;
-}
-
-// Must run on the game thread (LateUpdate) — same as wintex cave → SetTPSView.
-static void apply_body_view(void* player, bool tps_on) {
-    if (!player || !ok((uint64_t)player)) return;
-    if (!resolve_tps_view_fns()) { g_body_ok.store(false); return; }
-    if (tps_on) {
-        if (fn_set_view_mode) fn_set_view_mode(player, 2);
-        if (fn_set_tps) fn_set_tps(player);
-        if (fn_set_visible) fn_set_visible(player);
-        wr8((uint64_t)player + OFF_PLAYER_CHAR_VISIBLE, 1);
-    } else {
-        if (fn_set_view_mode) fn_set_view_mode(player, 1);
-        if (fn_set_fps) fn_set_fps(player);
-    }
-    g_body_ok.store(true);
-}
-
 static void* mp(const void* m) {
-    if (!m) return nullptr;
+    if (!m || !ok((uint64_t)m)) return nullptr;
     // Try common MethodInfo::methodPointer slots (0x0 and 0x8)
-    uintptr_t p8 = *(uintptr_t*)((uintptr_t)m + 0x8);
-    if (ok(p8) && p8 > 0x100000) return (void*)p8;
-    uintptr_t p0 = *(uintptr_t*)((uintptr_t)m + 0x0);
-    if (ok(p0) && p0 > 0x100000) return (void*)p0;
-    uintptr_t po = *(uintptr_t*)((uintptr_t)m + il2cpp::offset::il2cpp_method_pointer);
-    return ok(po) ? (void*)po : nullptr;
+    uintptr_t p8 = (uintptr_t)rd64((uint64_t)m + 0x8);
+    if (p8 > 0x100000 && readable(p8, 4)) return (void*)p8;
+    uintptr_t p0 = (uintptr_t)rd64((uint64_t)m + 0x0);
+    if (p0 > 0x100000 && readable(p0, 4)) return (void*)p0;
+    return nullptr;
+}
+
+static Il2CppClass* player_controller_class() {
+    if(!il2cpp::domain_get||!il2cpp::domain_assembly_open||!il2cpp::assembly_get_image||!il2cpp::class_from_name)return nullptr;
+    Il2CppDomain* d=il2cpp::domain_get();
+    if(!d)return nullptr;
+    Il2CppAssembly* asm_=il2cpp::domain_assembly_open(d,"Assembly-CSharp");
+    if(!asm_)return nullptr;
+    Il2CppImage* gi=il2cpp::assembly_get_image(asm_);
+    if(!gi)return nullptr;
+    return il2cpp::class_from_name(gi,"Axlebolt.Standoff.Player","PlayerController");
+}
+
+// Match the obfuscated view helpers by name so we never call a guessed address.
+static void resolve_view_fns(Il2CppClass* pc) {
+    if (fn_set_tps && fn_set_fps && fn_set_visible && fn_set_view_mode) return;
+    if (!pc || !il2cpp::class_get_methods || !il2cpp::method_get_name) return;
+    void* it = nullptr;
+    while (const Il2CppMethod* m = il2cpp::class_get_methods(pc, &it)) {
+        const char* nm = il2cpp::method_get_name(m);
+        if (!nm) continue;
+        void* p = mp(m);
+        if (!p) continue;
+        if (!fn_set_tps && strcmp(nm, NAME_PC_SET_TPS) == 0) fn_set_tps = (pc_void_fn)p;
+        else if (!fn_set_fps && strcmp(nm, NAME_PC_SET_FPS) == 0) fn_set_fps = (pc_void_fn)p;
+        else if (!fn_set_visible && strcmp(nm, NAME_PC_SET_VISIBLE) == 0) fn_set_visible = (pc_void_fn)p;
+        else if (!fn_set_view_mode && strcmp(nm, NAME_PC_SET_VIEW_MODE) == 0) fn_set_view_mode = (pc_view_fn)p;
+    }
+    g_body_ok.store(fn_set_tps != nullptr);
 }
 
 static void resolve_lu(){
-    if(lu_mi && up_mi)return;
-    if(!il2cpp::domain_get||!il2cpp::domain_assembly_open||!il2cpp::assembly_get_image||!il2cpp::class_from_name||!il2cpp::class_get_method_from_name)return;
-    Il2CppDomain* d=il2cpp::domain_get();
-    if(!d)return;
-    Il2CppImage* gi=il2cpp::assembly_get_image(il2cpp::domain_assembly_open(d,"Assembly-CSharp"));
-    if(!gi)return;
-    Il2CppClass* pc=il2cpp::class_from_name(gi,"Axlebolt.Standoff.Player","PlayerController");
+    if(lu_mi && up_mi && fn_set_tps)return;
+    if(!il2cpp::class_get_method_from_name)return;
+    Il2CppClass* pc=player_controller_class();
     if(!pc)return;
     if(!lu_mi){
         lu_mi=(MethodInfo*)il2cpp::class_get_method_from_name(pc,"LateUpdate",0);
@@ -789,6 +782,22 @@ static void resolve_lu(){
     if(!up_mi){
         up_mi=(MethodInfo*)il2cpp::class_get_method_from_name(pc,"Update",0);
         if(!up_mi)up_mi=(MethodInfo*)find_method(pc,"Update");
+    }
+    resolve_view_fns(pc);
+}
+
+// Game thread only (LateUpdate) — calling il2cpp methods from the render or
+// helper thread is what crashed when third person was switched on.
+static void apply_body_view(void* player, bool tps_on) {
+    if (!player || !ok((uint64_t)player)) return;
+    if (tps_on) {
+        if (fn_set_view_mode) fn_set_view_mode(player, 2);
+        if (fn_set_tps) fn_set_tps(player);
+        if (fn_set_visible) fn_set_visible(player);
+        wr8((uint64_t)player + OFF_PLAYER_CHAR_VISIBLE, 1);
+    } else {
+        if (fn_set_view_mode) fn_set_view_mode(player, 1);
+        if (fn_set_fps) fn_set_fps(player);
     }
 }
 
@@ -1088,7 +1097,13 @@ static void hk_lu(void* p){
     if (!lu_mp) return;
     bool local = is_local_player(p);
     // Wintex cave called SetTPSView every LateUpdate on the game thread.
-    if (local) apply_body_view(p, opt_tps);
+    static bool applied_tps = false;
+    if (local && (opt_tps != applied_tps)) {
+        apply_body_view(p, opt_tps);
+        applied_tps = opt_tps;
+    } else if (local && opt_tps) {
+        apply_body_view(p, true);
+    }
     ((void(*)(void*))lu_mp)(p);
     if (local && opt_tps) {
         third_person_cam();
@@ -1098,13 +1113,13 @@ static void hk_lu(void* p){
 
 // Swap MethodInfo::methodPointer; il2cpp keeps it at 0x0 or 0x8 depending on build.
 static bool hook_method_ptr(MethodInfo* mi, void* hook, void** orig) {
-    if (!mi) return false;
-    uintptr_t slot0 = *(uintptr_t*)((uintptr_t)mi + 0x0);
-    uintptr_t slot8 = *(uintptr_t*)((uintptr_t)mi + 0x8);
+    if (!mi || !ok((uint64_t)mi)) return false;
+    uintptr_t slot0 = (uintptr_t)rd64((uint64_t)mi + 0x0);
+    uintptr_t slot8 = (uintptr_t)rd64((uint64_t)mi + 0x8);
     uintptr_t a = 0;
     size_t ptr_off = 0x8;
-    if (ok(slot8) && slot8 > 0x100000) { a = slot8; ptr_off = 0x8; }
-    else if (ok(slot0) && slot0 > 0x100000) { a = slot0; ptr_off = 0x0; }
+    if (slot8 > 0x100000 && readable(slot8, 4)) { a = slot8; ptr_off = 0x8; }
+    else if (slot0 > 0x100000 && readable(slot0, 4)) { a = slot0; ptr_off = 0x0; }
     if (!a) return false;
     if ((void*)a == hook) {
         if (!*orig) *orig = (void*)a;
@@ -1524,23 +1539,8 @@ static void render_frame() {
     ImGui::NewFrame();
     handle_touch();
     draw_menu();
-    {
-        static bool was_tps = false;
-        if (opt_tps) {
-            // Fallback body switch if LateUpdate MethodInfo hook did not land.
-            if (!lu_hooked) {
-                uint64_t pm = player_manager();
-                uint64_t lp = ok(pm) ? rd64(pm + OFF_PM_LOCAL_PLAYER) : 0;
-                if (ok(lp)) apply_body_view((void*)lp, true);
-            }
-            tps_tick();
-        } else if (was_tps && !lu_hooked) {
-            uint64_t pm = player_manager();
-            uint64_t lp = ok(pm) ? rd64(pm + OFF_PM_LOCAL_PLAYER) : 0;
-            if (ok(lp)) apply_body_view((void*)lp, false);
-        }
-        was_tps = opt_tps;
-    }
+    // Field writes only here — game methods are called from the LateUpdate hook.
+    if (opt_tps) tps_tick();
     draw_esp();
     ImGui::EndFrame();
     ImGui::Render();
@@ -1776,7 +1776,6 @@ static void* thread_main(void*) {
             g_body_ok.store(false);
             resolve_lu();
             try_hook_lu();
-            resolve_tps_view_fns();
         }
     }
     return nullptr;
