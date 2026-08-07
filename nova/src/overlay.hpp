@@ -2,11 +2,11 @@
 #include "game.hpp"
 
 struct NovaConfig {
-    bool show_menu = true;
+    bool show_menu = true;       // Melodium: menu visible immediately
     bool esp_box = true;
     bool esp_name = true;
     bool esp_snapline = true;
-    bool esp_team_check = false; // off by default — wrong team byte must not hide ESP
+    bool esp_team_check = false;
     float box_thickness = 2.0f;
 };
 

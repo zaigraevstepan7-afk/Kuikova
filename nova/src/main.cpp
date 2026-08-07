@@ -1,7 +1,8 @@
 #include "game.hpp"
 #include "overlay.hpp"
-#include "elf_got_hook.hpp"
+#include "a64_inline_hook.hpp"
 #include "mem.hpp"
+#include "dobby.h"
 
 #include <jni.h>
 #include <dlfcn.h>
@@ -11,27 +12,53 @@
 #include <unistd.h>
 #include <atomic>
 #include <cstring>
+#include <cstdio>
+#include <cstdlib>
 #include <fcntl.h>
 #include <linux/input.h>
 #include <dirent.h>
 #include <sys/ioctl.h>
-#include <cstdio>
-#include <fstream>
-#include <string>
-#include <vector>
-#include <elf.h>
+#include <inttypes.h>
 
-using eglSwapBuffers_t = EGLBoolean (*)(EGLDisplay, EGLSurface);
-using eglGetProcAddress_t = void* (*)(const char*);
+// Melodium/Halalium path: eglSwapBuffers -> ImGui menu. Prefer a64, then Dobby, then GOT.
 
-static eglSwapBuffers_t g_real_swap = nullptr;
-static eglGetProcAddress_t g_real_getproc = nullptr;
+using eglSwapBuffers_fn = EGLBoolean (*)(EGLDisplay, EGLSurface);
+static eglSwapBuffers_fn g_old_swap = nullptr;
+static std::atomic<bool> g_egl_hooked{false};
+static std::atomic<bool> g_imgui_ok{false};
 static std::atomic<uint64_t> g_frames{0};
-static std::atomic<int> g_hook_hits{0};
 static GameState g_state{};
 
+// ---- Melodium-style GOT: scan ALL rw maps for exact symbol pointer ----
+static bool hook_egl_got_slots(void* symbol, void* replacement) {
+    if (!symbol || !replacement) return false;
+    FILE* f = fopen("/proc/self/maps", "r");
+    if (!f) return false;
+
+    char line[512];
+    int hooked = 0;
+    while (fgets(line, sizeof(line), f)) {
+        uintptr_t start = 0, end = 0;
+        char perms[8]{};
+        if (sscanf(line, "%" SCNxPTR "-%" SCNxPTR " %7s", &start, &end, perms) < 3)
+            continue;
+        if (perms[0] != 'r' || perms[1] != 'w') continue;
+        if (end <= start || (end - start) > 64 * 1024 * 1024) continue;
+
+        for (uintptr_t p = start; p + sizeof(void*) <= end; p += sizeof(void*)) {
+            // Crash-safe read (Melodium uses direct *; we keep safe IO)
+            const uintptr_t val = mem::read_ptr(p);
+            if (val != reinterpret_cast<uintptr_t>(symbol)) continue;
+            if (mem::write_ptr(p, reinterpret_cast<uintptr_t>(replacement)))
+                ++hooked;
+        }
+    }
+    fclose(f);
+    return hooked > 0;
+}
+
 static void* touch_thread(void*) {
-    sleep(3);
+    sleep(2);
     DIR* d = opendir("/dev/input");
     if (!d) return nullptr;
     int fds[8], max_x[8], max_y[8], nfd = 0;
@@ -79,144 +106,125 @@ static void* touch_thread(void*) {
     return nullptr;
 }
 
-static EGLBoolean hooked_swap(EGLDisplay dpy, EGLSurface surf) {
-    auto* orig = g_real_swap;
-    if (!orig) return EGL_FALSE;
+static EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface) {
+    EGLint w = 0, h = 0;
+    eglQuerySurface(display, surface, EGL_WIDTH, &w);
+    eglQuerySurface(display, surface, EGL_HEIGHT, &h);
+
+    auto call_old = [&]() -> EGLBoolean {
+        return g_old_swap ? g_old_swap(display, surface) : EGL_FALSE;
+    };
+
+    if (w <= 1 || h <= 1) return call_old();
+    if (eglGetCurrentContext() == EGL_NO_CONTEXT) return call_old();
 
     const uint64_t f = g_frames.fetch_add(1) + 1;
-    if (f < 20) return orig(dpy, surf);
 
-    EGLint w = 0, h = 0;
-    eglQuerySurface(dpy, surf, EGL_WIDTH, &w);
-    eglQuerySurface(dpy, surf, EGL_HEIGHT, &h);
-    if (w > 1 && h > 1 && eglGetCurrentContext() != EGL_NO_CONTEXT) {
-        GLint fbo = 0;
-        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
-        if (fbo) glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // Melodium: init ImGui on first good frame, draw menu every frame
+    GLint fbo = 0;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
+    if (fbo) glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // Menu first — ESP only after overlay has been alive a bit
+    if (f < 45) {
+        nova_overlay_frame(w, h, g_state); // status+menu only; game may be empty
+    } else {
         game_tick(g_state);
         nova_overlay_frame(w, h, g_state);
-        if (fbo) glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     }
-    return orig(dpy, surf);
+    g_imgui_ok.store(true, std::memory_order_relaxed);
+
+    if (fbo) glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    return call_old();
 }
 
-static void* hooked_getproc(const char* name) {
-    void* r = g_real_getproc ? g_real_getproc(name) : nullptr;
-    if (name && std::strcmp(name, "eglSwapBuffers") == 0) {
-        if (r) g_real_swap = reinterpret_cast<eglSwapBuffers_t>(r);
-        return reinterpret_cast<void*>(hooked_swap);
+static bool init_render_hook() {
+    if (g_egl_hooked.exchange(true)) return true;
+
+    void* egl = dlopen("libEGL.so", RTLD_NOW);
+    void* sym = egl ? dlsym(egl, "eglSwapBuffers") : nullptr;
+    if (!sym) sym = DobbySymbolResolver("libEGL.so", "eglSwapBuffers");
+    if (!sym) {
+        g_egl_hooked = false;
+        nova_set_hook_mode(0);
+        return false;
     }
-    return r;
+
+    // 1) Melodium MENU CRITICAL: a64 inline
+    void* tramp = nullptr;
+    if (a64hook::install(sym, (void*)hook_egl_swap_buffers, &tramp) && tramp) {
+        g_old_swap = (eglSwapBuffers_fn)tramp;
+        nova_set_hook_mode(2); // i = inline
+        return true;
+    }
+
+    // 2) Dobby (Melodium/Halalium)
+    void* orig = nullptr;
+    if (DobbyHook(sym, (void*)hook_egl_swap_buffers, &orig) == 0 && orig) {
+        g_old_swap = (eglSwapBuffers_fn)orig;
+        nova_set_hook_mode(2);
+        return true;
+    }
+
+    // 3) GOT spray (Melodium fallback — Unity often keeps ptr in anon rw)
+    g_old_swap = (eglSwapBuffers_fn)sym;
+    if (hook_egl_got_slots(sym, (void*)hook_egl_swap_buffers)) {
+        nova_set_hook_mode(1); // g = got
+        return true;
+    }
+
+    g_egl_hooked = false;
+    nova_set_hook_mode(0);
+    return false;
 }
 
-// Replace exact pointer matches only inside PT_LOAD RW of selected modules (not full heap).
-static int patch_ptr_in_load_rw(uintptr_t base, void* symbol, void* replace) {
-    Elf64_Ehdr ehdr{};
-    if (!mem::read_into(base, ehdr)) return 0;
-    if (std::memcmp(ehdr.e_ident, ELFMAG, SELFMAG) != 0) return 0;
-    if (ehdr.e_phnum == 0 || ehdr.e_phnum > 64) return 0;
-    std::vector<Elf64_Phdr> phdrs(ehdr.e_phnum);
-    if (!mem::read_bytes(base + ehdr.e_phoff, phdrs.data(), phdrs.size() * sizeof(Elf64_Phdr)))
-        return 0;
+static void* entry(void*) {
+    // Short settle — Melodium hooks sooner; long delay = no menu on load screen
+    sleep(2);
 
-    int hits = 0;
-    const uintptr_t sym = reinterpret_cast<uintptr_t>(symbol);
-    const uintptr_t rep = reinterpret_cast<uintptr_t>(replace);
-    for (const auto& ph : phdrs) {
-        if (ph.p_type != PT_LOAD) continue;
-        if ((ph.p_flags & PF_W) == 0) continue;
-        const uintptr_t seg = base + ph.p_vaddr;
-        const size_t sz = ph.p_memsz;
-        if (sz == 0 || sz > 16 * 1024 * 1024) continue;
-        for (uintptr_t a = seg; a + 8 <= seg + sz; a += 8) {
-            if (mem::read_ptr(a) != sym) continue;
-            if (mem::write_ptr(a, rep)) ++hits;
+    for (int i = 0; i < 30; ++i) {
+        if (init_render_hook()) break;
+        sleep(1);
+    }
+
+    if (g_egl_hooked.load()) {
+        pthread_t th;
+        pthread_create(&th, nullptr, touch_thread, nullptr);
+        pthread_detach(th);
+    } else {
+        // Keep retrying in background
+        for (int i = 0; i < 60; ++i) {
+            sleep(2);
+            if (init_render_hook()) {
+                pthread_t th;
+                pthread_create(&th, nullptr, touch_thread, nullptr);
+                pthread_detach(th);
+                break;
+            }
         }
     }
-    return hits;
-}
-
-static int patch_cached_swap_ptrs(void* symbol, void* replace) {
-    std::ifstream maps("/proc/self/maps");
-    std::string line;
-    int total = 0;
-    while (std::getline(maps, line)) {
-        uintptr_t start = 0, end = 0, off = 0;
-        char perms[8]{}, path[512]{};
-        if (sscanf(line.c_str(), "%lx-%lx %7s %lx %*s %*s %511s",
-                   &start, &end, perms, &off, path) < 5)
-            continue;
-        if (off != 0) continue;
-        if (std::strchr(perms, 'x') == nullptr) continue;
-        if (path[0] != '/') continue;
-        const std::string p(path);
-        if (p.find("libunity") == std::string::npos &&
-            p.find("libmain") == std::string::npos &&
-            p.find("split_config") == std::string::npos)
-            continue;
-        total += patch_ptr_in_load_rw(start, symbol, replace);
-    }
-    return total;
-}
-
-static bool do_hook() {
-    void* egl = dlopen("libEGL.so", RTLD_NOW);
-    void* sym_swap = dlsym(egl ? egl : RTLD_DEFAULT, "eglSwapBuffers");
-    void* sym_gpa = dlsym(egl ? egl : RTLD_DEFAULT, "eglGetProcAddress");
-    if (!sym_swap) return false;
-    g_real_swap = reinterpret_cast<eglSwapBuffers_t>(sym_swap);
-    if (sym_gpa) g_real_getproc = reinterpret_cast<eglGetProcAddress_t>(sym_gpa);
-
-    int hits = 0;
-    void* slot = nullptr;
-
-    // 1) PLT/RELA by name
-    hits += elfhook::hook_symbol_name("eglSwapBuffers",
-                                      reinterpret_cast<void*>(hooked_swap), &slot);
-    if (sym_gpa) {
-        hits += elfhook::hook_symbol_name("eglGetProcAddress",
-                                          reinterpret_cast<void*>(hooked_getproc), nullptr);
-    }
-
-    // 2) Cached function pointers inside libunity PT_LOAD RW
-    hits += patch_cached_swap_ptrs(sym_swap, reinterpret_cast<void*>(hooked_swap));
-
-    g_hook_hits.store(hits);
-    if (hits <= 0) return false;
-
-    nova_set_hook_mode(1);
-    return true;
-}
-
-static void* worker(void*) {
-    sleep(4);
-
-    bool ok = false;
-    for (int i = 0; i < 12 && !ok; ++i) {
-        ok = do_hook();
-        if (!ok) sleep(1);
-    }
-    if (!ok) {
-        nova_set_hook_mode(0);
-        return nullptr;
-    }
-
-    // Re-patch once more after unity fully up (late eglGetProcAddress caches)
-    sleep(3);
-    do_hook();
-
-    pthread_t th;
-    pthread_create(&th, nullptr, touch_thread, nullptr);
-    pthread_detach(th);
     return nullptr;
 }
 
-extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM*, void*) {
+static void start_once() {
+    static std::atomic<bool> started{false};
+    bool expected = false;
+    if (!started.compare_exchange_strong(expected, true)) return;
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
     pthread_t th;
-    pthread_create(&th, &attr, worker, nullptr);
+    pthread_create(&th, &attr, entry, nullptr);
     pthread_attr_destroy(&attr);
+}
+
+// Melodium: both ctor and JNI_OnLoad (AndKitty often only dlopen)
+__attribute__((constructor))
+static void nova_ctor() {
+    start_once();
+}
+
+extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM*, void*) {
+    start_once();
     return JNI_VERSION_1_6;
 }

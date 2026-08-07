@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/imgui)
+set(DOBBY_LIB ${CMAKE_CURRENT_SOURCE_DIR}/third_party/libdobby.a)
 
 add_library(nova SHARED
     src/main.cpp
@@ -19,6 +20,7 @@ add_library(nova SHARED
 
 target_include_directories(nova PRIVATE
     src
+    third_party
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
 )
@@ -42,6 +44,7 @@ target_link_options(nova PRIVATE
 )
 
 target_link_libraries(nova
+    ${DOBBY_LIB}
     android
     log
     EGL
