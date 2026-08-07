@@ -14,14 +14,21 @@
 #define OFF_PLAYER_PHOTON_PTR       0x160
 #define OFF_PLAYER_MAIN_CAMERA      0xE8
 #define OFF_MAINCAM_TRANSFORM       0x38   // PlayerMainCamera → Transform (dump 0.39.2)
+#define OFF_MAINCAM_UNITY_CAM       0x20   // PlayerMainCamera → UnityEngine.Camera
+#define OFF_MAINCAM_MAIN            0x40   // PlayerMainCamera → MainCamera (CameraMovementController)
+#define OFF_CAMMOVE_TRANSFORM       0xB0   // CameraMovementController → Transform
+#define OFF_CAMMOVE_TRANSFORM_ALT   0x48
+#define OFF_PLAYER_CAM_HOLDER       0x28   // PlayerController._mainCameraHolder
 #define OFF_CAMERA_TRANSFORM        0x100
 #define OFF_CAM_TRANSFORM_MATRIX    0x10
 #define OFF_CAM_MATRIX_DATA         0xF0
 #define PLAYER_HEIGHT               1.67f
 
-// Native TransformAccess (wintex external path) — used for camera local Z write
-#define OFF_NATIVE_TR_MATRIX        0x38
-#define OFF_NATIVE_TR_INDEX         0x40
+// Native TransformAccess — try ESP layout first, wintex as fallback
+#define OFF_NATIVE_TR_MATRIX        0x28
+#define OFF_NATIVE_TR_INDEX         0x30
+#define OFF_NATIVE_TR_MATRIX_ALT    0x38
+#define OFF_NATIVE_TR_INDEX_ALT     0x40
 
 #define OFF_PHOTON_NAME             0x20
 #define OFF_PHOTON_PROPS_REG        0x38

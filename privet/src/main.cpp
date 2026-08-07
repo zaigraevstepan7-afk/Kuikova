@@ -762,42 +762,126 @@ static inline float clamp_pitch(float p, float m = 70.f) {
     return p;
 }
 
-// Resolve native TransformAccess matrix entry (wintex external path).
-// transform_il2cpp → (+0x10) native → matrix@0x38, index@0x40, list@+0x18
-static uint64_t native_tm_entry(uint64_t transform) {
+// Resolve native TransformAccess matrix entry.
+// Tries ESP layout (0x28/0x30) first, then wintex (0x38/0x40).
+static uint64_t native_tm_entry_ex(uint64_t transform, uint64_t mat_off, uint64_t idx_off) {
     if (!ok(transform)) return 0;
     uint64_t native = rd64(transform + 0x10);
     if (!ok(native)) return 0;
-    uint64_t matrix = rd64(native + OFF_NATIVE_TR_MATRIX);
+    uint64_t matrix = rd64(native + mat_off);
     if (!ok(matrix)) return 0;
-    int32_t index = rd32(native + OFF_NATIVE_TR_INDEX);
+    int32_t index = rd32(native + idx_off);
     if (index < 0 || index > 100000) return 0;
     uint64_t list = rd64(matrix + OFF_MATRIX_LIST);
     if (!ok(list)) return 0;
-    return list + (uint64_t)index * (uint64_t)TRANSFORM_MATRIX_SIZE;
+    uint64_t entry = list + (uint64_t)index * (uint64_t)TRANSFORM_MATRIX_SIZE;
+    return readable(entry, TRANSFORM_MATRIX_SIZE) ? entry : 0;
 }
 
-// Wintex third person: write camera Transform local Z = -distance via libunity R/W.
-// Game rebuilds the view matrix from this entry, so ESP stays aligned.
+static uint64_t native_tm_entry(uint64_t transform) {
+    uint64_t e = native_tm_entry_ex(transform, OFF_NATIVE_TR_MATRIX, OFF_NATIVE_TR_INDEX);
+    if (e) return e;
+    return native_tm_entry_ex(transform, OFF_NATIVE_TR_MATRIX_ALT, OFF_NATIVE_TR_INDEX_ALT);
+}
+
+static bool write_tm_local_z(uint64_t transform, float z) {
+    uint64_t entry = native_tm_entry(transform);
+    if (!entry) return false;
+    wrf(entry + 8, z);
+    return true;
+}
+
+// Resolve the live view-matrix storage (same chain ESP uses).
+static float* cam_matrix_ptr(uint64_t lp) {
+    if (!ok(lp)) return nullptr;
+    uint64_t cam = rd64(lp + OFF_PLAYER_MAIN_CAMERA);
+    if (!ok(cam)) return nullptr;
+    uint64_t cc = rd64(cam + OFF_MAINCAM_UNITY_CAM);
+    if (!ok(cc)) return nullptr;
+    uint64_t ct = rd64(cc + OFF_CAM_TRANSFORM_MATRIX);
+    if (!ok(ct)) return nullptr;
+    if (!readable(ct + OFF_CAM_MATRIX_DATA, 64)) return nullptr;
+    return (float*)(ct + OFF_CAM_MATRIX_DATA);
+}
+
+// Melodium-style pullback: place camera at player + up + forward*(-dist),
+// writing both Transform local Z (wintex) and the live view-matrix translation.
 static bool third_person_cam() {
     if (!opt_tps) { g_tps_ok.store(false); return false; }
     uint64_t pm = player_manager();
     if (!ok(pm)) return false;
     uint64_t lp = rd64(pm + OFF_PM_LOCAL_PLAYER);
     if (!ok(lp)) return false;
+
+    Vector3 loc = player_pos(lp);
+    if (!(loc.x > -20000.f && loc.x < 20000.f &&
+          loc.y > -20000.f && loc.y < 20000.f &&
+          loc.z > -20000.f && loc.z < 20000.f)) return false;
+
+    float* m = cam_matrix_ptr(lp);
+    float fx = 0.f, fy = 0.f, fz = 1.f;
+    if (m) {
+        // Camera forward from world-to-camera matrix (Unity -Z axis).
+        fx = -m[2]; fy = -m[6]; fz = -m[10];
+        float len = sqrtf(fx * fx + fy * fy + fz * fz);
+        if (len > 0.01f && len < 100.f) { fx /= len; fy /= len; fz /= len; }
+        else { fx = 0.f; fy = 0.f; fz = 1.f; }
+    }
+
+    float cx = loc.x + fx * -tps_dist;
+    float cy = loc.y + 1.50f + fy * -tps_dist;
+    float cz = loc.z + fz * -tps_dist;
+
+    static Vector3 smoothed(0, 0, 0);
+    static bool init = false;
+    if (!init) { smoothed = Vector3(cx, cy, cz); init = true; }
+    float jdx = cx - smoothed.x, jdy = cy - smoothed.y, jdz = cz - smoothed.z;
+    if (jdx * jdx + jdy * jdy + jdz * jdz > 25.f) {
+        smoothed = Vector3(cx, cy, cz);
+    } else {
+        smoothed.x += jdx * 0.688f;
+        smoothed.y += jdy * 0.688f;
+        smoothed.z += jdz * 0.688f;
+    }
+
+    bool wrote = false;
+
+    // 1) Live view-matrix translation (same buffer ESP/render read).
+    if (m) {
+        float sx = smoothed.x, sy = smoothed.y, sz = smoothed.z;
+        m[12] = -(m[0] * sx + m[4] * sy + m[8] * sz);
+        m[13] = -(m[1] * sx + m[5] * sy + m[9] * sz);
+        m[14] = -(m[2] * sx + m[6] * sy + m[10] * sz);
+        wrote = true;
+    }
+
+    // 2) Transform field writes — several candidates from the 0.39.2 dump.
     uint64_t main_cam = rd64(lp + OFF_PLAYER_MAIN_CAMERA);
-    if (!ok(main_cam)) return false;
-    uint64_t cam_tr = rd64(main_cam + OFF_MAINCAM_TRANSFORM);
-    if (!ok(cam_tr)) return false;
-    uint64_t entry = native_tm_entry(cam_tr);
-    if (!ok(entry) || !readable(entry, TRANSFORM_MATRIX_SIZE)) return false;
-    // TMatrix.position is first Vector4; write local Z only (wintex).
-    wrf(entry + 8, -tps_dist);
-    g_tps_ok.store(true);
-    return true;
+    uint64_t targets[6] = {};
+    int nt = 0;
+    auto push = [&](uint64_t t) {
+        if (ok(t) && nt < 6) targets[nt++] = t;
+    };
+    push(rd64(lp + OFF_PLAYER_CAM_HOLDER));                 // _mainCameraHolder
+    if (ok(main_cam)) {
+        push(rd64(main_cam + OFF_MAINCAM_TRANSFORM));       // PlayerMainCamera.Transform
+        uint64_t mc = rd64(main_cam + OFF_MAINCAM_MAIN);    // MainCamera component
+        if (ok(mc)) {
+            push(rd64(mc + OFF_CAMMOVE_TRANSFORM));
+            push(rd64(mc + OFF_CAMMOVE_TRANSFORM_ALT));
+        }
+    }
+
+    for (int i = 0; i < nt; i++) {
+        // Local-Z pullback (wintex) — Z is the look axis on the FPS camera rig.
+        if (write_tm_local_z(targets[i], -tps_dist)) wrote = true;
+    }
+
+    g_tps_ok.store(wrote);
+    return wrote;
 }
 
-// Wintex thirdPersonModel: hide FP arms, force local body visible (field R/W only).
+// Body visible + stop FP arms without yeeting the gun to -1000.
 static void third_person_model() {
     uint64_t pm = player_manager();
     if (!ok(pm)) return;
@@ -805,20 +889,30 @@ static void third_person_model() {
     if (!ok(lp)) return;
     bool tp = opt_tps;
 
+    wr32(lp + OFF_PLAYER_VIEW_MODE, tp ? 2 : 1);
+
+    // Soft-hide FP arms via ArmsLodGroup mesh renderers (no -1000 offset).
+    uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
+    if (ok(arms_lod)) {
+        uint64_t mesh = rd64(arms_lod + OFF_ARMS_MESH_RENDERER);
+        uint64_t gloves = rd64(arms_lod + OFF_ARMS_GLOVES_RENDERER);
+        // Renderer.enabled is typically a bool near the start of the native
+        // renderer; SkinnedMeshLodGroup bool @ 0x20 gates drawing.
+        wr8(arms_lod + OFF_LOD_RENDER_ENABLED, tp ? 0 : 1);
+        (void)mesh; (void)gloves;
+    }
+
+    // Restore arms local offset if a previous build shoved it away.
     uint64_t arms = rd64(lp + OFF_PLAYER_ARMS_CTRL);
     if (ok(arms) && readable(arms + OFF_ARMS_LOCAL_POS, 12)) {
-        if (tp) {
-            wrf(arms + OFF_ARMS_LOCAL_POS + 0, 0.f);
-            wrf(arms + OFF_ARMS_LOCAL_POS + 4, -1000.f);
-            wrf(arms + OFF_ARMS_LOCAL_POS + 8, 0.f);
-        } else {
+        float ay = rdf(arms + OFF_ARMS_LOCAL_POS + 4);
+        if (ay < -100.f || !tp) {
             wrf(arms + OFF_ARMS_LOCAL_POS + 0, 0.f);
             wrf(arms + OFF_ARMS_LOCAL_POS + 4, 0.f);
             wrf(arms + OFF_ARMS_LOCAL_POS + 8, 0.f);
         }
     }
 
-    wr32(lp + OFF_PLAYER_VIEW_MODE, tp ? 2 : 1);
     if (!tp) return;
 
     wr8(lp + OFF_PLAYER_CHAR_VISIBLE, 1);
@@ -834,14 +928,12 @@ static void third_person_model() {
         if (ok(cv)) wr8(cv + OFF_CHAR_VIEW_OCCLUSION, 1);
     }
 
-    // Restore body bone scale if FP zeroed it (wintex).
     uint64_t map = bm(lp);
     if (!ok(map)) return;
     for (int i = 0; i < BIPED_BONE_COUNT; i++) {
         uint64_t bone = rd64(map + OFF_BIPED_START + (uint64_t)i * OFF_BIPED_STRIDE);
         uint64_t entry = native_tm_entry(bone);
-        if (!ok(entry) || !readable(entry, TRANSFORM_MATRIX_SIZE)) continue;
-        // scale is third Vector4 @ +0x20
+        if (!entry) continue;
         wrf(entry + 0x20, 1.f);
         wrf(entry + 0x24, 1.f);
         wrf(entry + 0x28, 1.f);
