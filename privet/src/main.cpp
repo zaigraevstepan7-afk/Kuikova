@@ -17,6 +17,8 @@
 #include <sys/mman.h>
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>
+#include <jni.h>
+#include <atomic>
 
 #include "imgui.h"
 #include "backends/imgui_impl_opengl3.h"
@@ -243,7 +245,7 @@ static void build_segs() {
         while (ishex(p[k])) { off = off * 16 + (uint64_t)hexv(p[k]); k++; }
         const char* q = p;
         while (*q && *q != '/') q++;
-        if (*q == '/' && strstr(q, "libunity.so") && en > st)
+        if (*q == '/' && strstr(q, "libil2cpp.so") && en > st)
             tmp.push_back({st, off, en - st, 0, exec, false});
         p = le + 1;
     }
@@ -473,8 +475,8 @@ static bool valid_pm(uint64_t pm) {
     return ok(pm) && ok(rd64(pm + OFF_PM_LOCAL_PLAYER));
 }
 
-static uint64_t pm_lazy() {
-    uint64_t v1 = rd64(g_base + OFF_PLAYER_MANAGER);
+static uint64_t pm_lazy_at(uint64_t base) {
+    uint64_t v1 = rd64(base + OFF_PLAYER_MANAGER);
     if (!ok(v1)) return 0;
     uint64_t v2 = rd64(v1 + 0x58);
     if (!ok(v2)) return 0;
@@ -483,25 +485,40 @@ static uint64_t pm_lazy() {
     return rd64(v3 + 0x0);
 }
 
-static uint64_t pm_static() {
-    uint64_t cls = rd64(g_base + OFF_PLAYER_MANAGER);
+static uint64_t pm_static_at(uint64_t base) {
+    uint64_t cls = rd64(base + OFF_PLAYER_MANAGER);
     if (!ok(cls)) return 0;
     uint64_t obj = rd64(cls + 0x90);
     if (!ok(obj)) return 0;
     return rd64(obj + 0x10);
 }
 
+static uint64_t pm_lazy() { return pm_lazy_at(g_base); }
+static uint64_t pm_static() { return pm_static_at(g_base); }
+
 static bool has_lp(uint64_t pm) {
     return ok(pm) && ok(rd64(pm + OFF_PM_LOCAL_PLAYER));
 }
 
 static uint64_t player_manager() {
-    uint64_t a = pm_static();
-    uint64_t b = pm_lazy();
-    uint64_t best = 0;
-    if (ok(a)) best = a;
-    if (has_lp(b) && (!has_lp(best) || b != a)) best = b;
-    return best;
+    // TypeInfo RVA is on libil2cpp; also try g_base (unity) for original path
+    static uint64_t il2 = 0;
+    if (!il2) {
+        il2 = find_lib("libil2cpp.so");
+        if (!il2) il2 = find_lib("libil2cpp");
+    }
+    uint64_t c0 = pm_static_at(g_base);
+    uint64_t c1 = pm_lazy_at(g_base);
+    uint64_t c2 = il2 ? pm_static_at(il2) : 0;
+    uint64_t c3 = il2 ? pm_lazy_at(il2) : 0;
+    if (has_lp(c0)) return c0;
+    if (has_lp(c1)) return c1;
+    if (has_lp(c2)) return c2;
+    if (has_lp(c3)) return c3;
+    if (ok(c0)) return c0;
+    if (ok(c1)) return c1;
+    if (ok(c2)) return c2;
+    return c3;
 }
 
 static Vector3 player_pos(uint64_t p) {
@@ -1030,10 +1047,17 @@ static EGLBoolean hk_swap(EGLDisplay d, EGLSurface s) {
         eglQuerySurface(d, s, EGL_WIDTH, &w);
         eglQuerySurface(d, s, EGL_HEIGHT, &h);
     }
-    if (w > 0 && h > 0) { scr_w = w; scr_h = h; }
-    std::lock_guard<std::mutex> lg(g_mtx);
-    render_frame();
-    return orig_swap(d, s);
+    if (w > 1 && h > 1 && eglGetCurrentContext() != EGL_NO_CONTEXT) {
+        scr_w = w;
+        scr_h = h;
+        GLint fbo = 0;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
+        if (fbo) glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        std::lock_guard<std::mutex> lg(g_mtx);
+        render_frame();
+        if (fbo) glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    }
+    return orig_swap ? orig_swap(d, s) : EGL_FALSE;
 }
 
 static inline void flush(void* a, size_t n) {
@@ -1078,54 +1102,80 @@ static void inline_hook(void* target, void* hook, void** orig) {
     mprotect((void*)page, (size_t)pg * 2, PROT_READ | PROT_EXEC);
 }
 
+static void try_hook_egl() {
+    if (orig_swap) return;
+    void* egl = nullptr;
+    void* eh = dlopen("libEGL.so", RTLD_NOW);
+    if (eh) egl = dlsym(eh, "eglSwapBuffers");
+    if (!egl) egl = dlsym(RTLD_NEXT, "eglSwapBuffers");
+    if (!egl) egl = dlsym(RTLD_DEFAULT, "eglSwapBuffers");
+    if (egl) inline_hook(egl, (void*)hk_swap, (void**)&orig_swap);
+}
+
 static void* thread_main(void*) {
     il2cpp::resolve_rva = segment_resolve_rva;
     build_maps();
     g_base = pick_base();
+    if (!g_base) {
+        g_base = find_lib("libil2cpp.so");
+        if (!g_base) g_base = find_lib("libil2cpp");
+    }
     if (!g_base) return nullptr;
-    // Force segment table build once base is known
     build_segs();
+    il2cpp::init_api(g_base);
     tps_init();
     try_hook_lu();
-    void* egl = nullptr;
-    void* eh = dlopen("libEGL.so", RTLD_NOW);
-    if (eh) {
-        egl = dlsym(eh, "eglSwapBuffers");
-    }
-    if (!egl) egl = dlsym(RTLD_NEXT, "eglSwapBuffers");
-    if (!egl) egl = dlsym(RTLD_DEFAULT, "eglSwapBuffers");
-    if (egl && !orig_swap) {
-        inline_hook(egl, (void*)hk_swap, (void**)&orig_swap);
-    }
+    try_hook_egl();
 
     static int done;
     while (true) {
-        sleep(2);
+        sleep(1);
         build_maps();
+        try_hook_egl();
         try_hook_lu();
         if (!touch_count_fn || !get_touch_fn) touch_init();
-        if (done < 3) { resolve_view_methods(); done++; }
+        if (done < 5) { resolve_view_methods(); done++; }
         uint64_t new_base = pick_base();
+        if (!new_base) new_base = find_lib("libil2cpp.so");
         if (new_base && new_base != g_base) {
             g_base = new_base;
-            // Rebuild segment map if libunity base moved
             build_segs();
-            // Allow re-init of il2cpp function pointers
             il2cpp::init_api(g_base);
             lu_hooked = false;
             lu_mi = nullptr;
             lu_mp = nullptr;
             vm_apply = nullptr;
             vm_settps2 = nullptr;
+            tps_init();
         }
     }
     return nullptr;
 }
 
+static void start_once() {
+    static std::atomic<bool> started{false};
+    bool expected = false;
+    if (!started.compare_exchange_strong(expected, true)) return;
+    il2cpp::resolve_rva = segment_resolve_rva;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    pthread_t th;
+    pthread_create(&th, &attr, thread_main, nullptr);
+    pthread_attr_destroy(&attr);
+}
+
 extern "C" __attribute__((visibility("default"))) void payload_entry(void* base) {
     (void)base;
-    il2cpp::resolve_rva = segment_resolve_rva;
-    pthread_t th;
-    if (pthread_create(&th, nullptr, thread_main, nullptr) == 0)
-        pthread_detach(th);
+    start_once();
+}
+
+__attribute__((constructor))
+static void privet_ctor() {
+    start_once();
+}
+
+extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM*, void*) {
+    start_once();
+    return JNI_VERSION_1_6;
 }
