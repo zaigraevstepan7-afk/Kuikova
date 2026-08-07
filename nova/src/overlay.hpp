@@ -15,3 +15,4 @@ void nova_overlay_frame(int width, int height, GameState& st);
 void nova_overlay_shutdown();
 bool nova_overlay_ensure_imgui();
 void nova_feed_touch(float x, float y, bool down);
+void nova_set_hook_mode(int mode);

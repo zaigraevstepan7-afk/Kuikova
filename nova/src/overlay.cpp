@@ -4,11 +4,8 @@
 #include "imgui_impl_opengl3.h"
 
 #include <GLES3/gl3.h>
-#include <android/log.h>
 #include <cmath>
 #include <mutex>
-
-#define NOVA_LOG(...) __android_log_print(ANDROID_LOG_INFO, "nova", __VA_ARGS__)
 
 namespace {
 bool g_imgui = false;
@@ -17,7 +14,10 @@ float g_touch_x = 0, g_touch_y = 0;
 bool g_touch_down = false;
 bool g_touch_fresh = false;
 NovaConfig g_cfg;
+int g_hook_mode = 0;
 }
+
+void nova_set_hook_mode(int mode) { g_hook_mode = mode; }
 
 NovaConfig& nova_cfg() { return g_cfg; }
 
@@ -35,18 +35,13 @@ bool nova_overlay_ensure_imgui() {
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = nullptr;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     ImGui::StyleColorsDark();
     ImGuiStyle& st = ImGui::GetStyle();
     st.WindowRounding = 6.0f;
     st.FrameRounding = 4.0f;
     st.WindowBorderSize = 1.0f;
-    if (!ImGui_ImplOpenGL3_Init("#version 300 es")) {
-        NOVA_LOG("ImGui_ImplOpenGL3_Init failed");
-        return false;
-    }
+    if (!ImGui_ImplOpenGL3_Init("#version 300 es")) return false;
     g_imgui = true;
-    NOVA_LOG("imgui ready");
     return true;
 }
 
@@ -77,7 +72,7 @@ static void draw_esp(ImDrawList* dl, GameState& st, float sw, float sh) {
 
         const float h = std::fabs(fy - hy);
         const float w = h * 0.45f;
-        if (h < 4.0f) continue;
+        if (h < 4.0f || h > sh) continue;
 
         const ImU32 col = IM_COL32(80, 220, 120, 230);
         if (cfg.esp_box) {
@@ -88,7 +83,7 @@ static void draw_esp(ImDrawList* dl, GameState& st, float sw, float sh) {
             dl->AddLine(ImVec2(sw * 0.5f, sh), ImVec2(fx, fy), IM_COL32(80, 220, 120, 160), 1.0f);
         }
         if (cfg.esp_name) {
-            const char* label = p.name.empty() ? "player" : p.name.c_str();
+            const char* label = p.name.empty() ? "enemy" : p.name.c_str();
             dl->AddText(ImVec2(hx - w * 0.5f, hy - 14.0f), IM_COL32(240, 240, 240, 230), label);
         }
     }
@@ -114,49 +109,42 @@ void nova_overlay_frame(int width, int height, GameState& st) {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui::NewFrame();
 
-    // Status strip
     ImGui::SetNextWindowPos(ImVec2(8, 8), ImGuiCond_Always);
-    ImGui::SetNextWindowBgAlpha(0.55f);
-    ImGui::Begin("##nova_status", nullptr,
+    ImGui::SetNextWindowBgAlpha(0.50f);
+    ImGui::Begin("##st", nullptr,
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
                      ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav);
-    ImGui::Text("nova | %s | players:%d | matrix:%s | f:%d",
+    const char* hm = g_hook_mode == 1 ? "g" : (g_hook_mode == 2 ? "i" : "-");
+    ImGui::Text("nova#%s | %s | p:%d | m:%s",
+                hm,
                 st.status ? st.status : "?",
                 static_cast<int>(st.players.size()),
-                st.has_matrix ? "YES" : "NO",
-                st.frame);
+                st.has_matrix ? "Y" : "N");
     ImGui::End();
 
     if (g_cfg.show_menu) {
-        ImGui::SetNextWindowSize(ImVec2(320, 280), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowPos(ImVec2(20, 60), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(300, 260), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(20, 56), ImGuiCond_FirstUseEver);
         if (ImGui::Begin("nova", &g_cfg.show_menu)) {
-            ImGui::TextUnformatted("Standoff 2 0.39.2");
-            ImGui::Separator();
-            ImGui::Checkbox("ESP box", &g_cfg.esp_box);
-            ImGui::Checkbox("ESP name", &g_cfg.esp_name);
-            ImGui::Checkbox("ESP snapline", &g_cfg.esp_snapline);
-            ImGui::Checkbox("Team check", &g_cfg.esp_team_check);
-            ImGui::SliderFloat("Thickness", &g_cfg.box_thickness, 1.0f, 4.0f);
-            ImGui::Separator();
-            ImGui::Text("il2cpp: %p", reinterpret_cast<void*>(st.il2cpp));
-            ImGui::Text("manager: %p", reinterpret_cast<void*>(st.manager));
-            ImGui::Text("local: %p", reinterpret_cast<void*>(st.local));
+            ImGui::Checkbox("box", &g_cfg.esp_box);
+            ImGui::Checkbox("name", &g_cfg.esp_name);
+            ImGui::Checkbox("line", &g_cfg.esp_snapline);
+            ImGui::Checkbox("team", &g_cfg.esp_team_check);
+            ImGui::SliderFloat("w", &g_cfg.box_thickness, 1.0f, 4.0f);
         }
         ImGui::End();
     }
 
-    // Floating open button when menu closed
     if (!g_cfg.show_menu) {
         ImGui::SetNextWindowPos(ImVec2(12, static_cast<float>(height) * 0.35f), ImGuiCond_Always);
-        ImGui::Begin("##nova_open", nullptr,
+        ImGui::Begin("##op", nullptr,
                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize);
         if (ImGui::Button("nova")) g_cfg.show_menu = true;
         ImGui::End();
     }
 
-    ImDrawList* dl = ImGui::GetBackgroundDrawList();
-    draw_esp(dl, st, static_cast<float>(width), static_cast<float>(height));
+    draw_esp(ImGui::GetBackgroundDrawList(), st,
+             static_cast<float>(width), static_cast<float>(height));
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

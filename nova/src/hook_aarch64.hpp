@@ -1,13 +1,10 @@
 #pragma once
-// Minimal AArch64 inline hook (LDR X16 / BR X16 trampoline). Written from scratch.
+#include "stealth.hpp"
 
 #include <cstdint>
 #include <cstring>
 #include <sys/mman.h>
 #include <unistd.h>
-#include <android/log.h>
-
-#define NOVA_LOG(...) __android_log_print(ANDROID_LOG_INFO, "nova", __VA_ARGS__)
 
 namespace hook {
 
@@ -23,53 +20,64 @@ inline bool protect(void* addr, size_t len, int prot) {
     return mprotect(reinterpret_cast<void*>(start), end - start, prot) == 0;
 }
 
-struct Patch {
-    void* target = nullptr;
-    void* trampoline = nullptr;
-    uint8_t saved[16]{};
-};
+inline void emit_abs_jump(uint8_t* dst, uint64_t to) {
+    dst[0] = 0x50; dst[1] = 0x00; dst[2] = 0x00; dst[3] = 0x58;
+    dst[4] = 0x00; dst[5] = 0x02; dst[6] = 0x1F; dst[7] = 0xD6;
+    std::memcpy(dst + 8, &to, 8);
+}
 
-inline bool install(void* target, void* replace, void** original_out, Patch* out_patch = nullptr) {
+inline bool install_inline(void* target, void* replace, void** original_out) {
     if (!target || !replace) return false;
+    if (reinterpret_cast<uintptr_t>(target) & 3u) return false;
 
-    // Trampoline: original 16 bytes + jump back to target+16
-    void* tramp = mmap(nullptr, page_size(), PROT_READ | PROT_WRITE | PROT_EXEC,
-                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (tramp == MAP_FAILED) return false;
-
-    uint8_t stub[16];
-    // LDR X16, #8 ; BR X16 ; .quad addr
-    stub[0] = 0x50; stub[1] = 0x00; stub[2] = 0x00; stub[3] = 0x58; // LDR X16, #8
-    stub[4] = 0x00; stub[5] = 0x02; stub[6] = 0x1F; stub[7] = 0xD6; // BR X16
-    const uint64_t rep = reinterpret_cast<uint64_t>(replace);
-    std::memcpy(stub + 8, &rep, 8);
+    const size_t ps = page_size();
+    void* tramp = stealth::alloc_rw(ps);
+    if (!tramp) return false;
 
     std::memcpy(tramp, target, 16);
-    uint8_t back[16];
-    back[0] = 0x50; back[1] = 0x00; back[2] = 0x00; back[3] = 0x58;
-    back[4] = 0x00; back[5] = 0x02; back[6] = 0x1F; back[7] = 0xD6;
-    const uint64_t ret = reinterpret_cast<uint64_t>(target) + 16;
-    std::memcpy(back + 8, &ret, 8);
-    std::memcpy(static_cast<uint8_t*>(tramp) + 16, back, 16);
-
-    if (!protect(target, 16, PROT_READ | PROT_WRITE | PROT_EXEC)) {
-        munmap(tramp, page_size());
+    emit_abs_jump(static_cast<uint8_t*>(tramp) + 16,
+                  reinterpret_cast<uint64_t>(target) + 16);
+    if (!stealth::seal_rx(tramp, ps)) {
+        munmap(tramp, ps);
         return false;
     }
 
-    uint8_t saved[16];
-    std::memcpy(saved, target, 16);
+    if (!protect(target, 16, PROT_READ | PROT_WRITE)) {
+        munmap(tramp, ps);
+        return false;
+    }
+
+    uint8_t stub[16];
+    emit_abs_jump(stub, reinterpret_cast<uint64_t>(replace));
     std::memcpy(target, stub, 16);
     __builtin___clear_cache(static_cast<char*>(target), static_cast<char*>(target) + 16);
     protect(target, 16, PROT_READ | PROT_EXEC);
 
     if (original_out) *original_out = tramp;
-    if (out_patch) {
-        out_patch->target = target;
-        out_patch->trampoline = tramp;
-        std::memcpy(out_patch->saved, saved, 16);
-    }
     return true;
+}
+
+enum class Mode { Got, Inline, None };
+inline Mode g_mode = Mode::None;
+
+inline bool install(void* target, void* replace, void** original_out) {
+    if (!target || !replace) return false;
+
+    // 1) GOT first — avoids patching libEGL .text (common integrity check)
+    const int n = stealth::patch_got(target, replace);
+    if (n > 0) {
+        if (original_out) *original_out = target; // call real symbol directly
+        g_mode = Mode::Got;
+        return true;
+    }
+
+    // 2) Inline fallback
+    if (install_inline(target, replace, original_out)) {
+        g_mode = Mode::Inline;
+        return true;
+    }
+    g_mode = Mode::None;
+    return false;
 }
 
 } // namespace hook
