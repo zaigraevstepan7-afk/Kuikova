@@ -1,0 +1,144 @@
+il2cpp_alloc : 0x9D7BFB0
+il2cpp_array_class_get : 0x5C86BD8
+il2cpp_array_length : 0x5C86BDC
+il2cpp_array_new : 0x5C86BE0
+il2cpp_assembly_get_image : 0x5C86BFC
+il2cpp_class_array_element_size : 0x5C86D20
+il2cpp_class_enum_basetype : 0x5C86C00
+il2cpp_class_from_il2cpp_type : 0x5C86C18
+il2cpp_class_from_name : 0x9D5B510
+il2cpp_class_from_type : 0x5C86D24
+il2cpp_class_get_assemblyname : 0x5C86D48
+il2cpp_class_get_declaring_type : 0x5C86CC8
+il2cpp_class_get_element_class : 0x5C86CA8
+il2cpp_class_get_field_from_name : 0x5C86CB4
+il2cpp_class_get_fields : 0x5C86CAC
+il2cpp_class_get_flags : 0x5C86CE8
+il2cpp_class_get_image : 0x5C86D44
+il2cpp_class_get_interfaces : 0x9D593F8
+il2cpp_class_get_method_from_name : 0x9D5959C
+il2cpp_class_get_methods : 0x5C86CB8
+il2cpp_class_get_name : 0x5C86CBC
+il2cpp_class_get_namespace : 0x5C86CC0
+il2cpp_class_get_nested_types : 0x5C86CB0
+il2cpp_class_get_parent : 0x5C86CC4
+il2cpp_class_get_rank : 0x5C86D4C
+il2cpp_class_get_type : 0x5C86D2C
+il2cpp_class_instance_size : 0x5C86CCC
+il2cpp_class_is_abstract : 0x5C86CF0
+il2cpp_class_is_blittable : 0x5C86CDC
+il2cpp_class_is_enum : 0x5C86D38
+il2cpp_class_is_generic : 0x5C86C08
+il2cpp_class_is_interface : 0x5C86CFC
+il2cpp_class_is_valuetype : 0x5C86CD0
+il2cpp_domain_assembly_open : 0x5C86D58
+il2cpp_domain_get : 0x5C86D54
+il2cpp_field_get_flags : 0x5C86E20
+il2cpp_field_get_name : 0x5C86E1C
+il2cpp_field_get_offset : 0x5C86E28
+il2cpp_field_get_parent : 0x5C86E24
+il2cpp_field_get_type : 0x5C86E2C
+il2cpp_field_get_value : 0x5C871E8
+il2cpp_field_static_get_value : 0x5C87900
+il2cpp_field_static_set_value : 0x5C879AC
+il2cpp_free : 0x5C86BD4
+il2cpp_get_corlib : 0x5C86BCC
+il2cpp_init : 0x5C86B74
+il2cpp_memory_pool_get_region_size : 0x5C86BC8
+il2cpp_method_get_class : 0x5C86EE8
+il2cpp_method_get_declaring_type : 0x5C86EF0
+il2cpp_method_get_from_reflection : 0x5C86EC8
+il2cpp_method_get_name : 0x5C86ED0
+il2cpp_method_get_object : 0x5C86ECC
+il2cpp_method_get_param : 0x5C86EE4
+il2cpp_method_get_param_count : 0x5C86EE0
+il2cpp_method_get_param_name : 0x9D8C26C
+il2cpp_method_get_return_type : 0x5C86EC4
+il2cpp_method_has_attribute : 0x5C86EEC
+il2cpp_method_is_generic : 0x5C86ED4
+il2cpp_method_is_inflated : 0x5C86ED8
+il2cpp_method_is_instance : 0x5C86EDC
+il2cpp_object_get_virtual_method : 0x5C86EF4
+il2cpp_object_new : 0x5C86EF8
+il2cpp_object_unbox : 0x5CAB060
+il2cpp_register_log_callback : 0x5C87058
+il2cpp_resolve_icall : 0x5CAAE90
+il2cpp_runtime_invoke : 0x5C86F28
+il2cpp_runtime_invoke_convert_args : 0x5C86F24
+il2cpp_runtime_object_init_exception : 0x5C86F2C
+il2cpp_runtime_unhandled_exception_policy_set : 0x5C86F30
+il2cpp_set_commandline_arguments : 0x5C86BAC
+il2cpp_set_config_dir : 0x5C86BA4
+il2cpp_set_memory_callbacks : 0x5C86BC0
+il2cpp_set_temp_dir : 0x5C86BA8
+il2cpp_shutdown : 0x5C86BA0
+il2cpp_string_chars : 0x5C86F38
+il2cpp_string_length : 0x5C86F34
+il2cpp_string_new : 0x5C86F3C
+il2cpp_string_new_len : 0x5C86F48
+il2cpp_string_new_utf16 : 0x5C86F44
+il2cpp_string_new_wrapper : 0x5C86F40
+il2cpp_thread_attach : 0x5C86F50
+il2cpp_thread_current : 0x5C86F4C
+il2cpp_thread_detach : 0x5C86F54
+il2cpp_type_get_attrs : 0x5C87038
+il2cpp_type_get_class_or_element_class : 0x5C86F64
+il2cpp_type_get_name : 0x5C86F68
+il2cpp_type_get_object : 0x5C86F5C
+il2cpp_type_get_reflection_name : 0x5C86F70
+il2cpp_type_get_type : 0x5C86F60
+il2cpp_type_is_byref : 0x5C8702C
+il2cpp_value_box : 0x5CAB05C
+
+Il2CppClass:
+name - 0xF8
+namespace - 0xB0
+parent - 0x40
+static_fields - 0x90
+vtable - 0x1B8
+
+MethodInfo:
+methodPointer - 0x8
+virtualMethodPointer - 0x30
+invokerMethod - 0x20
+name - 0x40
+
+constexpr uintptr_t globalMetadata = 0xB04AC00;
+constexpr uintptr_t globalMetadataHeader = 0xB04AC08;
+constexpr uintptr_t typeInfoDefinitionTable = 0xB04AC38;
+
+constexpr uintptr_t Assembly$$GetAllAssemblies = 0x5C8AEF0;
+constexpr uintptr_t MetadataCache$$GetAssemblyTypeHandle = 0x9D5C5B8;
+constexpr uintptr_t MetadataCache$$GetTypeInfoFromHandle = 0x9D5DEB8;
+
+std::vector<Il2CppAssembly*>* (*Assembly$$GetAllAssemblies)(){};
+void* (*MetadataCache$$GetAssemblyTypeHandle)(const Il2CppImage*, size_t){};
+Il2CppClass* (*MetadataCache$$GetTypeInfoFromHandle)(void*){};
+
+Il2CppAssembly** my_il2cpp_domain_get_assemblies(Il2CppDomain* domain, size_t* size) {
+  std::vector<Il2CppAssembly*>* assemblies = Assembly$$GetAllAssemblies();
+  if (!assemblies) return nullptr;
+
+  *size = assemblies->size();
+  return &(*assemblies)[0];
+}
+
+const Il2CppClass* my_il2cpp_image_get_class(const Il2CppImage* image, size_t index) {
+  void* handle = MetadataCache$$GetAssemblyTypeHandle(image, index);
+  if (!handle) {
+    return nullptr;
+  }
+
+  return MetadataCache$$GetTypeInfoFromHandle(handle);
+}
+
+size_t my_il2cpp_image_get_class_count(const Il2CppImage* image) {
+  return (size_t) (*(uint32_t*) ((uintptr_t) image + 0xC));
+}
+
+uint32_t my_il2cpp_method_get_flags(const MethodInfo* method, uint32_t* iflags) {
+  if (iflags) {
+  }
+
+  return *(uint16_t*) ((uintptr_t) method + 0x12);
+}

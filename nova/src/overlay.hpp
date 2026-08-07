@@ -1,0 +1,17 @@
+#pragma once
+#include "game.hpp"
+
+struct NovaConfig {
+    bool show_menu = true;
+    bool esp_box = true;
+    bool esp_name = true;
+    bool esp_snapline = false;
+    bool esp_team_check = true;
+    float box_thickness = 2.0f;
+};
+
+NovaConfig& nova_cfg();
+void nova_overlay_frame(int width, int height, GameState& st);
+void nova_overlay_shutdown();
+bool nova_overlay_ensure_imgui();
+void nova_feed_touch(float x, float y, bool down);
