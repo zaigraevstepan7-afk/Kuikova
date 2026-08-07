@@ -1,18 +1,85 @@
 #pragma once
+// In-process safe memory IO.
+// Prefer /proc/self/mem (no SIGSEGV). Fallback: process_vm_* then direct.
+
 #include <cstdint>
 #include <cstring>
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/uio.h>
+#include <errno.h>
 
 namespace mem {
 
+inline int self_mem_fd(bool writable) {
+    static int rfd = -2;
+    static int wfd = -2;
+    if (writable) {
+        if (wfd == -2) {
+            wfd = open("/proc/self/mem", O_RDWR);
+            if (wfd < 0) wfd = open("/proc/self/mem", O_WRONLY);
+        }
+        return wfd;
+    }
+    if (rfd == -2) rfd = open("/proc/self/mem", O_RDONLY);
+    return rfd;
+}
+
+inline bool valid_addr(uintptr_t addr, size_t n) {
+    if (!addr || n == 0) return false;
+    // reject obvious junk / kernel space on arm64 userspace
+    if (addr < 0x1000) return false;
+    if (addr > 0x0000FFFFFFFFFFFFULL) return false;
+    if (addr + n < addr) return false; // overflow
+    return true;
+}
+
+inline bool read_bytes(uintptr_t addr, void* dst, size_t n) {
+    if (!valid_addr(addr, n) || !dst) return false;
+
+    // 1) /proc/self/mem — crash-safe, reliable in-process
+    const int fd = self_mem_fd(false);
+    if (fd >= 0) {
+        const ssize_t r = pread(fd, dst, n, static_cast<off_t>(addr));
+        if (r == static_cast<ssize_t>(n)) return true;
+    }
+
+    // 2) process_vm_readv (may fail on some Android SELinux configs)
+    {
+        iovec local{dst, n};
+        iovec remote{reinterpret_cast<void*>(addr), n};
+        const ssize_t r = process_vm_readv(getpid(), &local, 1, &remote, 1, 0);
+        if (r == static_cast<ssize_t>(n)) return true;
+    }
+
+    // 3) Direct copy last resort (same address space after inject)
+    std::memcpy(dst, reinterpret_cast<const void*>(addr), n);
+    return true;
+}
+
+inline bool write_bytes(uintptr_t addr, const void* src, size_t n) {
+    if (!valid_addr(addr, n) || !src) return false;
+
+    const int fd = self_mem_fd(true);
+    if (fd >= 0) {
+        const ssize_t w = pwrite(fd, src, n, static_cast<off_t>(addr));
+        if (w == static_cast<ssize_t>(n)) return true;
+    }
+
+    {
+        iovec local{const_cast<void*>(src), n};
+        iovec remote{reinterpret_cast<void*>(addr), n};
+        const ssize_t w = process_vm_writev(getpid(), &local, 1, &remote, 1, 0);
+        if (w == static_cast<ssize_t>(n)) return true;
+    }
+
+    std::memcpy(reinterpret_cast<void*>(addr), src, n);
+    return true;
+}
+
 template <typename T>
 inline bool read_into(uintptr_t addr, T& out) {
-    if (!addr) return false;
-    iovec local{&out, sizeof(T)};
-    iovec remote{reinterpret_cast<void*>(addr), sizeof(T)};
-    const ssize_t r = process_vm_readv(getpid(), &local, 1, &remote, 1, 0);
-    return r == static_cast<ssize_t>(sizeof(T));
+    return read_bytes(addr, &out, sizeof(T));
 }
 
 template <typename T>
@@ -22,15 +89,17 @@ inline T read(uintptr_t addr, T fallback = {}) {
     return v;
 }
 
+template <typename T>
+inline bool write(uintptr_t addr, const T& v) {
+    return write_bytes(addr, &v, sizeof(T));
+}
+
 inline uintptr_t read_ptr(uintptr_t addr) {
     return read<uintptr_t>(addr, 0);
 }
 
-inline bool write_bytes(uintptr_t addr, const void* src, size_t n) {
-    if (!addr || !src || !n) return false;
-    iovec local{const_cast<void*>(src), n};
-    iovec remote{reinterpret_cast<void*>(addr), n};
-    return process_vm_writev(getpid(), &local, 1, &remote, 1, 0) == static_cast<ssize_t>(n);
+inline bool write_ptr(uintptr_t addr, uintptr_t v) {
+    return write<uintptr_t>(addr, v);
 }
 
 } // namespace mem
