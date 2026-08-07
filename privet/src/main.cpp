@@ -726,10 +726,17 @@ static std::atomic<bool> g_body_ok{false};
 // wrong code and crashed the moment third person was enabled.
 using pc_void_fn = void (*)(void*);
 using pc_view_fn = void (*)(void*, int);
+using go_set_active_fn = void (*)(void*, bool);
+using rend_set_enabled_fn = void (*)(void*, bool);
 static pc_void_fn fn_set_tps = nullptr;
 static pc_void_fn fn_set_fps = nullptr;
 static pc_void_fn fn_set_visible = nullptr;
 static pc_view_fn fn_set_view_mode = nullptr;
+static go_set_active_fn fn_go_set_active = nullptr;
+static rend_set_enabled_fn fn_rend_set_enabled = nullptr;
+static void* mi_go_set_active = nullptr;
+static void* mi_rend_set_enabled = nullptr;
+static bool g_unity_helpers_tried = false;
 
 static void* mp(const void* m) {
     if (!m || !ok((uint64_t)m)) return nullptr;
@@ -739,6 +746,51 @@ static void* mp(const void* m) {
     uintptr_t p0 = (uintptr_t)rd64((uint64_t)m + 0x0);
     if (p0 > 0x100000 && readable(p0, 4)) return (void*)p0;
     return nullptr;
+}
+
+static Il2CppClass* unity_class(const char* ns, const char* name) {
+    if (!il2cpp::domain_get || !il2cpp::domain_assembly_open ||
+        !il2cpp::assembly_get_image || !il2cpp::class_from_name) return nullptr;
+    Il2CppDomain* d = il2cpp::domain_get();
+    if (!d) return nullptr;
+    const char* asms[] = {"UnityEngine.CoreModule", "UnityEngine", "Assembly-CSharp"};
+    for (const char* an : asms) {
+        Il2CppAssembly* a = il2cpp::domain_assembly_open(d, an);
+        if (!a) continue;
+        Il2CppImage* img = il2cpp::assembly_get_image(a);
+        if (!img) continue;
+        Il2CppClass* c = il2cpp::class_from_name(img, ns, name);
+        if (c) return c;
+    }
+    return nullptr;
+}
+
+static void resolve_unity_helpers() {
+    if (g_unity_helpers_tried) return;
+    g_unity_helpers_tried = true;
+    if (!il2cpp::class_get_method_from_name) return;
+    Il2CppClass* go = unity_class("UnityEngine", "GameObject");
+    if (go) {
+        mi_go_set_active = (void*)il2cpp::class_get_method_from_name(go, "SetActive", 1);
+        if (mi_go_set_active)
+            fn_go_set_active = (go_set_active_fn)mp(mi_go_set_active);
+    }
+    Il2CppClass* rend = unity_class("UnityEngine", "Renderer");
+    if (rend) {
+        mi_rend_set_enabled = (void*)il2cpp::class_get_method_from_name(rend, "set_enabled", 1);
+        if (mi_rend_set_enabled)
+            fn_rend_set_enabled = (rend_set_enabled_fn)mp(mi_rend_set_enabled);
+    }
+}
+
+static void set_go_active(void* go, bool on) {
+    if (!go || !ok((uint64_t)go) || !fn_go_set_active) return;
+    fn_go_set_active(go, on);
+}
+
+static void set_renderer_enabled(void* rend, bool on) {
+    if (!rend || !ok((uint64_t)rend) || !fn_rend_set_enabled) return;
+    fn_rend_set_enabled(rend, on);
 }
 
 static Il2CppClass* player_controller_class() {
@@ -786,18 +838,43 @@ static void resolve_lu(){
     resolve_view_fns(pc);
 }
 
-// Game thread only (LateUpdate) — calling il2cpp methods from the render or
+// Game thread only (LateUpdate/Update) — calling il2cpp methods from the render or
 // helper thread is what crashed when third person was switched on.
 static void apply_body_view(void* player, bool tps_on) {
     if (!player || !ok((uint64_t)player)) return;
+    resolve_unity_helpers();
+    uint64_t lp = (uint64_t)player;
+
     if (tps_on) {
+        wr8(lp + OFF_PLAYER_VIEW_MODE, 2); // GGBGGDAGBGGGACD.TPS
+        wr8(lp + OFF_PLAYER_CHAR_VISIBLE, 1);
         if (fn_set_view_mode) fn_set_view_mode(player, 2);
         if (fn_set_tps) fn_set_tps(player);
         if (fn_set_visible) fn_set_visible(player);
-        wr8((uint64_t)player + OFF_PLAYER_CHAR_VISIBLE, 1);
+
+        // Kill FP camera/arms holders (dump: GameObject* @ 0x30 / 0x38).
+        set_go_active((void*)rd64(lp + OFF_PLAYER_FPS_HOLDER), false);
+        set_go_active((void*)rd64(lp + OFF_PLAYER_FPS_DIRECTIVE), false);
+
+        // ArmsLodGroup mesh renderers off.
+        uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
+        if (ok(arms_lod)) {
+            wr8(arms_lod + OFF_LOD_RENDER_ENABLED, 0);
+            set_renderer_enabled((void*)rd64(arms_lod + OFF_ARMS_MESH_RENDERER), false);
+            set_renderer_enabled((void*)rd64(arms_lod + OFF_ARMS_GLOVES_RENDERER), false);
+        }
     } else {
+        wr8(lp + OFF_PLAYER_VIEW_MODE, 1); // FPS
         if (fn_set_view_mode) fn_set_view_mode(player, 1);
         if (fn_set_fps) fn_set_fps(player);
+        set_go_active((void*)rd64(lp + OFF_PLAYER_FPS_HOLDER), true);
+        set_go_active((void*)rd64(lp + OFF_PLAYER_FPS_DIRECTIVE), true);
+        uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
+        if (ok(arms_lod)) {
+            wr8(arms_lod + OFF_LOD_RENDER_ENABLED, 1);
+            set_renderer_enabled((void*)rd64(arms_lod + OFF_ARMS_MESH_RENDERER), true);
+            set_renderer_enabled((void*)rd64(arms_lod + OFF_ARMS_GLOVES_RENDERER), true);
+        }
     }
 }
 
@@ -932,7 +1009,8 @@ static bool third_person_cam() {
     return wrote;
 }
 
-// Body visible helpers — field backup only. Real switch is apply_body_view (set_tps).
+// Body/arms — wintex field path. Real view switch is apply_body_view (set_tps)
+// on the game thread; this keeps arms hidden and body drawn every tick.
 static void third_person_model() {
     uint64_t pm = player_manager();
     if (!ok(pm)) return;
@@ -940,19 +1018,31 @@ static void third_person_model() {
     if (!ok(lp)) return;
     bool tp = opt_tps;
 
-    // Undo any leftover arms yeet from older builds.
+    // Dump 0.39.2: ArmsAnimationController+0xE8 is Vector3 (not Transform*).
+    // Wintex hides FP arms/weapon by parking that offset far below the world.
     uint64_t arms = rd64(lp + OFF_PLAYER_ARMS_CTRL);
     if (ok(arms) && readable(arms + OFF_ARMS_LOCAL_POS, 12)) {
-        float ay = rdf(arms + OFF_ARMS_LOCAL_POS + 4);
-        if (ay < -100.f) {
+        if (tp) {
             wrf(arms + OFF_ARMS_LOCAL_POS + 0, 0.f);
-            wrf(arms + OFF_ARMS_LOCAL_POS + 4, 0.f);
+            wrf(arms + OFF_ARMS_LOCAL_POS + 4, -1000.f);
             wrf(arms + OFF_ARMS_LOCAL_POS + 8, 0.f);
+        } else {
+            float ay = rdf(arms + OFF_ARMS_LOCAL_POS + 4);
+            if (ay < -100.f) {
+                wrf(arms + OFF_ARMS_LOCAL_POS + 0, 0.f);
+                wrf(arms + OFF_ARMS_LOCAL_POS + 4, 0.f);
+                wrf(arms + OFF_ARMS_LOCAL_POS + 8, 0.f);
+            }
         }
     }
 
+    // ArmsLodGroup @ Player+0xC8 — SkinnedMeshLodGroup bool gate @ 0x20.
+    uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
+    if (ok(arms_lod)) wr8(arms_lod + OFF_LOD_RENDER_ENABLED, tp ? 0 : 1);
+
     if (!tp) return;
 
+    wr8(lp + OFF_PLAYER_VIEW_MODE, 2);
     wr8(lp + OFF_PLAYER_CHAR_VISIBLE, 1);
     uint64_t char_lod = rd64(lp + OFF_PLAYER_CHAR_LOD);
     if (ok(char_lod)) wr8(char_lod + OFF_LOD_RENDER_ENABLED, 1);
@@ -1090,24 +1180,28 @@ static void hk_up(void* p) {
     bool local = is_local_player(p);
     if (local) aa_begin(p);
     ((void(*)(void*))up_mp)(p);
-    if (local) aa_end();
+    if (local) {
+        aa_end();
+        // Melodium drives set_tps from Update on the game thread.
+        if (opt_tps) apply_body_view(p, true);
+    }
 }
 
 static void hk_lu(void* p){
     if (!lu_mp) return;
     bool local = is_local_player(p);
-    // Wintex cave called SetTPSView every LateUpdate on the game thread.
-    static bool applied_tps = false;
-    if (local && (opt_tps != applied_tps)) {
-        apply_body_view(p, opt_tps);
-        applied_tps = opt_tps;
-    } else if (local && opt_tps) {
-        apply_body_view(p, true);
-    }
     ((void(*)(void*))lu_mp)(p);
-    if (local && opt_tps) {
-        third_person_cam();
+    // After LateUpdate so the game's own FPS restore cannot undo set_tps.
+    if (local) {
+        static bool applied_tps = false;
+        if (opt_tps != applied_tps) {
+            apply_body_view(p, opt_tps);
+            applied_tps = opt_tps;
+        } else if (opt_tps) {
+            apply_body_view(p, true);
+        }
         third_person_model();
+        if (opt_tps) third_person_cam();
     }
 }
 
@@ -1773,6 +1867,10 @@ static void* thread_main(void*) {
             up_mp = nullptr;
             fn_set_tps = fn_set_fps = fn_set_visible = nullptr;
             fn_set_view_mode = nullptr;
+            fn_go_set_active = nullptr;
+            fn_rend_set_enabled = nullptr;
+            mi_go_set_active = mi_rend_set_enabled = nullptr;
+            g_unity_helpers_tried = false;
             g_body_ok.store(false);
             resolve_lu();
             try_hook_lu();

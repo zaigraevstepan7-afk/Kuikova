@@ -19,6 +19,8 @@
 #define OFF_CAMMOVE_TRANSFORM       0xB0   // CameraMovementController → Transform
 #define OFF_CAMMOVE_TRANSFORM_ALT   0x48
 #define OFF_PLAYER_CAM_HOLDER       0x28   // PlayerController._mainCameraHolder
+#define OFF_PLAYER_FPS_HOLDER       0x30   // PlayerController._fpsCameraHolder (GameObject)
+#define OFF_PLAYER_FPS_DIRECTIVE    0x38   // PlayerController._fpsDirective (GameObject)
 #define OFF_CAMERA_TRANSFORM        0x100
 #define OFF_CAM_TRANSFORM_MATRIX    0x10
 #define OFF_CAM_MATRIX_DATA         0xF0
@@ -63,10 +65,10 @@
 #define OFF_UNITY_ARRAY_LENGTH      0x18
 #define OFF_UNITY_ARRAY_DATA        0x20
 #define OFF_PLAYER_ARMS_CTRL        0xA0   // ArmsAnimationController
-#define OFF_ARMS_LOCAL_POS          0xE8   // Vector3 used to hide FP arms
-#define OFF_PLAYER_ARMS_LOD         0xC8
-#define OFF_ARMS_MESH_RENDERER      0x28
-#define OFF_ARMS_GLOVES_RENDERER    0x30
+#define OFF_ARMS_LOCAL_POS          0xE8   // Vector3 DAHGDDFCBBCCGBA — wintex yeet
+#define OFF_PLAYER_ARMS_LOD         0xC8   // ArmsLodGroup
+#define OFF_ARMS_MESH_RENDERER      0x28   // ArmsLodGroup._armsMeshRenderer
+#define OFF_ARMS_GLOVES_RENDERER    0x30   // ArmsLodGroup._glovesMeshRenderer
 #define OFF_PLAYER_CHAR_VIEW_TPS    0xD0
 #define OFF_CHAR_VIEW_OCCLUSION     0x30
 #define OFF_PLAYER_CHAR_VISIBLE     0xD8
