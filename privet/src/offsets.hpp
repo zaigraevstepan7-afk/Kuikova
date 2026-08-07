@@ -120,13 +120,20 @@
 #define OFF_AIMDATA_CUR_AIM         0x18
 #define OFF_AIMDATA_CUR_EULER       0x24
 
-// Melodium/Halalium 0.39.2 — PlayerController methods (libunity RVAs).
-// Call ONLY from hooked Update/LateUpdate (game thread).
+// libunity RVAs recovered from libhalalium.so (0.39.2), where third person works.
+// Halalium LateUpdate cave @0x1d6ec4:
+//   if (third) { set_tps(p); t = Camera.main.transform; t.localPosition = (0,0,-2); }
+//   else       { set_fps(p); }
+// Melodium's set_tps/set_fps/set_visible RVAs were WRONG on this build and froze
+// the game the moment they were called — these are the verified ones.
 #define RVA_PC_UPDATE               0x8E7C40CULL
-#define RVA_PC_LATEUPDATE           0x8E7CF50ULL
-#define RVA_PC_SET_TPS              0x8E7E63CULL
-#define RVA_PC_SET_FPS              0x8E7EC48ULL
-#define RVA_PC_SET_VISIBLE          0x8E880E4ULL
+#define RVA_PC_LATEUPDATE           0x8E7CF50ULL   // = Update + 0xB44
+#define RVA_PC_SET_TPS              0x8E7BB18ULL   // halalium 0x1d7ee4 thunk
+#define RVA_PC_SET_FPS              0x8E88A6CULL   // halalium 0x1d7f08 thunk
+#define RVA_PC_SET_VISIBLE          0x8E8AE24ULL   // halalium Update @0x1d6b0c
+#define RVA_CAMERA_GET_MAIN         0x5FACE04ULL   // UnityEngine.Camera.get_main
+#define RVA_COMPONENT_GET_TRANSFORM 0x5FF113CULL   // Component.get_transform
+#define RVA_TRANSFORM_SET_LOCALPOS  0x5FF4910ULL   // Transform.set_localPosition
 
 // Obfuscated names (dump) — fallback if RVA bind fails.
 #define NAME_PC_SET_TPS             "ECAFHEAAGDAAHHH"

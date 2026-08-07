@@ -32,9 +32,29 @@ inline bool already_patched(void* target) {
     return w[0] == kLdrX16 && w[1] == kBrX16;
 }
 
+// The trampoline copies the first 4 instructions verbatim, so any PC-relative
+// one would execute against the wrong PC. Refusing beats corrupting the game.
+inline bool relocatable(uint32_t w) {
+    if ((w & 0x1F000000u) == 0x10000000u) return false; // ADR / ADRP
+    if ((w & 0x7C000000u) == 0x14000000u) return false; // B / BL
+    if ((w & 0x7E000000u) == 0x34000000u) return false; // CBZ / CBNZ
+    if ((w & 0x7E000000u) == 0x36000000u) return false; // TBZ / TBNZ
+    if ((w & 0xFF000010u) == 0x54000000u) return false; // B.cond
+    if ((w & 0x3B000000u) == 0x18000000u) return false; // LDR literal
+    return true;
+}
+
+inline bool prologue_safe(void* target) {
+    auto* w = reinterpret_cast<const uint32_t*>(target);
+    for (int i = 0; i < 4; i++)
+        if (!relocatable(w[i])) return false;
+    return true;
+}
+
 inline bool install(void* target, void* replacement, void** out_trampoline) {
     if (!target || !replacement || !out_trampoline) return false;
     if (already_patched(target)) return false;
+    if (!prologue_safe(target)) return false;
 
     constexpr size_t stub_size = 16 + 16;
     void* stub = mmap(nullptr, stub_size, PROT_READ | PROT_WRITE | PROT_EXEC,

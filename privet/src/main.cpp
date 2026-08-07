@@ -719,27 +719,30 @@ static void* lu_mp;
 static MethodInfo* up_mi;
 static void* up_mp;
 static std::atomic<bool> g_tps_ok{false};
-static std::atomic<bool> g_tps_hf_started{false};
 static std::atomic<bool> g_body_ok{false};
 
-// Wintex/Melodium body path: call SetTPSView (set_tps) on the game thread.
-// Primary bind = Melodium libunity RVAs; name/MethodInfo is fallback only.
-using pc_void_fn = void (*)(void*);
+// Halalium's third person path. IL2CPP AArch64 ABI: __this in x0, MethodInfo* in
+// the next integer slot, and a Vector3 argument travels in s0/s1/s2.
+using pc_void_fn = void (*)(void* self, void* mi);
 using pc_view_fn = void (*)(void*, int);
+using cam_main_fn = void* (*)(void* mi);
+using get_transform_fn = void* (*)(void* self, void* mi);
+using set_localpos_fn = void (*)(void* self, float x, float y, float z, void* mi);
 using go_set_active_fn = void (*)(void*, bool);
 using rend_set_enabled_fn = void (*)(void*, bool);
 static pc_void_fn fn_set_tps = nullptr;
 static pc_void_fn fn_set_fps = nullptr;
 static pc_void_fn fn_set_visible = nullptr;
 static pc_view_fn fn_set_view_mode = nullptr;
+static cam_main_fn fn_cam_main = nullptr;
+static get_transform_fn fn_get_transform = nullptr;
+static set_localpos_fn fn_set_localpos = nullptr;
 static go_set_active_fn fn_go_set_active = nullptr;
 static rend_set_enabled_fn fn_rend_set_enabled = nullptr;
 static void* mi_go_set_active = nullptr;
 static void* mi_rend_set_enabled = nullptr;
 static bool g_unity_helpers_tried = false;
 static bool g_view_rva_tried = false;
-
-static void third_person_cam_restore(); // defined with TPS cam helpers below
 
 static void* mp(const void* m) {
     if (!m || !ok((uint64_t)m)) return nullptr;
@@ -751,7 +754,7 @@ static void* mp(const void* m) {
     return nullptr;
 }
 
-// Melodium-style: accept only readable non-zero A64 code (reject our hook stub).
+// Accept only readable non-zero A64 code (reject our own hook stub).
 static bool looks_like_a64(void* p) {
     if (!p || !readable((uint64_t)p, 8)) return false;
     uint32_t w0 = *(uint32_t*)p;
@@ -774,12 +777,28 @@ static void* bind_game_rva(uint64_t rva) {
 }
 
 static void resolve_view_rvas() {
-    if (g_view_rva_tried && fn_set_tps) return;
+    if (g_view_rva_tried && fn_set_tps && fn_set_localpos) return;
     g_view_rva_tried = true;
     if (!fn_set_tps) fn_set_tps = (pc_void_fn)bind_game_rva(RVA_PC_SET_TPS);
     if (!fn_set_fps) fn_set_fps = (pc_void_fn)bind_game_rva(RVA_PC_SET_FPS);
     if (!fn_set_visible) fn_set_visible = (pc_void_fn)bind_game_rva(RVA_PC_SET_VISIBLE);
-    g_body_ok.store(fn_set_tps != nullptr);
+    if (!fn_cam_main) fn_cam_main = (cam_main_fn)bind_game_rva(RVA_CAMERA_GET_MAIN);
+    if (!fn_get_transform)
+        fn_get_transform = (get_transform_fn)bind_game_rva(RVA_COMPONENT_GET_TRANSFORM);
+    if (!fn_set_localpos)
+        fn_set_localpos = (set_localpos_fn)bind_game_rva(RVA_TRANSFORM_SET_LOCALPOS);
+    g_body_ok.store(fn_set_tps != nullptr && fn_set_localpos != nullptr);
+}
+
+// Camera.main.transform.localPosition = (0, 0, z) — exactly what halalium does.
+static bool push_main_camera(float z) {
+    if (!fn_cam_main || !fn_get_transform || !fn_set_localpos) return false;
+    void* cam = fn_cam_main(nullptr);
+    if (!cam || !ok((uint64_t)cam)) return false;
+    void* tr = fn_get_transform(cam, nullptr);
+    if (!tr || !ok((uint64_t)tr)) return false;
+    fn_set_localpos(tr, 0.f, 0.f, z, nullptr);
+    return true;
 }
 
 static Il2CppClass* unity_class(const char* ns, const char* name) {
@@ -880,31 +899,19 @@ static void resolve_lu(){
     resolve_view_fns(pc);
 }
 
-// Field-only body switch. Never call Melodium set_tps RVAs from here —
-// those freeze the game on this build when invoked via our hooks.
+// Exactly what libhalalium does in its LateUpdate cave, with the RVAs recovered
+// from that binary. The game's own set_tps swaps the arms rig for the full body,
+// so no field fighting is needed.
 static void apply_body_view(void* player, bool tps_on) {
     if (!player || !ok((uint64_t)player)) return;
-    uint64_t lp = (uint64_t)player;
-
     if (tps_on) {
-        wr8(lp + OFF_PLAYER_VIEW_MODE, 2);
-        wr8(lp + OFF_PLAYER_CHAR_VISIBLE, 1);
-        uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
-        if (ok(arms_lod)) wr8(arms_lod + OFF_LOD_RENDER_ENABLED, 0);
-        uint64_t char_lod = rd64(lp + OFF_PLAYER_CHAR_LOD);
-        if (ok(char_lod)) wr8(char_lod + OFF_LOD_RENDER_ENABLED, 1);
-        uint64_t skin_lod = rd64(lp + OFF_PLAYER_SKIN_LOD);
-        if (ok(skin_lod)) wr8(skin_lod + OFF_LOD_RENDER_ENABLED, 1);
-        static const uint64_t cv_offs[] = { OFF_PLAYER_CHAR_VIEW, OFF_PLAYER_VIEW_2, OFF_PLAYER_CHAR_VIEW_TPS };
-        for (uint64_t off : cv_offs) {
-            uint64_t cv = rd64(lp + off);
-            if (ok(cv)) wr8(cv + OFF_CHAR_VIEW_OCCLUSION, 1);
-        }
+        if (fn_set_tps) fn_set_tps(player, nullptr);
+        push_main_camera(-tps_dist);
+        g_tps_ok.store(true);
     } else {
-        wr8(lp + OFF_PLAYER_VIEW_MODE, 1);
-        uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
-        if (ok(arms_lod)) wr8(arms_lod + OFF_LOD_RENDER_ENABLED, 1);
-        third_person_cam_restore();
+        if (fn_set_fps) fn_set_fps(player, nullptr);
+        push_main_camera(0.f);
+        g_tps_ok.store(false);
     }
 }
 
@@ -949,150 +956,30 @@ static bool write_tm_local_z(uint64_t transform, float z) {
     return true;
 }
 
-// Camera TransformAccess uses wintex layout (0x38/0x40) — ESP bone layout first
-// can hit a wrong slot and freeze the view.
-static bool write_tm_local_z_cam(uint64_t transform, float z) {
-    uint64_t entry = native_tm_entry_ex(transform, OFF_NATIVE_TR_MATRIX_ALT, OFF_NATIVE_TR_INDEX_ALT);
-    if (!entry)
-        entry = native_tm_entry_ex(transform, OFF_NATIVE_TR_MATRIX, OFF_NATIVE_TR_INDEX);
-    if (!entry) return false;
-    wrf(entry + 8, z);
-    return true;
-}
-
-// Wintex third person: only pull camera Transform local Z.
-// Do NOT rewrite the live view-matrix translation — that freezes the camera in world space.
-static bool third_person_cam() {
-    if (!opt_tps) {
-        g_tps_ok.store(false);
-        return false;
-    }
-    uint64_t pm = player_manager();
-    if (!ok(pm)) return false;
-    uint64_t lp = rd64(pm + OFF_PM_LOCAL_PLAYER);
-    if (!ok(lp)) return false;
-
-    uint64_t main_cam = rd64(lp + OFF_PLAYER_MAIN_CAMERA);
-    if (!ok(main_cam)) return false;
-    uint64_t cam_tr = rd64(main_cam + OFF_MAINCAM_TRANSFORM); // PlayerMainCamera+0x38
-    bool wrote = false;
-    if (ok(cam_tr) && write_tm_local_z_cam(cam_tr, -tps_dist))
-        wrote = true;
-
-    // Fallback: main camera holder only (same rig axis).
-    if (!wrote) {
-        uint64_t holder = rd64(lp + OFF_PLAYER_CAM_HOLDER);
-        if (ok(holder) && write_tm_local_z_cam(holder, -tps_dist))
-            wrote = true;
-    }
-
-    g_tps_ok.store(wrote);
-    return wrote;
-}
-
-static void third_person_cam_restore() {
-    uint64_t pm = player_manager();
-    if (!ok(pm)) return;
-    uint64_t lp = rd64(pm + OFF_PM_LOCAL_PLAYER);
-    if (!ok(lp)) return;
-    uint64_t main_cam = rd64(lp + OFF_PLAYER_MAIN_CAMERA);
-    if (ok(main_cam)) {
-        uint64_t cam_tr = rd64(main_cam + OFF_MAINCAM_TRANSFORM);
-        if (ok(cam_tr)) write_tm_local_z_cam(cam_tr, 0.f);
-    }
-    uint64_t holder = rd64(lp + OFF_PLAYER_CAM_HOLDER);
-    if (ok(holder)) write_tm_local_z_cam(holder, 0.f);
-    g_tps_ok.store(false);
-}
-
-// Body/arms — wintex field path. Real view switch is apply_body_view (set_tps)
-// on the game thread; this keeps arms hidden and body drawn every tick.
+// Undo the arms yeet older builds left behind, and keep the local body drawn.
 static void third_person_model() {
     uint64_t pm = player_manager();
     if (!ok(pm)) return;
     uint64_t lp = rd64(pm + OFF_PM_LOCAL_PLAYER);
     if (!ok(lp)) return;
-    bool tp = opt_tps;
 
-    // Dump 0.39.2: ArmsAnimationController+0xE8 is Vector3 (not Transform*).
-    // Wintex hides FP arms/weapon by parking that offset far below the world.
     uint64_t arms = rd64(lp + OFF_PLAYER_ARMS_CTRL);
     if (ok(arms) && readable(arms + OFF_ARMS_LOCAL_POS, 12)) {
-        if (tp) {
+        if (rdf(arms + OFF_ARMS_LOCAL_POS + 4) < -100.f) {
             wrf(arms + OFF_ARMS_LOCAL_POS + 0, 0.f);
-            wrf(arms + OFF_ARMS_LOCAL_POS + 4, -1000.f);
+            wrf(arms + OFF_ARMS_LOCAL_POS + 4, 0.f);
             wrf(arms + OFF_ARMS_LOCAL_POS + 8, 0.f);
-        } else {
-            float ay = rdf(arms + OFF_ARMS_LOCAL_POS + 4);
-            if (ay < -100.f) {
-                wrf(arms + OFF_ARMS_LOCAL_POS + 0, 0.f);
-                wrf(arms + OFF_ARMS_LOCAL_POS + 4, 0.f);
-                wrf(arms + OFF_ARMS_LOCAL_POS + 8, 0.f);
-            }
         }
     }
-
-    // ArmsLodGroup @ Player+0xC8 — SkinnedMeshLodGroup bool gate @ 0x20.
     uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
-    if (ok(arms_lod)) wr8(arms_lod + OFF_LOD_RENDER_ENABLED, tp ? 0 : 1);
+    if (ok(arms_lod)) wr8(arms_lod + OFF_LOD_RENDER_ENABLED, 1);
 
-    if (!tp) return;
-
-    wr8(lp + OFF_PLAYER_VIEW_MODE, 2);
+    if (!opt_tps) return;
     wr8(lp + OFF_PLAYER_CHAR_VISIBLE, 1);
     uint64_t char_lod = rd64(lp + OFF_PLAYER_CHAR_LOD);
     if (ok(char_lod)) wr8(char_lod + OFF_LOD_RENDER_ENABLED, 1);
     uint64_t skin_lod = rd64(lp + OFF_PLAYER_SKIN_LOD);
     if (ok(skin_lod)) wr8(skin_lod + OFF_LOD_RENDER_ENABLED, 1);
-
-    static const uint64_t cv_offs[] = { OFF_PLAYER_CHAR_VIEW, OFF_PLAYER_VIEW_2, OFF_PLAYER_CHAR_VIEW_TPS };
-    for (uint64_t off : cv_offs) {
-        uint64_t cv = rd64(lp + off);
-        if (ok(cv)) wr8(cv + OFF_CHAR_VIEW_OCCLUSION, 1);
-    }
-
-    uint64_t map = bm(lp);
-    if (!ok(map)) return;
-    for (int i = 0; i < BIPED_BONE_COUNT; i++) {
-        uint64_t bone = rd64(map + OFF_BIPED_START + (uint64_t)i * OFF_BIPED_STRIDE);
-        uint64_t entry = native_tm_entry(bone);
-        if (!entry) continue;
-        wrf(entry + 0x20, 1.f);
-        wrf(entry + 0x24, 1.f);
-        wrf(entry + 0x28, 1.f);
-    }
-}
-
-static void tps_tick() {
-    if (!opt_tps) return;
-    if (!g_hooks_armed.load()) return;
-    uint64_t pm = player_manager();
-    if (ok(pm)) {
-        uint64_t lp = rd64(pm + OFF_PM_LOCAL_PLAYER);
-        if (ok(lp)) apply_body_view((void*)lp, true);
-    }
-    third_person_cam();
-    third_person_model();
-}
-
-static void* tps_hf_thread(void*) {
-    while (true) {
-        if (opt_tps && g_base) tps_tick();
-        usleep(400);
-    }
-    return nullptr;
-}
-
-static void ensure_tps_hf() {
-    bool expected = false;
-    if (!g_tps_hf_started.compare_exchange_strong(expected, true)) return;
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    pthread_t th;
-    if (pthread_create(&th, &attr, tps_hf_thread, nullptr) != 0)
-        g_tps_hf_started.store(false);
-    pthread_attr_destroy(&attr);
 }
 
 // ---- Anti-aim: fake angles only while the game's Update runs ----
@@ -1180,20 +1067,29 @@ static bool is_local_player(void* p) {
 
 static void hk_up(void* p) {
     if (!up_mp) return;
-    bool local = is_local_player(p);
+    bool local = opt_aa && is_local_player(p);
     if (local) aa_begin(p);
     ((void(*)(void*))up_mp)(p);
     if (local) aa_end();
 }
 
+// Halalium runs the original first, then applies the view for the local player.
 static void hk_lu(void* p){
     if (!lu_mp) return;
-    bool local = is_local_player(p);
     ((void(*)(void*))lu_mp)(p);
-    if (local && opt_tps) {
+    if (!is_local_player(p)) return;
+
+    static bool applied = false;
+    if (opt_tps) {
+        float hp = rdf((uint64_t)p + OFF_PLAYER_HEALTH);
+        if (!(hp > 0.f && hp < 10000.f)) return; // dead / spectating
         apply_body_view(p, true);
         third_person_model();
-        third_person_cam();
+        applied = true;
+    } else if (applied) {
+        apply_body_view(p, false);
+        third_person_model();
+        applied = false;
     }
 }
 
@@ -1239,32 +1135,50 @@ static bool in_match() {
            !(pos.x == 0.f && pos.y == 0.f && pos.z == 0.f);
 }
 
+// LateUpdate carries third person, Update only carries anti-aim.
 static void try_hook_lu(){
     if (!g_hooks_armed.load()) return;
-    // Anti-aim only: MethodInfo swap. Never a64-patch Update/LateUpdate RVAs —
-    // that path + set_tps froze the game after "setup hooks".
-    if (!opt_aa) return;
-    if ((!lu_hooked || !up_hooked) && (!lu_mi || !up_mi)) resolve_lu();
-    if (!up_hooked && up_mi && hook_method_ptr(up_mi, (void*)hk_up, &up_mp) && up_mp)
-        up_hooked = true;
-    if (!lu_hooked && lu_mi && hook_method_ptr(lu_mi, (void*)hk_lu, &lu_mp) && lu_mp)
-        lu_hooked = true;
+    resolve_view_rvas();
+
+    if (!lu_hooked) {
+        void* target = bind_game_rva(RVA_PC_LATEUPDATE);
+        void* tramp = nullptr;
+        if (target && a64hook::install(target, (void*)hk_lu, &tramp) && tramp) {
+            lu_mp = tramp;
+            lu_hooked = true;
+        }
+    }
+    if (!up_hooked && opt_aa) {
+        void* target = bind_game_rva(RVA_PC_UPDATE);
+        void* tramp = nullptr;
+        if (target && a64hook::install(target, (void*)hk_up, &tramp) && tramp) {
+            up_mp = tramp;
+            up_hooked = true;
+        }
+    }
+
+    // MethodInfo swap as a fallback when the prologue was not relocatable.
+    if (!lu_hooked || (!up_hooked && opt_aa)) {
+        if (!lu_mi || !up_mi) resolve_lu();
+        if (!lu_hooked && lu_mi && hook_method_ptr(lu_mi, (void*)hk_lu, &lu_mp) && lu_mp)
+            lu_hooked = true;
+        if (!up_hooked && opt_aa && up_mi &&
+            hook_method_ptr(up_mi, (void*)hk_up, &up_mp) && up_mp)
+            up_hooked = true;
+    }
 }
 
-// Arm field TPS path (wintex-style). Safe in match — no PC code patches / set_tps.
 static void setup_hooks_now() {
     g_hooks_armed.store(true);
-    g_body_ok.store(true);
-    ensure_tps_hf();
-    // Optional AA MethodInfo hooks only (no a64 RVA patches).
-    if (opt_aa) try_hook_lu();
+    resolve_view_rvas();
+    try_hook_lu();
 }
 
-// Auto-arm field TPS when already in a round with third person on.
+// Auto-arm once spawned in a round — never in the lobby (AC detect).
 static void maybe_auto_hooks() {
-    if (g_hooks_armed.load()) return;
-    if (!in_match()) return;
+    if (lu_hooked) return;
     if (!opt_tps && !opt_aa) return;
+    if (!in_match()) return;
     setup_hooks_now();
 }
 
@@ -1670,8 +1584,7 @@ static void render_frame() {
     handle_touch();
     maybe_auto_hooks();
     draw_menu();
-    // Field writes only here — game methods are called from the LateUpdate hook.
-    if (opt_tps) tps_tick();
+    // Third person lives entirely in the LateUpdate hook (game thread).
     draw_esp();
     ImGui::EndFrame();
     ImGui::Render();
