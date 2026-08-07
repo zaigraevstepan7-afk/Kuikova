@@ -880,28 +880,28 @@ static void resolve_lu(){
     resolve_view_fns(pc);
 }
 
-// Game thread only (LateUpdate/Update).
+// Field-only body switch. Never call Melodium set_tps RVAs from here —
+// those freeze the game on this build when invoked via our hooks.
 static void apply_body_view(void* player, bool tps_on) {
     if (!player || !ok((uint64_t)player)) return;
-    resolve_view_rvas();
     uint64_t lp = (uint64_t)player;
 
     if (tps_on) {
         wr8(lp + OFF_PLAYER_VIEW_MODE, 2);
         wr8(lp + OFF_PLAYER_CHAR_VISIBLE, 1);
-        if (fn_set_view_mode) fn_set_view_mode(player, 2);
-        if (fn_set_tps) fn_set_tps(player);
-        if (fn_set_visible) fn_set_visible(player);
         uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
         if (ok(arms_lod)) wr8(arms_lod + OFF_LOD_RENDER_ENABLED, 0);
         uint64_t char_lod = rd64(lp + OFF_PLAYER_CHAR_LOD);
         if (ok(char_lod)) wr8(char_lod + OFF_LOD_RENDER_ENABLED, 1);
         uint64_t skin_lod = rd64(lp + OFF_PLAYER_SKIN_LOD);
         if (ok(skin_lod)) wr8(skin_lod + OFF_LOD_RENDER_ENABLED, 1);
+        static const uint64_t cv_offs[] = { OFF_PLAYER_CHAR_VIEW, OFF_PLAYER_VIEW_2, OFF_PLAYER_CHAR_VIEW_TPS };
+        for (uint64_t off : cv_offs) {
+            uint64_t cv = rd64(lp + off);
+            if (ok(cv)) wr8(cv + OFF_CHAR_VIEW_OCCLUSION, 1);
+        }
     } else {
         wr8(lp + OFF_PLAYER_VIEW_MODE, 1);
-        if (fn_set_view_mode) fn_set_view_mode(player, 1);
-        if (fn_set_fps) fn_set_fps(player);
         uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
         if (ok(arms_lod)) wr8(arms_lod + OFF_LOD_RENDER_ENABLED, 1);
         third_person_cam_restore();
@@ -1064,6 +1064,13 @@ static void third_person_model() {
 }
 
 static void tps_tick() {
+    if (!opt_tps) return;
+    if (!g_hooks_armed.load()) return;
+    uint64_t pm = player_manager();
+    if (ok(pm)) {
+        uint64_t lp = rd64(pm + OFF_PM_LOCAL_PLAYER);
+        if (ok(lp)) apply_body_view((void*)lp, true);
+    }
     third_person_cam();
     third_person_model();
 }
@@ -1174,8 +1181,6 @@ static bool is_local_player(void* p) {
 static void hk_up(void* p) {
     if (!up_mp) return;
     bool local = is_local_player(p);
-    // Melodium: set_tps BEFORE original Update so the game applies TPS this frame.
-    if (local && opt_tps) apply_body_view(p, true);
     if (local) aa_begin(p);
     ((void(*)(void*))up_mp)(p);
     if (local) aa_end();
@@ -1184,19 +1189,11 @@ static void hk_up(void* p) {
 static void hk_lu(void* p){
     if (!lu_mp) return;
     bool local = is_local_player(p);
-    static bool applied_tps = false;
-    if (local) {
-        if (opt_tps != applied_tps) {
-            apply_body_view(p, opt_tps);
-            applied_tps = opt_tps;
-        } else if (opt_tps) {
-            apply_body_view(p, true);
-        }
-    }
     ((void(*)(void*))lu_mp)(p);
-    if (local) {
+    if (local && opt_tps) {
+        apply_body_view(p, true);
         third_person_model();
-        if (opt_tps) third_person_cam();
+        third_person_cam();
     }
 }
 
@@ -1244,53 +1241,30 @@ static bool in_match() {
 
 static void try_hook_lu(){
     if (!g_hooks_armed.load()) return;
-    resolve_view_rvas();
-
-    // Primary: Melodium/Halalium a64 inline hooks on libunity RVAs.
-    // MethodInfo swap needs working il2cpp metadata — often unavailable after inject.
-    if (!up_hooked) {
-        void* target = bind_game_rva(RVA_PC_UPDATE);
-        if (target) {
-            void* tramp = nullptr;
-            if (a64hook::install(target, (void*)hk_up, &tramp) && tramp) {
-                up_mp = tramp;
-                up_hooked = true;
-            }
-        }
-    }
-    if (!lu_hooked) {
-        void* target = bind_game_rva(RVA_PC_LATEUPDATE);
-        if (target) {
-            void* tramp = nullptr;
-            if (a64hook::install(target, (void*)hk_lu, &tramp) && tramp) {
-                lu_mp = tramp;
-                lu_hooked = true;
-            }
-        }
-    }
-
-    // Fallback: MethodInfo pointer swap if metadata APIs work.
+    // Anti-aim only: MethodInfo swap. Never a64-patch Update/LateUpdate RVAs —
+    // that path + set_tps froze the game after "setup hooks".
+    if (!opt_aa) return;
     if ((!lu_hooked || !up_hooked) && (!lu_mi || !up_mi)) resolve_lu();
-    if (!lu_hooked && lu_mi && hook_method_ptr(lu_mi, (void*)hk_lu, &lu_mp) && lu_mp)
-        lu_hooked = true;
     if (!up_hooked && up_mi && hook_method_ptr(up_mi, (void*)hk_up, &up_mp) && up_mp)
         up_hooked = true;
+    if (!lu_hooked && lu_mi && hook_method_ptr(lu_mi, (void*)hk_lu, &lu_mp) && lu_mp)
+        lu_hooked = true;
 }
 
-// Arm + install PlayerController hooks. Call only in-match or via menu button.
+// Arm field TPS path (wintex-style). Safe in match — no PC code patches / set_tps.
 static void setup_hooks_now() {
     g_hooks_armed.store(true);
-    resolve_view_rvas();
-    try_hook_lu();
+    g_body_ok.store(true);
     ensure_tps_hf();
+    // Optional AA MethodInfo hooks only (no a64 RVA patches).
+    if (opt_aa) try_hook_lu();
 }
 
-// Auto-arm once spawned in a round (never in lobby — AC detect).
+// Auto-arm field TPS when already in a round with third person on.
 static void maybe_auto_hooks() {
-    if (lu_hooked && up_hooked) return;
+    if (g_hooks_armed.load()) return;
     if (!in_match()) return;
-    // Only when a feature that needs game-thread hooks is on.
-    if (!(opt_tps || opt_aa)) return;
+    if (!opt_tps && !opt_aa) return;
     setup_hooks_now();
 }
 
@@ -1481,7 +1455,7 @@ static void draw_watermark() {
     char line[96];
     snprintf(line, sizeof(line), "t.me · 0.39.2 · tps%c body%c %c%c",
              g_tps_ok.load() ? '+' : '-',
-             g_body_ok.load() ? '+' : '-',
+             (g_body_ok.load() || g_hooks_armed.load()) ? '+' : '-',
              lu_hooked ? 'L' : '-',
              up_hooked ? 'U' : '-');
 
@@ -1608,12 +1582,12 @@ static void draw_menu() {
             if (opt_tps)
                 ImGui::SliderFloat("distance", &tps_dist, 2.f, 6.f, "%.1f");
             ImGui::Spacing();
-            if (lu_hooked && up_hooked) {
-                ImGui::TextDisabled("hooks ready");
+            if (g_hooks_armed.load()) {
+                ImGui::TextDisabled("tps armed");
             } else if (ImGui::Button("setup hooks", ImVec2(-1, 0))) {
                 setup_hooks_now();
             }
-            if (!lu_hooked || !up_hooked)
+            if (!g_hooks_armed.load())
                 ImGui::TextDisabled("press in match");
         }
         ImGui::EndChild();
