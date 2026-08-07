@@ -1,14 +1,15 @@
-# nova — Standoff 2 0.39.2 internal (menu + ESP)
+# nova — Standoff 2 0.39.2 internal (menu + Halalium/Lemming chams)
 
-Greenfield build. Offsets from public AcademicDLC / hntr111 dumps:
+Greenfield build. ESP removed — chams via Unity Material on CharacterLOD
+(same path as Halalium / Lemming / Melodium):
 
-- https://github.com/hntr111/offsets-0.39.2-64bit-standoff-2
-- https://github.com/hntr111/standoff-2-offsets-x64-bit-0.39.2
-- https://github.com/hntr111/standoff-2-api-offsets-0.39.2-64-bit
+- `Shader.Find` → `Material` ctor → color / `_ZTest=8` / `_ZWrite=0`
+- `Renderer.set_material` on `player+0x128` → `+0x30` skinned mesh
+- Applied on Unity thread via `PlayerController.Update` (`libunity+0x8E7C40C`)
 
-## Stealth inject (required)
+Offsets from public AcademicDLC / hntr111 + Melodium Unity RVAs.
 
-Use AndKittyInjector hide + memfd. Without `--hide` the `.so` stays in `/proc/self/maps` and solist — easy AC signal.
+## Inject
 
 ```bash
 ./AndKittyInjector \
@@ -17,17 +18,6 @@ Use AndKittyInjector hide + memfd. Without `--hide` the `.so` stays in `/proc/se
   --memfd --hide \
   --delay 2000000
 ```
-
-In-lib mitigations (not a ban-proof bypass):
-
-- no logcat tags
-- XOR'd sensitive strings
-- prefer GOT hook over patching `libEGL` `.text`
-- W^X trampolines (no RWX pages)
-- no `/dev/input` scraping
-- disguised worker thread name
-
-Status strip: `nova#g` = GOT hook, `nova#i` = inline fallback.
 
 ## Build
 
@@ -41,3 +31,5 @@ cmake --build nova/build -j
 ```
 
 Output: `nova/bin/libnova.so`
+
+Status: `nova#i | ok | ch:a64/ok | a:N` — chams hook live, materials applied.

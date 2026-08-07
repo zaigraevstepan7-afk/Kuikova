@@ -11,6 +11,7 @@ add_library(nova SHARED
     src/main.cpp
     src/game.cpp
     src/overlay.cpp
+    src/chams.cpp
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/imgui_draw.cpp
     ${IMGUI_DIR}/imgui_tables.cpp

@@ -52,6 +52,8 @@ inline uintptr_t find_dl(const char* soname) {
     void* sym = dlsym(h, "il2cpp_domain_get");
     if (!sym) sym = dlsym(h, "il2cpp_string_new");
     if (!sym) sym = dlsym(h, "il2cpp_init");
+    if (!sym) sym = dlsym(h, "UnityMain");
+    if (!sym) sym = dlsym(h, "JNI_OnLoad");
     if (sym && dladdr(sym, &di) && di.dli_fbase)
         return reinterpret_cast<uintptr_t>(di.dli_fbase);
     return 0;
@@ -73,6 +75,17 @@ inline uintptr_t resolve_il2cpp() {
         if (uintptr_t b = find_module(n)) return b;
     }
     return 0;
+}
+
+inline uintptr_t resolve_unity() {
+    static const char* names[] = {"libunity.so", "libunity"};
+    for (const char* n : names) {
+        if (uintptr_t b = find_module(n)) return b;
+        if (uintptr_t b = find_dl(n)) return b;
+    }
+    // maps fallback without requiring il2cpp symbols
+    if (uintptr_t b = find_maps("libunity.so")) return b;
+    return find_maps("libunity");
 }
 
 } // namespace mods
