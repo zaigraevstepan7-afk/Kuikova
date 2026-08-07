@@ -183,8 +183,13 @@ std::string read_name(uintptr_t player) {
 
 bool looks_like_player(uintptr_t pl) {
     if (!pl || pl < 0x10000) return false;
+    // Accept if team looks sane OR any gameplay pointer exists
     const uint8_t team = mem::read<uint8_t>(pl + off::player::kTeam, 0xFF);
-    return team <= 4;
+    if (team <= 8) return true;
+    if (mem::read_ptr(pl + off::player::kMovement)) return true;
+    if (mem::read_ptr(pl + off::player::kPhoton)) return true;
+    if (mem::read_ptr(pl + off::player::kCharacterView)) return true;
+    return false;
 }
 
 void push_player(uintptr_t pl, uintptr_t local, std::vector<PlayerSnap>& out) {
@@ -205,14 +210,12 @@ void push_player(uintptr_t pl, uintptr_t local, std::vector<PlayerSnap>& out) {
         snap.head.y += 1.7f;
     }
 
-    // Sanitize absurd bone distances
     const float dy = std::fabs(snap.head.y - snap.feet.y);
     if (dy < 0.4f || dy > 3.2f) {
         snap.head = snap.feet;
         snap.head.y += 1.7f;
     }
     if (!finite3(snap.feet) || !finite3(snap.head)) return;
-    // Skip origin junk
     if (snap.feet.x == 0.f && snap.feet.y == 0.f && snap.feet.z == 0.f) return;
 
     out.push_back(std::move(snap));
@@ -223,36 +226,45 @@ void collect_players(uintptr_t manager, uintptr_t local, std::vector<PlayerSnap>
     if (!manager) return;
 
     const uintptr_t list = mem::read_ptr(manager + off::mgr::kList);
-    if (!list) return;
+    if (!list) {
+        // Still push local so status shows something in match
+        if (local) push_player(local, local, out);
+        return;
+    }
 
     int size = mem::read<int>(manager + off::mgr::kListSize, 0);
     if (size <= 0 || size > 64)
-        size = mem::read<int>(list + 0x18, 0); // Unity List._size
+        size = mem::read<int>(list + 0x18, 0);
     if (size <= 0 || size > 64)
         size = mem::read<int>(list + off::mgr::kListSize, 0);
-    if (size <= 0 || size > 64) return;
+    if (size <= 0 || size > 64) size = 16; // probe a few slots anyway
 
-    // Path A — AcademicDLC custom: buffer @ +0x18, entry 0x30 stride 0x18
     const uintptr_t acad_buf = mem::read_ptr(list + off::list::kBuffer);
+    const uintptr_t items = mem::read_ptr(list + 0x10);
+
+    // Try Academic layout
     if (acad_buf) {
         for (int i = 0; i < size; ++i) {
-            const uintptr_t pl = mem::read_ptr(
+            push_player(mem::read_ptr(
                 acad_buf + off::list::kEntry +
-                static_cast<uintptr_t>(i) * off::list::kStride);
-            push_player(pl, local, out);
+                static_cast<uintptr_t>(i) * off::list::kStride), local, out);
         }
-        if (!out.empty()) return;
     }
-
-    // Path B — Unity List<T>: _items @ 0x10, elems @ array+0x20
-    uintptr_t items = mem::read_ptr(list + 0x10);
-    if (!items) items = acad_buf;
-    if (!items) return;
-    for (int i = 0; i < size; ++i) {
-        const uintptr_t pl =
-            mem::read_ptr(items + 0x20 + static_cast<uintptr_t>(i) * sizeof(uintptr_t));
-        push_player(pl, local, out);
+    // Also Unity List layout (merge unique)
+    if (items) {
+        for (int i = 0; i < size; ++i) {
+            push_player(mem::read_ptr(
+                items + 0x20 + static_cast<uintptr_t>(i) * sizeof(uintptr_t)), local, out);
+        }
     }
+    // If buffer was actually the array itself
+    if (out.empty() && acad_buf) {
+        for (int i = 0; i < size; ++i) {
+            push_player(mem::read_ptr(
+                acad_buf + 0x20 + static_cast<uintptr_t>(i) * sizeof(uintptr_t)), local, out);
+        }
+    }
+    if (local) push_player(local, local, out);
 }
 
 // Column-major M * vec4
@@ -308,14 +320,12 @@ void game_tick(GameState& st) {
 
     st.local = mem::read_ptr(st.manager + off::mgr::kLocal);
     st.has_matrix = read_matrix(st.local, st.view_proj);
-
-    // Refresh players every frame when matrix is live (ESP smoothness)
-    if (st.has_matrix || (st.frame & 1))
-        collect_players(st.manager, st.local, st.players);
+    collect_players(st.manager, st.local, st.players);
 
     st.ready = true;
-    if (!st.has_matrix) st.status = "cam";
-    else if (st.players.empty()) st.status = "nop";
+    if (!st.local) st.status = "nolocal";
+    else if (!st.has_matrix) st.status = "cam";
+    else if (st.players.size() <= 1) st.status = "alone";
     else st.status = "ok";
 }
 
