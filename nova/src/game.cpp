@@ -46,10 +46,13 @@ void game_tick(GameState& st) {
     }
     if (!st.unity) st.unity = mods::resolve_unity();
 
-    // Chams need Unity thread hook (PC.Update) — retry until modules ready
+    // Hook once — cheap after first success
     chams_install();
 
-    st.manager = resolve_manager(st.il2cpp);
+    // /proc/self/mem manager resolve is expensive — refresh rarely
+    if (!st.manager || (st.frame % 90) == 0) {
+        st.manager = resolve_manager(st.il2cpp);
+    }
     if (!st.manager) {
         st.status = "lobby";
         st.ready = false;
@@ -57,8 +60,10 @@ void game_tick(GameState& st) {
         return;
     }
 
-    st.local = mem::read_ptr(st.manager + off::mgr::kLocal);
-    if (!st.local) st.local = mem::read_ptr(st.manager + 0x68);
+    if (!st.local || (st.frame % 90) == 0) {
+        st.local = mem::read_ptr(st.manager + off::mgr::kLocal);
+        if (!st.local) st.local = mem::read_ptr(st.manager + 0x68);
+    }
 
     st.ready = true;
     if (!st.local) st.status = "nolocal";

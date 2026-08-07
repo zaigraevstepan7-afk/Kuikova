@@ -83,9 +83,6 @@ float g_mat_col[4]{-1, -1, -1, -1};
 uint32_t g_cfg_epoch = 1;
 uint32_t g_mat_epoch = 0;
 
-uint32_t g_tick = 0;
-void* g_enemy_apply = nullptr; // Melodium: apply to current enemy, not every entity every time
-
 bool looks_a64(const void* p) {
     if (!p || (uintptr_t)p < 0x10000) return false;
     const uint32_t w = *reinterpret_cast<const uint32_t*>(p);
@@ -272,9 +269,6 @@ void apply_to_player(void* player, bool gloves) {
         const uintptr_t mesh = ldr(lod, off::lod::kSkinnedMesh);
         if (mesh) {
             p_renderer_set((void*)mesh, mat);
-            // Melodium also sets ZTest after assign
-            p_mat_float(mat, s_prop_ztest, 8.0f);
-            p_mat_float(mat, s_prop_zwrite, 0.0f);
             g_applied.fetch_add(1);
         }
     }
@@ -288,13 +282,33 @@ void apply_to_player(void* player, bool gloves) {
     }
 }
 
+// Apply set_material once per player until menu cfg changes (re-set every frame = lag)
+void* g_done[48]{};
+int g_done_n = 0;
+uint32_t g_done_epoch = 0;
+
+bool already_done(void* player) {
+    if (g_done_epoch != g_cfg_epoch) {
+        g_done_n = 0;
+        g_done_epoch = g_cfg_epoch;
+        return false;
+    }
+    for (int i = 0; i < g_done_n; ++i)
+        if (g_done[i] == player) return true;
+    return false;
+}
+
+void mark_done(void* player) {
+    if (g_done_n >= 48) return;
+    g_done[g_done_n++] = player;
+}
+
 void hk_pc_update(void* player) {
-    // Always call original first — don't stall gameplay if chams work is heavy
     if (g_old_update) g_old_update(player);
 
-    if (!player || !g_cfg.enabled || !g_ready.load()) return;
+    // Fast path: chams off → zero work (hook stay for toggle later)
+    if (!g_cfg.enabled || !player || !g_ready.load()) return;
 
-    ++g_tick;
     const uintptr_t p = (uintptr_t)player;
     const uintptr_t ph = ldr(p, off::player::kPhoton);
     if (!ph) return;
@@ -305,23 +319,19 @@ void hk_pc_update(void* player) {
     if (is_local) {
         g_local = player;
         g_local_team = team;
-        // Local chams: rare refresh only
-        if (g_cfg.local_chams && (g_tick % 30u) == 0u)
-            apply_to_player(player, true);
+        if (!g_cfg.local_chams) return;
+        if (already_done(player)) return;
+        apply_to_player(player, true);
+        mark_done(player);
         return;
     }
 
     if (!g_local) return;
     if (g_cfg.team_check && team == g_local_team) return;
+    if (already_done(player)) return;
 
-    // Melodium: remember enemy, apply to that one — not every teammate path
-    g_enemy_apply = player;
-
-    // Throttle: apply enemy chams ~2/sec worth of Updates, or on config change
-    const bool cfg_dirty = (g_mat_epoch != g_cfg_epoch);
-    if (!cfg_dirty && (g_tick % 20u) != 0u) return;
-
-    apply_to_player(g_enemy_apply, false);
+    apply_to_player(player, false);
+    mark_done(player);
 }
 
 bool hook_pc_update() {

@@ -48,15 +48,15 @@ bool nova_overlay_ensure_imgui() {
     io.IniFilename = nullptr;
     ImGui::StyleColorsDark();
     ImGuiStyle& st = ImGui::GetStyle();
-    // 3× readable touch UI — not 9× (that hammered FPS)
+    // Half of previous 3× → 1.5×
     st.WindowRounding = 4.0f;
     st.FrameRounding = 3.0f;
     st.WindowBorderSize = 1.0f;
     st.FramePadding = ImVec2(6, 4);
     st.ItemSpacing = ImVec2(6, 4);
-    st.TouchExtraPadding = ImVec2(12, 12);
-    st.ScaleAllSizes(3.0f);
-    io.FontGlobalScale = 3.0f;
+    st.TouchExtraPadding = ImVec2(8, 8);
+    st.ScaleAllSizes(1.5f);
+    io.FontGlobalScale = 1.5f;
 
     if (!ImGui_ImplOpenGL3_Init("#version 300 es")) return false;
     g_imgui = true;
@@ -116,8 +116,8 @@ void nova_overlay_frame(int width, int height, GameState& st) {
     ImGui::End();
 
     if (g_cfg.show_menu) {
-        ImGui::SetNextWindowSize(ImVec2(720, 0), ImGuiCond_Always);
-        ImGui::SetNextWindowPos(ImVec2(16, 100), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(360, 0), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(12, 56), ImGuiCond_FirstUseEver);
         if (ImGui::Begin("nova", &g_cfg.show_menu)) {
             auto& c = chams_cfg();
             bool changed = false;
@@ -136,10 +136,10 @@ void nova_overlay_frame(int width, int height, GameState& st) {
         }
         ImGui::End();
     } else {
-        ImGui::SetNextWindowPos(ImVec2(16, 100), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(12, 56), ImGuiCond_Always);
         ImGui::Begin("##op", nullptr,
                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize);
-        if (ImGui::Button("nova", ImVec2(216, 108)))
+        if (ImGui::Button("nova", ImVec2(108, 54)))
             g_cfg.show_menu = true;
         ImGui::End();
     }
