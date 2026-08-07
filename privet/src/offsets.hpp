@@ -120,8 +120,15 @@
 #define OFF_AIMDATA_CUR_AIM         0x18
 #define OFF_AIMDATA_CUR_EULER       0x24
 
-// PlayerController view helpers, resolved BY NAME (0.39.2 dump).
-// Melodium's RVAs for these were dump-adjacency guesses and crash when called.
+// Melodium/Halalium 0.39.2 — PlayerController methods (libunity RVAs).
+// Call ONLY from hooked Update/LateUpdate (game thread).
+#define RVA_PC_UPDATE               0x8E7C40CULL
+#define RVA_PC_LATEUPDATE           0x8E7CF50ULL
+#define RVA_PC_SET_TPS              0x8E7E63CULL
+#define RVA_PC_SET_FPS              0x8E7EC48ULL
+#define RVA_PC_SET_VISIBLE          0x8E880E4ULL
+
+// Obfuscated names (dump) — fallback if RVA bind fails.
 #define NAME_PC_SET_TPS             "ECAFHEAAGDAAHHH"
 #define NAME_PC_SET_FPS             "FCBDBECBFEABFCD"
 #define NAME_PC_SET_VISIBLE         "AFAEGDBAFECEHDD"

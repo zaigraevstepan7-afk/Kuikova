@@ -721,9 +721,8 @@ static std::atomic<bool> g_tps_ok{false};
 static std::atomic<bool> g_tps_hf_started{false};
 static std::atomic<bool> g_body_ok{false};
 
-// Wintex body hook equivalent: call the game's own SetTPSView / set_visible.
-// Resolved by name through il2cpp metadata — the borrowed RVAs pointed at the
-// wrong code and crashed the moment third person was enabled.
+// Wintex/Melodium body path: call SetTPSView (set_tps) on the game thread.
+// Primary bind = Melodium libunity RVAs; name/MethodInfo is fallback only.
 using pc_void_fn = void (*)(void*);
 using pc_view_fn = void (*)(void*, int);
 using go_set_active_fn = void (*)(void*, bool);
@@ -737,6 +736,7 @@ static rend_set_enabled_fn fn_rend_set_enabled = nullptr;
 static void* mi_go_set_active = nullptr;
 static void* mi_rend_set_enabled = nullptr;
 static bool g_unity_helpers_tried = false;
+static bool g_view_rva_tried = false;
 
 static void* mp(const void* m) {
     if (!m || !ok((uint64_t)m)) return nullptr;
@@ -746,6 +746,37 @@ static void* mp(const void* m) {
     uintptr_t p0 = (uintptr_t)rd64((uint64_t)m + 0x0);
     if (p0 > 0x100000 && readable(p0, 4)) return (void*)p0;
     return nullptr;
+}
+
+// Melodium-style: accept only readable non-zero A64 code (reject our hook stub).
+static bool looks_like_a64(void* p) {
+    if (!p || !readable((uint64_t)p, 8)) return false;
+    uint32_t w0 = *(uint32_t*)p;
+    if (w0 == 0 || w0 == 0xFFFFFFFFu) return false;
+    // Reject our own inline-hook stub (LDR X16, literal / BR X16)
+    if (w0 == 0x58000050u) return false;
+    return true;
+}
+
+static void* bind_game_rva(uint64_t rva) {
+    if (!rva) return nullptr;
+    uintptr_t bases[2] = { (uintptr_t)g_base, (uintptr_t)g_il2 };
+    for (uintptr_t mod : bases) {
+        if (!mod) continue;
+        void* p = (void*)(mod + rva);
+        if (!looks_like_a64(p)) continue;
+        return p;
+    }
+    return nullptr;
+}
+
+static void resolve_view_rvas() {
+    if (g_view_rva_tried && fn_set_tps) return;
+    g_view_rva_tried = true;
+    if (!fn_set_tps) fn_set_tps = (pc_void_fn)bind_game_rva(RVA_PC_SET_TPS);
+    if (!fn_set_fps) fn_set_fps = (pc_void_fn)bind_game_rva(RVA_PC_SET_FPS);
+    if (!fn_set_visible) fn_set_visible = (pc_void_fn)bind_game_rva(RVA_PC_SET_VISIBLE);
+    g_body_ok.store(fn_set_tps != nullptr);
 }
 
 static Il2CppClass* unity_class(const char* ns, const char* name) {
@@ -806,6 +837,7 @@ static Il2CppClass* player_controller_class() {
 
 // Match the obfuscated view helpers by name so we never call a guessed address.
 static void resolve_view_fns(Il2CppClass* pc) {
+    resolve_view_rvas();
     if (fn_set_tps && fn_set_fps && fn_set_visible && fn_set_view_mode) return;
     if (!pc || !il2cpp::class_get_methods || !il2cpp::method_get_name) return;
     void* it = nullptr;
@@ -823,10 +855,17 @@ static void resolve_view_fns(Il2CppClass* pc) {
 }
 
 static void resolve_lu(){
+    resolve_view_rvas();
     if(lu_mi && up_mi && fn_set_tps)return;
-    if(!il2cpp::class_get_method_from_name)return;
+    if(!il2cpp::class_get_method_from_name) {
+        resolve_view_rvas();
+        return;
+    }
     Il2CppClass* pc=player_controller_class();
-    if(!pc)return;
+    if(!pc){
+        resolve_view_rvas();
+        return;
+    }
     if(!lu_mi){
         lu_mi=(MethodInfo*)il2cpp::class_get_method_from_name(pc,"LateUpdate",0);
         if(!lu_mi)lu_mi=(MethodInfo*)find_method(pc,"LateUpdate");
@@ -1233,7 +1272,33 @@ static bool lu_hooked;
 static bool up_hooked;
 
 static void try_hook_lu(){
-    if (!lu_mi || !up_mi) resolve_lu();
+    resolve_view_rvas();
+
+    // Primary: Melodium/Halalium a64 inline hooks on libunity RVAs.
+    // MethodInfo swap needs working il2cpp metadata — often unavailable after inject.
+    if (!up_hooked) {
+        void* target = bind_game_rva(RVA_PC_UPDATE);
+        if (target) {
+            void* tramp = nullptr;
+            if (a64hook::install(target, (void*)hk_up, &tramp) && tramp) {
+                up_mp = tramp;
+                up_hooked = true;
+            }
+        }
+    }
+    if (!lu_hooked) {
+        void* target = bind_game_rva(RVA_PC_LATEUPDATE);
+        if (target) {
+            void* tramp = nullptr;
+            if (a64hook::install(target, (void*)hk_lu, &tramp) && tramp) {
+                lu_mp = tramp;
+                lu_hooked = true;
+            }
+        }
+    }
+
+    // Fallback: MethodInfo pointer swap if metadata APIs work.
+    if ((!lu_hooked || !up_hooked) && (!lu_mi || !up_mi)) resolve_lu();
     if (!lu_hooked && lu_mi && hook_method_ptr(lu_mi, (void*)hk_lu, &lu_mp) && lu_mp)
         lu_hooked = true;
     if (!up_hooked && up_mi && hook_method_ptr(up_mi, (void*)hk_up, &up_mp) && up_mp)
@@ -1871,6 +1936,7 @@ static void* thread_main(void*) {
             fn_rend_set_enabled = nullptr;
             mi_go_set_active = mi_rend_set_enabled = nullptr;
             g_unity_helpers_tried = false;
+            g_view_rva_tried = false;
             g_body_ok.store(false);
             resolve_lu();
             try_hook_lu();
