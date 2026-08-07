@@ -24,8 +24,6 @@
 #include "offsets.hpp"
 #include "vector3.h"
 #include "il2cpp.hpp"
-#include "mem.hpp"
-#include "modules.hpp"
 
 extern "C" {
 __attribute__((visibility("hidden"), used)) void* memset(void* s, int c, size_t n) {
@@ -245,7 +243,7 @@ static void build_segs() {
         while (ishex(p[k])) { off = off * 16 + (uint64_t)hexv(p[k]); k++; }
         const char* q = p;
         while (*q && *q != '/') q++;
-        if (*q == '/' && strstr(q, "libil2cpp.so") && en > st)
+        if (*q == '/' && strstr(q, "libunity.so") && en > st)
             tmp.push_back({st, off, en - st, 0, exec, false});
         p = le + 1;
     }
@@ -440,11 +438,35 @@ static uintptr_t find_lib(const char* n) {
 }
 
 static uintptr_t pick_base() {
-    // TypeInfo + il2cpp_* RVAs are relative to libil2cpp.so (see docs/OFFSET_AUDIT.md).
-    // Original used libunity.so here — wrong module for these offsets.
-    mods::resolve_bases();
-    if (mods::il2cpp()) return mods::il2cpp();
-    return mods::pick_from_maps("libil2cpp.so");
+    size_t n = 0;
+    char* buf = load_maps_full(&n);
+    if (buf) {
+        char* p = buf;
+        while (*p) {
+            char* le = p;
+            while (*le && *le != '\n') le++;
+            if (*le) *le = 0;
+            uint64_t st = 0, en = 0;
+            int k = 0;
+            while (ishex(p[k])) { st = st * 16 + (uint64_t)hexv(p[k]); k++; }
+            if (p[k] == '-') {
+                k++;
+                while (ishex(p[k])) { en = en * 16 + (uint64_t)hexv(p[k]); k++; }
+            }
+            while (p[k] == ' ') k++;
+            if (p[k] == 'r' && p[k + 3] == 'p') {
+                const char* q = p;
+                while (*q && *q != '/') q++;
+                if (*q == '/' && strstr(q, "libunity.so") && (en - st) < 0x5100000) {
+                    free(buf);
+                    return st;
+                }
+            }
+            p = le + 1;
+        }
+        free(buf);
+    }
+    return find_lib("libunity.so");
 }
 
 static bool valid_pm(uint64_t pm) {
@@ -1061,10 +1083,8 @@ static void* thread_main(void*) {
     build_maps();
     g_base = pick_base();
     if (!g_base) return nullptr;
-    mods::il2cpp() = g_base;
-    // Force segment table build once base is known (libil2cpp)
+    // Force segment table build once base is known
     build_segs();
-    il2cpp::init_api(g_base);
     tps_init();
     try_hook_lu();
     void* egl = nullptr;
@@ -1088,8 +1108,7 @@ static void* thread_main(void*) {
         uint64_t new_base = pick_base();
         if (new_base && new_base != g_base) {
             g_base = new_base;
-            mods::il2cpp() = g_base;
-            // Rebuild segment map if libil2cpp base moved
+            // Rebuild segment map if libunity base moved
             build_segs();
             // Allow re-init of il2cpp function pointers
             il2cpp::init_api(g_base);
