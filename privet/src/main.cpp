@@ -1040,8 +1040,12 @@ static void render_frame() {
 }
 
 static EGLBoolean (*orig_swap)(EGLDisplay, EGLSurface);
+static void start_once();
+static void try_hook_egl();
 
 static EGLBoolean hk_swap(EGLDisplay d, EGLSurface s) {
+    // Kitty may skip JNI_OnLoad when JavaVM is missing; bootstrap from the render thread.
+    start_once();
     EGLint w = 0, h = 0;
     if (d && s) {
         eglQuerySurface(d, s, EGL_WIDTH, &w);
@@ -1104,23 +1108,31 @@ static void inline_hook(void* target, void* hook, void** orig) {
 
 static void try_hook_egl() {
     if (orig_swap) return;
-    void* egl = nullptr;
-    void* eh = dlopen("libEGL.so", RTLD_NOW);
-    if (eh) egl = dlsym(eh, "eglSwapBuffers");
+    // Prefer already-loaded EGL; avoid dlopen while linker may still hold locks (ctor path).
+    void* egl = dlsym(RTLD_DEFAULT, "eglSwapBuffers");
     if (!egl) egl = dlsym(RTLD_NEXT, "eglSwapBuffers");
-    if (!egl) egl = dlsym(RTLD_DEFAULT, "eglSwapBuffers");
+    if (!egl) {
+        void* eh = dlopen("libEGL.so", RTLD_NOW);
+        if (eh) egl = dlsym(eh, "eglSwapBuffers");
+    }
     if (egl) inline_hook(egl, (void*)hk_swap, (void**)&orig_swap);
 }
 
 static void* thread_main(void*) {
     il2cpp::resolve_rva = segment_resolve_rva;
-    build_maps();
-    g_base = pick_base();
-    if (!g_base) {
-        g_base = find_lib("libil2cpp.so");
-        if (!g_base) g_base = find_lib("libil2cpp");
+
+    // Inject can happen before libunity/libil2cpp are mapped — wait instead of exiting.
+    for (int i = 0; i < 600 && !g_base; i++) {
+        build_maps();
+        g_base = pick_base();
+        if (!g_base) {
+            g_base = find_lib("libil2cpp.so");
+            if (!g_base) g_base = find_lib("libil2cpp");
+        }
+        if (!g_base) usleep(100000);
     }
     if (!g_base) return nullptr;
+
     build_segs();
     il2cpp::init_api(g_base);
     tps_init();
@@ -1165,17 +1177,29 @@ static void start_once() {
     pthread_attr_destroy(&attr);
 }
 
+// Custom inj + KittyMemoryEx look these up by name; keep them exported and sized.
 extern "C" __attribute__((visibility("default"))) void payload_entry(void* base) {
     (void)base;
+    try_hook_egl();
     start_once();
 }
 
+extern "C" __attribute__((visibility("default"))) void EntryPoint(void) {
+    try_hook_egl();
+    start_once();
+}
+
+// AndKittyInjector: do NOT start threads in constructors (linker lock + --hide remap).
+// Only install EGL hook so the first swap can bootstrap if JNI_OnLoad is skipped.
 __attribute__((constructor))
 static void privet_ctor() {
-    start_once();
+    try_hook_egl();
 }
 
-extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM*, void*) {
+extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* key) {
+    (void)vm;
+    (void)key;
+    try_hook_egl();
     start_once();
     return JNI_VERSION_1_6;
 }

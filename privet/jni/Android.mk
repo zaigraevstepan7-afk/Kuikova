@@ -41,7 +41,13 @@ LOCAL_LDFLAGS := \
     -Wl,--build-id=none \
     -Wl,-z,relro \
     -Wl,-z,now \
-    -Wl,-z,noexecstack
+    -Wl,-z,noexecstack \
+    -Wl,--export-dynamic-symbol=JNI_OnLoad \
+    -Wl,--export-dynamic-symbol=payload_entry \
+    -Wl,--export-dynamic-symbol=EntryPoint
+
+# Keep .symtab for custom inj + Kitty findSymbol; never strip entry exports.
+LOCAL_STRIP_MODE := none
 
 LOCAL_LDLIBS := \
     -llog \
