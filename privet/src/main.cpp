@@ -719,6 +719,48 @@ static MethodInfo* up_mi;
 static void* up_mp;
 static std::atomic<bool> g_tps_ok{false};
 static std::atomic<bool> g_tps_hf_started{false};
+static std::atomic<bool> g_body_ok{false};
+
+// Wintex body hook equivalent: call the game's own SetTPSView / set_visible
+// (Melodium names) on libunity — NOT a random helper.
+using pc_void_fn = void (*)(void*);
+using pc_view_fn = void (*)(void*, int);
+static pc_void_fn fn_set_tps = nullptr;
+static pc_void_fn fn_set_fps = nullptr;
+static pc_void_fn fn_set_visible = nullptr;
+static pc_view_fn fn_set_view_mode = nullptr;
+
+static bool resolve_tps_view_fns() {
+    if (!g_base) return false;
+    if (fn_set_tps && fn_set_fps && fn_set_visible && fn_set_view_mode) return true;
+    auto okfn = [](uintptr_t p) { return p > 0x100000 && readable(p, 4); };
+    uintptr_t a_tps = g_base + OFF_PC_SET_TPS;
+    uintptr_t a_fps = g_base + OFF_PC_SET_FPS;
+    uintptr_t a_vis = g_base + OFF_PC_SET_VISIBLE;
+    uintptr_t a_vm  = g_base + OFF_PC_SET_VIEW_MODE;
+    if (!okfn(a_tps) || !okfn(a_fps) || !okfn(a_vis) || !okfn(a_vm)) return false;
+    fn_set_tps = (pc_void_fn)a_tps;
+    fn_set_fps = (pc_void_fn)a_fps;
+    fn_set_visible = (pc_void_fn)a_vis;
+    fn_set_view_mode = (pc_view_fn)a_vm;
+    return true;
+}
+
+// Must run on the game thread (LateUpdate) — same as wintex cave → SetTPSView.
+static void apply_body_view(void* player, bool tps_on) {
+    if (!player || !ok((uint64_t)player)) return;
+    if (!resolve_tps_view_fns()) { g_body_ok.store(false); return; }
+    if (tps_on) {
+        if (fn_set_view_mode) fn_set_view_mode(player, 2);
+        if (fn_set_tps) fn_set_tps(player);
+        if (fn_set_visible) fn_set_visible(player);
+        wr8((uint64_t)player + OFF_PLAYER_CHAR_VISIBLE, 1);
+    } else {
+        if (fn_set_view_mode) fn_set_view_mode(player, 1);
+        if (fn_set_fps) fn_set_fps(player);
+    }
+    g_body_ok.store(true);
+}
 
 static void* mp(const void* m) {
     if (!m) return nullptr;
@@ -881,7 +923,7 @@ static bool third_person_cam() {
     return wrote;
 }
 
-// Body visible + stop FP arms without yeeting the gun to -1000.
+// Body visible helpers — field backup only. Real switch is apply_body_view (set_tps).
 static void third_person_model() {
     uint64_t pm = player_manager();
     if (!ok(pm)) return;
@@ -889,24 +931,11 @@ static void third_person_model() {
     if (!ok(lp)) return;
     bool tp = opt_tps;
 
-    wr32(lp + OFF_PLAYER_VIEW_MODE, tp ? 2 : 1);
-
-    // Soft-hide FP arms via ArmsLodGroup mesh renderers (no -1000 offset).
-    uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
-    if (ok(arms_lod)) {
-        uint64_t mesh = rd64(arms_lod + OFF_ARMS_MESH_RENDERER);
-        uint64_t gloves = rd64(arms_lod + OFF_ARMS_GLOVES_RENDERER);
-        // Renderer.enabled is typically a bool near the start of the native
-        // renderer; SkinnedMeshLodGroup bool @ 0x20 gates drawing.
-        wr8(arms_lod + OFF_LOD_RENDER_ENABLED, tp ? 0 : 1);
-        (void)mesh; (void)gloves;
-    }
-
-    // Restore arms local offset if a previous build shoved it away.
+    // Undo any leftover arms yeet from older builds.
     uint64_t arms = rd64(lp + OFF_PLAYER_ARMS_CTRL);
     if (ok(arms) && readable(arms + OFF_ARMS_LOCAL_POS, 12)) {
         float ay = rdf(arms + OFF_ARMS_LOCAL_POS + 4);
-        if (ay < -100.f || !tp) {
+        if (ay < -100.f) {
             wrf(arms + OFF_ARMS_LOCAL_POS + 0, 0.f);
             wrf(arms + OFF_ARMS_LOCAL_POS + 4, 0.f);
             wrf(arms + OFF_ARMS_LOCAL_POS + 8, 0.f);
@@ -916,7 +945,6 @@ static void third_person_model() {
     if (!tp) return;
 
     wr8(lp + OFF_PLAYER_CHAR_VISIBLE, 1);
-
     uint64_t char_lod = rd64(lp + OFF_PLAYER_CHAR_LOD);
     if (ok(char_lod)) wr8(char_lod + OFF_LOD_RENDER_ENABLED, 1);
     uint64_t skin_lod = rd64(lp + OFF_PLAYER_SKIN_LOD);
@@ -1058,10 +1086,14 @@ static void hk_up(void* p) {
 
 static void hk_lu(void* p){
     if (!lu_mp) return;
+    bool local = is_local_player(p);
+    // Wintex cave called SetTPSView every LateUpdate on the game thread.
+    if (local) apply_body_view(p, opt_tps);
     ((void(*)(void*))lu_mp)(p);
-    // TPS is driven by wintex-style libunity R/W on a HF thread + render tick.
-    // LateUpdate hook is only kept as a late out-write if it resolved.
-    if (is_local_player(p) && opt_tps) tps_tick();
+    if (local && opt_tps) {
+        third_person_cam();
+        third_person_model();
+    }
 }
 
 // Swap MethodInfo::methodPointer; il2cpp keeps it at 0x0 or 0x8 depending on build.
@@ -1425,10 +1457,10 @@ static void draw_menu() {
             ImGui::SliderFloat("spin speed", &opt_aa_spin, 0.f, 180.f, "%.0f");
             melo_checkbox("random", &opt_aa_chaos);
             ImGui::Separator();
-            ImGui::Text("tps %c hooks %c%c unity %c",
+            ImGui::Text("tps %c body %c hooks %c%c",
                         g_tps_ok.load() ? '+' : '-',
-                        lu_hooked ? 'L' : '-', up_hooked ? 'U' : '-',
-                        g_base ? '+' : '-');
+                        g_body_ok.load() ? '+' : '-',
+                        lu_hooked ? 'L' : '-', up_hooked ? 'U' : '-');
         }
         ImGui::EndChild();
     }
@@ -1492,7 +1524,23 @@ static void render_frame() {
     ImGui::NewFrame();
     handle_touch();
     draw_menu();
-    if (opt_tps) tps_tick();
+    {
+        static bool was_tps = false;
+        if (opt_tps) {
+            // Fallback body switch if LateUpdate MethodInfo hook did not land.
+            if (!lu_hooked) {
+                uint64_t pm = player_manager();
+                uint64_t lp = ok(pm) ? rd64(pm + OFF_PM_LOCAL_PLAYER) : 0;
+                if (ok(lp)) apply_body_view((void*)lp, true);
+            }
+            tps_tick();
+        } else if (was_tps && !lu_hooked) {
+            uint64_t pm = player_manager();
+            uint64_t lp = ok(pm) ? rd64(pm + OFF_PM_LOCAL_PLAYER) : 0;
+            if (ok(lp)) apply_body_view((void*)lp, false);
+        }
+        was_tps = opt_tps;
+    }
     draw_esp();
     ImGui::EndFrame();
     ImGui::Render();
@@ -1723,8 +1771,12 @@ static void* thread_main(void*) {
             lu_mp = nullptr;
             up_mi = nullptr;
             up_mp = nullptr;
+            fn_set_tps = fn_set_fps = fn_set_visible = nullptr;
+            fn_set_view_mode = nullptr;
+            g_body_ok.store(false);
             resolve_lu();
             try_hook_lu();
+            resolve_tps_view_fns();
         }
     }
     return nullptr;

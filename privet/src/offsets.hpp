@@ -118,3 +118,10 @@
 #define OFF_AIMDATA_CUR_AIM         0x18
 #define OFF_AIMDATA_CUR_EULER       0x24
 
+// Melodium 0.39.2 — PlayerController view helpers (libunity RVAs)
+// Wintex LateUpdate cave called SetTPSView; same role as set_tps here.
+#define OFF_PC_SET_TPS              0x8E7E63CULL  // ECAFHEAAGDAAHHH()
+#define OFF_PC_SET_FPS              0x8E7EC48ULL  // FCBDBECBFEABFCD()
+#define OFF_PC_SET_VISIBLE          0x8E880E4ULL  // AFAEGDBAFECEHDD()
+#define OFF_PC_SET_VIEW_MODE        0x8E91C64ULL  // ADEAAACFHADDAFG(int)
+

@@ -397,14 +397,34 @@ inline bool init_api(uintptr_t base) {
     if (!resolve_rva) return false;
     (void)base;
 
+    auto dyn = [](const char* name) -> void* {
+        static void* h = nullptr;
+        if (!h) {
+            h = dlopen("libil2cpp.so", RTLD_NOW);
+            if (!h) h = dlopen("libil2cpp.so", RTLD_LAZY);
+        }
+        void* p = h ? dlsym(h, name) : nullptr;
+        if (!p) p = dlsym(RTLD_DEFAULT, name);
+        return p;
+    };
+    auto or_rva = [&](const char* name, uintptr_t rva) -> void* {
+        void* d = dyn(name);
+        return d ? d : resolve_rva(rva);
+    };
+
     alloc                = (decltype(alloc))(resolve_rva(offset::il2cpp_alloc));
     free                 = (decltype(free))(resolve_rva(offset::il2cpp_free));
 
-    domain_get           = (decltype(domain_get))(resolve_rva(offset::il2cpp_domain_get));
-    domain_assembly_open = (decltype(domain_assembly_open))(resolve_rva(offset::il2cpp_domain_assembly_open));
-    assembly_get_image   = (decltype(assembly_get_image))(resolve_rva(offset::il2cpp_assembly_get_image));
+    // Prefer exported symbols for hook resolution — dump RVAs drift across builds.
+    domain_get = (decltype(domain_get))or_rva("il2cpp_domain_get", offset::il2cpp_domain_get);
+    domain_assembly_open = (decltype(domain_assembly_open))or_rva("il2cpp_domain_assembly_open", offset::il2cpp_domain_assembly_open);
+    assembly_get_image = (decltype(assembly_get_image))or_rva("il2cpp_assembly_get_image", offset::il2cpp_assembly_get_image);
+    class_from_name = (decltype(class_from_name))or_rva("il2cpp_class_from_name", offset::il2cpp_class_from_name);
+    class_get_method_from_name = (decltype(class_get_method_from_name))or_rva("il2cpp_class_get_method_from_name", offset::il2cpp_class_get_method_from_name);
+    class_get_methods = (decltype(class_get_methods))or_rva("il2cpp_class_get_methods", offset::il2cpp_class_get_methods);
+    method_get_name = (decltype(method_get_name))or_rva("il2cpp_method_get_name", offset::il2cpp_method_get_name);
+    thread_attach = (decltype(thread_attach))or_rva("il2cpp_thread_attach", offset::il2cpp_thread_attach);
 
-    class_from_name           = (decltype(class_from_name))(resolve_rva(offset::il2cpp_class_from_name));
     class_from_il2cpp_type    = (decltype(class_from_il2cpp_type))(resolve_rva(offset::il2cpp_class_from_il2cpp_type));
     class_from_type           = (decltype(class_from_type))(resolve_rva(offset::il2cpp_class_from_type));
     class_get_name            = (decltype(class_get_name))(resolve_rva(offset::il2cpp_class_get_name));
@@ -430,8 +450,6 @@ inline bool init_api(uintptr_t base) {
     class_get_interfaces      = (decltype(class_get_interfaces))(resolve_rva(offset::il2cpp_class_get_interfaces));
     class_get_fields          = (decltype(class_get_fields))(resolve_rva(offset::il2cpp_class_get_fields));
     class_get_field_from_name = (decltype(class_get_field_from_name))(resolve_rva(offset::il2cpp_class_get_field_from_name));
-    class_get_methods         = (decltype(class_get_methods))(resolve_rva(offset::il2cpp_class_get_methods));
-    class_get_method_from_name = (decltype(class_get_method_from_name))(resolve_rva(offset::il2cpp_class_get_method_from_name));
 
     field_get_name           = (decltype(field_get_name))(resolve_rva(offset::il2cpp_field_get_name));
     field_get_type           = (decltype(field_get_type))(resolve_rva(offset::il2cpp_field_get_type));
@@ -444,7 +462,7 @@ inline bool init_api(uintptr_t base) {
     // No dedicated RVA for field_set_value in offset table — do not alias get_value
     field_set_value          = nullptr;
 
-    method_get_name            = (decltype(method_get_name))(resolve_rva(offset::il2cpp_method_get_name));
+    // Keep dlsym picks for method_get_name / thread_attach (set above).
     method_get_class           = (decltype(method_get_class))(resolve_rva(offset::il2cpp_method_get_class));
     method_get_declaring_type  = (decltype(method_get_declaring_type))(resolve_rva(offset::il2cpp_method_get_declaring_type));
     method_get_return_type     = (decltype(method_get_return_type))(resolve_rva(offset::il2cpp_method_get_return_type));
@@ -475,7 +493,7 @@ inline bool init_api(uintptr_t base) {
     runtime_object_init_exception       = (decltype(runtime_object_init_exception))(resolve_rva(offset::il2cpp_runtime_object_init_exception));
     runtime_unhandled_exception_policy_set = (decltype(runtime_unhandled_exception_policy_set))(resolve_rva(offset::il2cpp_runtime_unhandled_exception_policy_set));
 
-    thread_attach   = (decltype(thread_attach))(resolve_rva(offset::il2cpp_thread_attach));
+    // thread_attach already preferred via dlsym above
     thread_current  = (decltype(thread_current))(resolve_rva(offset::il2cpp_thread_current));
     thread_detach   = (decltype(thread_detach))(resolve_rva(offset::il2cpp_thread_detach));
 
