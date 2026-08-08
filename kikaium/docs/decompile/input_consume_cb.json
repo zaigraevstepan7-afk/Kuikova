@@ -1,0 +1,53 @@
+{
+  "name": "input_consume_cb",
+  "va": "0x1d760c",
+  "size": "0xe0",
+  "insn": 56,
+  "fields": {
+    "0x10": 2
+  },
+  "rvas": [],
+  "strings": [],
+  "calls": [
+    {
+      "at": "0x1d7628",
+      "kind": "blr",
+      "target": "x8"
+    },
+    {
+      "at": "0x1d7644",
+      "kind": "bl",
+      "target": "0x26c490"
+    },
+    {
+      "at": "0x1d7654",
+      "kind": "bl",
+      "target": "0x26c4a0"
+    },
+    {
+      "at": "0x1d7664",
+      "kind": "bl",
+      "target": "0x26c4b0"
+    },
+    {
+      "at": "0x1d7670",
+      "kind": "bl",
+      "target": "0x26c4c0"
+    },
+    {
+      "at": "0x1d7684",
+      "kind": "bl",
+      "target": "0x26c4d0"
+    },
+    {
+      "at": "0x1d76c0",
+      "kind": "bl",
+      "target": "0x26c4e0"
+    },
+    {
+      "at": "0x1d76e4",
+      "kind": "bl",
+      "target": "0x26c4e0"
+    }
+  ]
+}

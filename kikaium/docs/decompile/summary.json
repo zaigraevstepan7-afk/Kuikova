@@ -1,0 +1,269 @@
+[
+  {
+    "name": "egl_install",
+    "va": "0x1d84cc",
+    "fields": 1,
+    "rvas": [
+      {
+        "reg": "w23",
+        "rva": "0x8e7c40c",
+        "at": "0x1d8550"
+      },
+      {
+        "reg": "w9",
+        "rva": "0x8e0085c",
+        "at": "0x1d8584"
+      },
+      {
+        "reg": "w9",
+        "rva": "0x79fe5e0",
+        "at": "0x1d85c8"
+      },
+      {
+        "reg": "w19",
+        "rva": "0x147e970",
+        "at": "0x1d85d8"
+      },
+      {
+        "reg": "w9",
+        "rva": "0x8d663ec",
+        "at": "0x1d8674"
+      }
+    ],
+    "strings": [
+      "libEGL.so",
+      "eglSwapBuffers",
+      "libinput.so",
+      "_ZN7android13InputConsumer7consumeEPNS_26InputEventFactoryInterfaceEblPjPPNS_10InputEventE"
+    ]
+  },
+  {
+    "name": "egl_callback",
+    "va": "0x1d76f0",
+    "fields": 4,
+    "rvas": [],
+    "strings": []
+  },
+  {
+    "name": "input_consume_cb",
+    "va": "0x1d760c",
+    "fields": 1,
+    "rvas": [],
+    "strings": []
+  },
+  {
+    "name": "Update_Halalium_Hooks",
+    "va": "0x1d7a10",
+    "fields": 22,
+    "rvas": [
+      {
+        "reg": "w9",
+        "rva": "0x8c69cb0",
+        "at": "0x1d7acc"
+      },
+      {
+        "reg": "w9",
+        "rva": "0x8e8ae24",
+        "at": "0x1d7b0c"
+      },
+      {
+        "reg": "w9",
+        "rva": "0x5fb7bc0",
+        "at": "0x1d7da8"
+      }
+    ],
+    "strings": [
+      "Halalium_Hooks",
+      "[ping] photon_raw=%d prop_raw=%d published=%d attempts=%llu"
+    ]
+  },
+  {
+    "name": "LateUpdate_cb",
+    "va": "0x1d7ec4",
+    "fields": 15,
+    "rvas": [
+      {
+        "reg": "w24",
+        "rva": "0x8c7be04",
+        "at": "0x1d8078"
+      },
+      {
+        "reg": "w28",
+        "rva": "0x5caafc4",
+        "at": "0x1d80b4"
+      },
+      {
+        "reg": "w9",
+        "rva": "0x5deada4",
+        "at": "0x1d817c"
+      }
+    ],
+    "strings": [
+      "InstantiateViaServer"
+    ]
+  },
+  {
+    "name": "secondary_hook_cb",
+    "va": "0x1d81fc",
+    "fields": 9,
+    "rvas": [
+      {
+        "reg": "w8",
+        "rva": "0x5ffaefc",
+        "at": "0x1d8250"
+      },
+      {
+        "reg": "w8",
+        "rva": "0x6009294",
+        "at": "0x1d826c"
+      }
+    ],
+    "strings": []
+  },
+  {
+    "name": "tertiary_hook_cb",
+    "va": "0x1d8404",
+    "fields": 4,
+    "rvas": [],
+    "strings": [
+      "libEGL.so",
+      "eglSwapBuffers"
+    ]
+  },
+  {
+    "name": "extraA_cb",
+    "va": "0x1d82a0",
+    "fields": 5,
+    "rvas": [],
+    "strings": []
+  },
+  {
+    "name": "extraB_cb",
+    "va": "0x1d83cc",
+    "fields": 1,
+    "rvas": [],
+    "strings": []
+  },
+  {
+    "name": "Bypass_getrr",
+    "va": "0x1d90b8",
+    "fields": 1,
+    "rvas": [],
+    "strings": [
+      "Halalium_Bypass",
+      "got call from getrr.",
+      "bypas hok result %d"
+    ]
+  },
+  {
+    "name": "libunity_base_resolve",
+    "va": "0x1d6afc",
+    "fields": 16,
+    "rvas": [],
+    "strings": [
+      "libunity.so"
+    ]
+  },
+  {
+    "name": "menu_body",
+    "va": "0x1db874",
+    "fields": 16,
+    "rvas": [],
+    "strings": [
+      "##settings_left",
+      "Accent Color",
+      "##settings_watermark",
+      "Watermark",
+      "##vis_left",
+      "Enable Esp",
+      "Box",
+      "Box Type",
+      "Box Color",
+      "Corner Size",
+      "Health Bar",
+      "Distance",
+      "Distance Color",
+      "##vis_right_top",
+      "Chams",
+      "Enemy Chams",
+      "Enemy Color",
+      "Through Walls",
+      "##misc_left",
+      "Third Person",
+      "##misc_right_top",
+      "Inf Ammo",
+      "Fire Rate",
+      "Wallshot",
+      "##misc_right_bottom",
+      "##skins_panel",
+      "Skin Changer",
+      "##weapons_list",
+      "##skins_list",
+      "##rage_left",
+      "Silent Aim",
+      "Bone",
+      "Fov Check",
+      "Fov",
+      "Fov Color",
+      "Auto Fire",
+      "Auto Wall",
+      "No spread",
+      "##rage_right_top",
+      "Anti Aim",
+      "Local Chams",
+      "Local Color",
+      "##vis_right_bottom",
+      "World",
+      "World Color",
+      "Solid World Color",
+      "Apply World Color",
+      "Spin Speed",
+      "Reverse Spin",
+      "##rage_right_bottom",
+      "Anti Aim Pitch",
+      "Enable Anti Aim first"
+    ]
+  },
+  {
+    "name": "wm_click_site",
+    "va": "0x1db464",
+    "fields": 9,
+    "rvas": [],
+    "strings": [
+      "##wm_click"
+    ]
+  },
+  {
+    "name": "track_hook_helper",
+    "va": "0x1d917c",
+    "fields": 1,
+    "rvas": [],
+    "strings": []
+  },
+  {
+    "name": "SkinChanger",
+    "va": "0x1d9e00",
+    "fields": 11,
+    "rvas": [
+      {
+        "reg": "w9",
+        "rva": "0x8e8fe50",
+        "at": "0x1d9ef8"
+      },
+      {
+        "reg": "w9",
+        "rva": "0x8e852d4",
+        "at": "0x1d9f28"
+      },
+      {
+        "reg": "w9",
+        "rva": "0x8e7f7f4",
+        "at": "0x1d9f4c"
+      }
+    ],
+    "strings": [
+      "SkinChanger",
+      "Skin Changer: Swapped to weapon %d (skin %d)"
+    ]
+  }
+]

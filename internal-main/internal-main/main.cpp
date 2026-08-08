@@ -1,0 +1,916 @@
+// ============================================================================
+// Melodium — Halalium-compatible shell + Melodium features
+// Render: eglSwapBuffers GOT hook (Halalium uses Dobby on same symbol)
+// Menu:   ##watermark / ##wm_click
+// Update: tools/halalium_emu/update.sh  (see UPDATE.md)
+// ============================================================================
+
+#include <list>
+#include <vector>
+#include <string.h>
+#include <cstring>
+#include <unistd.h>
+#include <fstream>
+#include <iostream>
+#include <thread>
+#include <atomic>
+#include <pthread.h>
+#include <dlfcn.h>
+#include <EGL/egl.h>
+#include <GLES2/gl2.h>
+#include "includes/imgui/imgui.h"
+#include "includes/imgui/backends/imgui_impl_android.h"
+#include "includes/imgui/backends/imgui_impl_opengl3.h"
+#include <cstdio>
+#include <cstdlib>
+#include <cstddef>
+#include <link.h>
+#include <elf.h>
+#include <cinttypes>
+#include <linux/elf.h>
+#include "globals.hpp"
+// Do NOT include <fcntl.h> here — globals.hpp defines `bool open`, which collides.
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/syscall.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <signal.h>
+#include <stdlib.h>
+#include "src/menu/gui.h"
+#include "includes/fonts/verdana.h"
+#include "includes/fonts/smallest_pixel.h"
+#include "src/menu/c_user_interface.hpp"
+#include "src/features/esp.h"
+#include "src/features/visual.h"
+// vis 0x3A4E0 //ya 0x30EC8
+
+bool egl_inited = false;
+bool cmi;
+using namespace ImGui;
+void handle_touch()
+{
+    auto &io = ImGui::GetIO();
+    int touch_count = c_methods ? c_methods->get_count() : 0;
+    static bool touch_active = false;
+
+    if (touch_count <= 0)
+    {
+        if (touch_active)
+        {
+            io.MouseDown[0] = false;
+            touch_active = false;
+        }
+        return;
+    }
+
+    for (int i = 0; i < touch_count; i++)
+    {
+        auto it = c_methods->get_touch(i);
+        auto phase = it.fields.m_Phase;
+
+        float x = it.fields.m_Position.x;
+        float y = io.DisplaySize.y - it.fields.m_Position.y;
+
+        if (phase == TouchPhase::Began || phase == TouchPhase::Stationary || phase == TouchPhase::Moved)
+        {
+            io.MousePos = ImVec2(x, y);
+            io.MouseDown[0] = true;
+            touch_active = true;
+        }
+        else if (phase == TouchPhase::Ended || phase == TouchPhase::Canceled)
+        {
+            io.MouseDown[0] = false;
+            touch_active = false;
+        }
+    }
+}
+
+ImFont *addFontFromMemory(void *font, int bytes, float size, float rasterizerMultiply = 1.5f)
+{
+    ImFontConfig font_cfg;
+    font_cfg.SizePixels = size;
+    font_cfg.OversampleH = font_cfg.OversampleV = 3;
+    font_cfg.RasterizerMultiply = rasterizerMultiply;
+    font_cfg.FontDataOwnedByAtlas = false;
+    ImGuiIO &io = ImGui::GetIO();
+    return io.Fonts->AddFontFromMemoryTTF(font, bytes, size, &font_cfg, io.Fonts->GetGlyphRangesCyrillic());
+}
+
+inline C_UserInterface ui;
+
+void setup()
+{
+    ImGuiIO &io = GetIO();
+    // ui.init();
+    gui::font = addFontFromMemory(verdana, sizeof(verdana), 30.0f);
+    gui::pixel = io.Fonts->AddFontFromMemoryTTF(smallest_pixel_data, sizeof(smallest_pixel_data), 10.f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
+    // ui.init();
+}
+// Halalium-compat: PresentFrame path removed (dead on 0.39.2).
+// Render + menu live entirely on eglSwapBuffers (see hook_egl_swap_buffers).
+
+EGLBoolean (*old_egl_swap_buffers)(EGLDisplay display, EGLSurface surface);
+
+static void apply_imgui_style()
+{
+    auto style = &ImGui::GetStyle();
+    ImGui::StyleColorsDark();
+
+    // Melodium / Kikaium own look: charcoal + copper (not Halalium grey, not teal clone).
+    const ImVec4 copper = ImVec4(0.91f, 0.66f, 0.35f, 1.00f);
+    const ImVec4 copper_dim = ImVec4(0.55f, 0.38f, 0.18f, 1.00f);
+    const ImVec4 bg = ImVec4(0.055f, 0.058f, 0.065f, 0.98f);
+    const ImVec4 bg2 = ImVec4(0.08f, 0.085f, 0.095f, 1.00f);
+
+    style->WindowBorderSize = 1.f;
+    style->ChildBorderSize = 1.f;
+    style->FrameBorderSize = 0.f;
+    style->WindowRounding = 0.f;
+    style->ChildRounding = 0.f;
+    style->FrameRounding = 2.f;
+    style->GrabRounding = 2.f;
+    style->ScrollbarRounding = 0.f;
+    style->ScrollbarSize = 12.f;
+    style->WindowPadding = ImVec2(12, 12);
+    style->FramePadding = ImVec2(8, 5);
+    style->ItemSpacing = ImVec2(12, 11);
+
+    style->Colors[ImGuiCol_Text] = ImVec4(0.93f, 0.91f, 0.88f, 1.00f);
+    style->Colors[ImGuiCol_TextDisabled] = ImVec4(0.45f, 0.44f, 0.42f, 1.00f);
+    style->Colors[ImGuiCol_WindowBg] = bg;
+    style->Colors[ImGuiCol_ChildBg] = bg2;
+    style->Colors[ImGuiCol_PopupBg] = ImVec4(0.09f, 0.09f, 0.10f, 0.96f);
+    style->Colors[ImGuiCol_Border] = ImVec4(0.22f, 0.23f, 0.25f, 1.00f);
+    style->Colors[ImGuiCol_BorderShadow] = ImVec4(0, 0, 0, 0);
+    style->Colors[ImGuiCol_FrameBg] = ImVec4(0.11f, 0.12f, 0.14f, 1.00f);
+    style->Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.16f, 0.15f, 0.13f, 1.00f);
+    style->Colors[ImGuiCol_FrameBgActive] = copper_dim;
+    style->Colors[ImGuiCol_TitleBg] = bg;
+    style->Colors[ImGuiCol_TitleBgActive] = copper_dim;
+    style->Colors[ImGuiCol_TitleBgCollapsed] = bg;
+    style->Colors[ImGuiCol_MenuBarBg] = bg2;
+    style->Colors[ImGuiCol_ScrollbarBg] = bg;
+    style->Colors[ImGuiCol_ScrollbarGrab] = copper_dim;
+    style->Colors[ImGuiCol_ScrollbarGrabHovered] = copper;
+    style->Colors[ImGuiCol_ScrollbarGrabActive] = copper;
+    style->Colors[ImGuiCol_CheckMark] = copper;
+    style->Colors[ImGuiCol_SliderGrab] = copper;
+    style->Colors[ImGuiCol_SliderGrabActive] = ImVec4(1.f, 0.78f, 0.45f, 1.00f);
+    style->Colors[ImGuiCol_Button] = ImVec4(0.12f, 0.12f, 0.13f, 1.00f);
+    style->Colors[ImGuiCol_ButtonHovered] = copper_dim;
+    style->Colors[ImGuiCol_ButtonActive] = copper;
+    style->Colors[ImGuiCol_Header] = ImVec4(0.55f, 0.38f, 0.18f, 0.45f);
+    style->Colors[ImGuiCol_HeaderHovered] = ImVec4(0.70f, 0.48f, 0.22f, 0.55f);
+    style->Colors[ImGuiCol_HeaderActive] = ImVec4(0.90f, 0.62f, 0.28f, 0.65f);
+    style->Colors[ImGuiCol_Separator] = ImVec4(0.28f, 0.26f, 0.22f, 0.80f);
+    style->Colors[ImGuiCol_SeparatorHovered] = copper;
+    style->Colors[ImGuiCol_SeparatorActive] = copper;
+    style->Colors[ImGuiCol_ResizeGrip] = copper_dim;
+    style->Colors[ImGuiCol_ResizeGripHovered] = copper;
+    style->Colors[ImGuiCol_ResizeGripActive] = copper;
+    style->Colors[ImGuiCol_Tab] = bg2;
+    style->Colors[ImGuiCol_TabHovered] = copper_dim;
+    style->Colors[ImGuiCol_TabSelected] = copper_dim;
+    style->Colors[ImGuiCol_TabSelectedOverline] = copper;
+    style->Colors[ImGuiCol_TabDimmed] = bg;
+    style->Colors[ImGuiCol_TabDimmedSelected] = copper_dim;
+    style->Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.91f, 0.66f, 0.35f, 0.35f);
+    style->Colors[ImGuiCol_NavCursor] = copper;
+}
+
+// Halalium-style path: draw on eglSwapBuffers (dlsym + hook), query surface size like Halalium.
+EGLBoolean hook_egl_swap_buffers(EGLDisplay display, EGLSurface surface)
+{
+    EGLint w = 0, h = 0;
+    eglQuerySurface(display, surface, EGL_WIDTH, &w);
+    eglQuerySurface(display, surface, EGL_HEIGHT, &h);
+
+    if (w <= 0 || h <= 0)
+        return old_egl_swap_buffers ? old_egl_swap_buffers(display, surface) : EGL_FALSE;
+
+    c_egl->width = w;
+    c_egl->heigth = h;
+
+    // NEVER call ::init()/img_to_asm from the GL thread every frame — that was
+    // crashing right after ImGui inited (il2cpp_domain_get via bad/racy base).
+    // Touch/SDK pointers are wired once from update::init (soft).
+
+    if (!egl_inited)
+    {
+        CreateContext();
+        ImGuiIO &io = GetIO();
+        io.DisplaySize = ImVec2((float)w, (float)h);
+        ImGui_ImplOpenGL3_Init("#version 300 es");
+        ImGui_ImplAndroid_Init(NULL);
+        setup();
+        apply_imgui_style();
+        egl_inited = true;
+        LOGI("ImGui egl inited %dx%d", w, h);
+    }
+
+    ImGuiIO &io = GetIO();
+    io.DisplaySize = ImVec2((float)w, (float)h);
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplAndroid_NewFrame(w, h);
+
+    NewFrame();
+    if (g_sdk_ready.load(std::memory_order_acquire) && c_methods)
+        handle_touch();
+    gui::render();
+
+    // Feature overlays deferred until hooks are re-enabled safely.
+    (void)c_visual;
+    (void)c_esp;
+
+    if (cmi)
+    {
+        io.MousePos = ImVec2(-1, -1);
+        cmi = false;
+    }
+
+    EndFrame();
+    Render();
+
+    glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+    ImGui_ImplOpenGL3_RenderDrawData(GetDrawData());
+
+    return old_egl_swap_buffers ? old_egl_swap_buffers(display, surface) : EGL_FALSE;
+}
+
+bool validate_elf(uintptr_t address)
+{
+    Elf64_Ehdr *elfHeader = reinterpret_cast<Elf64_Ehdr *>(address);
+
+    if (elfHeader->e_ident[EI_MAG0] == ELFMAG0 &&
+        elfHeader->e_ident[EI_MAG1] == ELFMAG1 &&
+        elfHeader->e_ident[EI_MAG2] == ELFMAG2 &&
+        elfHeader->e_ident[EI_MAG3] == ELFMAG3)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+uintptr_t library_paste_finding(const char *lib_name)
+{
+    uintptr_t addr{};
+    char line[1024];
+    uint64_t start{};
+    uint64_t end{};
+    char flags[5];
+    char path[PATH_MAX];
+
+    FILE *fp = fopen(oxorany("/proc/self/maps"), oxorany("r"));
+    if (fp != nullptr)
+    {
+        while (fgets(line, sizeof(line), fp))
+        {
+            strcpy(path, "");
+            sscanf(line, "%" PRIx64 "-%" PRIx64 " %s %*" PRIx64 " %*x:%*x %*u %s\n", &start, &end, flags, path);
+#if defined(__aarch64__)
+            if (strstr(flags, oxorany("r--p")) == 0)
+                continue;
+#endif
+            if (strstr(path, lib_name))
+            {
+                if (validate_elf(start))
+                {
+                    addr = start;
+                    break;
+                }
+            }
+        }
+        fclose(fp);
+    }
+    return addr;
+}
+
+#pragma once
+#include <asm-generic/unistd.h>
+#include <sys/stat.h>
+#include "includes/egl/memory.hpp"
+#include "includes/egl/maps.hpp"
+
+// namespace menu_includes
+// {
+//     #include "includes/plthook.h"
+// }
+
+struct hook_info2
+{
+    void *ptr_addr;
+    void *hook_addr;
+    void *orig_addr;
+    bool is_swap_hook;
+};
+
+std::vector<hook_info2 *> hooked_funcs2;
+
+#define ALLIGN(addr) ((void *)((size_t)(addr) & ~(sysconf(_SC_PAGESIZE) - 1)))
+
+int get_memory_permission(void *address)
+{
+    unsigned long addr = (unsigned long)address;
+    FILE *fp;
+    char buf[PATH_MAX];
+    char perms[5];
+    int bol = 1;
+
+    fp = fopen("/proc/self/maps", "r");
+    if (!fp)
+        return 0;
+
+    while (fgets(buf, PATH_MAX, fp))
+    {
+        unsigned long start, end;
+        int eol = (strchr(buf, '\n') != NULL);
+        if (bol)
+        {
+            if (!eol)
+                bol = 0;
+        }
+        else
+        {
+            if (eol)
+                bol = 1;
+            continue;
+        }
+
+        if (sscanf(buf, "%lx-%lx %4s", &start, &end, perms) != 3)
+            continue;
+        if (start <= addr && addr < end)
+        {
+            int prot = 0;
+            if (perms[0] == 'r')
+                prot |= PROT_READ;
+            else if (perms[0] != '-')
+            {
+                fclose(fp);
+                return 0;
+            }
+            if (perms[1] == 'w')
+                prot |= PROT_WRITE;
+            else if (perms[1] != '-')
+            {
+                fclose(fp);
+                return 0;
+            }
+            if (perms[2] == 'x')
+                prot |= PROT_EXEC;
+            else if (perms[2] != '-')
+            {
+                fclose(fp);
+                return 0;
+            }
+            if (perms[3] != 'p')
+            {
+                fclose(fp);
+                return 0;
+            }
+            if (perms[4] != '\0')
+            {
+                perms[4] = '\0';
+                fclose(fp);
+                return 0;
+            }
+            fclose(fp);
+            return prot;
+        }
+    }
+    fclose(fp);
+    return 0;
+}
+
+namespace menu_includes
+{
+    void hook(void *address, void *replace, void **orig)
+    {
+        void *page = ALLIGN(address);
+        int old_prot = get_memory_permission(page);
+        if (old_prot == 0)
+            old_prot = PROT_READ | PROT_EXEC;
+
+        mprotect(page, sysconf(_SC_PAGESIZE), PROT_READ | PROT_WRITE);
+        if (orig)
+            *orig = *(void **)address;
+        __atomic_store_n((void **)address, replace, __ATOMIC_SEQ_CST);
+        mprotect(page, sysconf(_SC_PAGESIZE), old_prot);
+    }
+}
+
+template <class h, class o>
+void swap_ptr(void *addr, h hk, o orig)
+{
+    hook_info2 *info = new hook_info2();
+    info->ptr_addr = addr;
+    info->hook_addr = (void *)hk;
+    info->orig_addr = *(void **)addr;
+    info->is_swap_hook = true;
+    hooked_funcs2.push_back(info);
+    menu_includes::hook(addr, (void *)hk, (void **)orig);
+}
+
+bool is_valid_ptr(uintptr_t p)
+{
+    return p > 0x10000 && (p & 0xfff) != 0;
+}
+
+bool is_executable_address(void *ptr)
+{
+    if (!ptr)
+        return false;
+    Dl_info info{};
+    if (dladdr(ptr, &info) == 0)
+        return false;
+    return info.dli_fbase != nullptr;
+}
+
+// Halalium: dlsym(libEGL, eglSwapBuffers) + DobbyHook(symbol).
+// Melodium: A64 inline hook on the same symbol (GOT scan is unreliable with lazy PLT / anon maps).
+#include "includes/a64_inline_hook.h"
+
+static bool hook_egl_got_slots(void *symbol, void *replacement, void **out_orig)
+{
+    if (!symbol || !replacement)
+        return false;
+
+    FILE *f = fopen(oxorany("/proc/self/maps"), oxorany("r"));
+    if (!f)
+        return false;
+
+    char line[512];
+    int hooked = 0;
+    while (fgets(line, sizeof(line), f))
+    {
+        uintptr_t start = 0, end = 0;
+        char perms[8]{}, path[256]{};
+        if (sscanf(line, "%" SCNxPTR "-%" SCNxPTR " %7s %*s %*s %*s %255s", &start, &end, perms, path) < 3)
+            continue;
+        if (perms[0] != 'r' || perms[1] != 'w')
+            continue;
+
+        // Scan all writable maps — Unity GOT often lives in anon segments.
+        for (uintptr_t p = start; p + sizeof(void *) <= end; p += sizeof(void *))
+        {
+            void *val = *(void **)p;
+            if (val != symbol)
+                continue;
+            if (out_orig && !*out_orig)
+                *out_orig = symbol;
+            void *discard = nullptr;
+            swap_ptr((void *)p, replacement, &discard);
+            hooked++;
+        }
+    }
+    fclose(f);
+    return hooked > 0;
+}
+
+void init_render_hook()
+{
+    static bool egl_hooked = false;
+    if (egl_hooked)
+        return;
+
+    void *egl = dlopen(oxorany("libEGL.so"), RTLD_NOW);
+    void *sym = egl ? dlsym(egl, oxorany("eglSwapBuffers")) : nullptr;
+    if (!sym)
+    {
+        LOGI("eglSwapBuffers dlsym failed");
+        return;
+    }
+
+    // Another SO copy already inline-hooked — do NOT GOT-fallback (would dual-hook).
+    if (a64hook::already_patched(sym))
+    {
+        LOGI("eglSwapBuffers already patched — leave existing hook alone");
+        egl_hooked = true;
+        return;
+    }
+
+    // Primary: inline-hook the real symbol (Halalium Dobby path).
+    void *tramp = nullptr;
+    if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &tramp))
+    {
+        old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))tramp;
+        egl_hooked = true;
+        LOGI("eglSwapBuffers inline hook OK sym=%p tramp=%p", sym, tramp);
+        return;
+    }
+
+    LOGI("inline hook failed, falling back to GOT scan");
+    old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))sym;
+    if (hook_egl_got_slots(sym, (void *)hook_egl_swap_buffers, (void **)&old_egl_swap_buffers))
+    {
+        egl_hooked = true;
+        LOGI("eglSwapBuffers GOT hook OK sym=%p", sym);
+        return;
+    }
+
+    std::thread([sym]() {
+        for (int i = 0; i < 40; i++)
+        {
+            if (a64hook::already_patched(sym))
+            {
+                LOGI("eglSwapBuffers already patched (delayed) — stop retry");
+                egl_hooked = true;
+                break;
+            }
+            void *tramp2 = nullptr;
+            if (a64hook::install(sym, (void *)hook_egl_swap_buffers, &tramp2))
+            {
+                old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))tramp2;
+                egl_hooked = true;
+                LOGI("eglSwapBuffers inline hook OK (delayed) sym=%p", sym);
+                break;
+            }
+            old_egl_swap_buffers = (EGLBoolean(*)(EGLDisplay, EGLSurface))sym;
+            if (hook_egl_got_slots(sym, (void *)hook_egl_swap_buffers, (void **)&old_egl_swap_buffers))
+            {
+                egl_hooked = true;
+                LOGI("eglSwapBuffers GOT hook OK (delayed)");
+                break;
+            }
+            sleep(1);
+        }
+    }).detach();
+}
+
+#define _GNU_SOURCE
+#include <cstdio>
+#include <cstdlib>
+#include <link.h>
+
+struct dl_error
+{
+    const char *error;
+
+    dl_error() { error = ("cannot find"); }
+    dl_error(const char *e) { error = e; }
+};
+
+struct section_data
+{
+    const char *name;
+    uintptr_t address;
+    bool founded;
+
+    section_data(const char *n) { name = n; }
+};
+
+class Library
+{
+private:
+    const char *library_name;
+    uintptr_t address;
+    bool founded;
+    std::vector<dl_error *> errors;
+
+public:
+    Library(const char *library_name);
+
+    static int callback(struct dl_phdr_info *info, size_t size, void *data);
+
+    virtual void GetLibrary();
+
+    virtual uintptr_t GetAddress();
+
+    virtual std::vector<dl_error *> GetErrors();
+
+    virtual int phdr_iterator(int (*callback)(dl_phdr_info *info, size_t size, void *data), section_data *data);
+
+    virtual bool Loaded()
+    {
+        return founded;
+    }
+};
+
+int Library::callback(struct dl_phdr_info *info, size_t size, void *data)
+{
+    const char *name = info->dlpi_name;
+    section_data *sectionData = (section_data *)data;
+    if (strstr(name, sectionData->name))
+    {
+        sectionData->address = info->dlpi_addr;
+        sectionData->founded = true;
+        return 1;
+    }
+
+    return 0;
+}
+
+int Library::phdr_iterator(int (*callback)(dl_phdr_info *info, size_t size, void *data), section_data *data)
+{
+    return dl_iterate_phdr(callback, (void *)data);
+}
+
+void Library::GetLibrary()
+{
+    section_data *data = new section_data(this->library_name);
+
+    if (!this->phdr_iterator(callback, data))
+    {
+        dl_error *error = new dl_error();
+        this->errors.push_back(error);
+    }
+    else
+    {
+        this->address = data->address;
+        this->founded = data->founded;
+    }
+
+    delete data;
+}
+
+Library::Library(const char *library_name)
+{
+    this->library_name = library_name;
+
+    this->GetLibrary();
+}
+
+uintptr_t Library::GetAddress()
+{
+    return this->address;
+}
+
+std::vector<dl_error *> Library::GetErrors()
+{
+    return this->errors;
+}
+
+#include "includes/module_base.h"
+
+class il2cpp_t
+{
+    uintptr_t _address;
+
+public:
+    uintptr_t address()
+    {
+        if (!this->_address)
+            this->_address = resolve_il2cpp_base();
+        return this->_address;
+    }
+
+    bool is_loaded()
+    {
+        return resolve_il2cpp_base() != 0;
+    }
+};
+
+il2cpp_t *_il2cpp;
+
+#include <cstdio>
+#include <cstdint>
+#include <unistd.h>
+#include <stdio.h>
+#include "src/features/update.h"
+
+static bool address_in_maps(uintptr_t addr)
+{
+    FILE *f = fopen(oxorany("/proc/self/maps"), "r");
+    if (!f)
+        return false;
+    char line[512];
+    bool found = false;
+    while (fgets(line, sizeof(line), f))
+    {
+        unsigned long s = 0, e = 0;
+        if (sscanf(line, "%lx-%lx", &s, &e) == 2)
+        {
+            if ((uintptr_t)addr >= s && (uintptr_t)addr < e)
+            {
+                found = true;
+                break;
+            }
+        }
+    }
+    fclose(f);
+    return found;
+}
+
+void *entry()
+{
+    LOGI("entry()");
+
+    // Hook render ASAP — overlay must not wait on il2cpp/base.
+    for (int i = 0; i < 60; i++)
+    {
+        void *egl = dlopen(oxorany("libEGL.so"), RTLD_NOW);
+        if (egl && dlsym(egl, oxorany("eglSwapBuffers")))
+        {
+            init_render_hook();
+            break;
+        }
+        sleep(1);
+    }
+
+    if (!_il2cpp)
+        _il2cpp = new il2cpp_t();
+
+    while (true)
+    {
+        if (_il2cpp->is_loaded())
+        {
+            base = _il2cpp->address();
+            if (base > 0x100000000ULL)
+                break;
+        }
+        sleep(1);
+    }
+
+    LOGI("game base ready %p — starting update::init", (void *)base);
+    if (base > 0)
+        c_update->init();
+
+    sleep(4);
+    pthread_exit(nullptr);
+    return nullptr;
+}
+
+// #include "zygisk/zygisk_init.hpp"
+// REGISTER_ZYGISK_MODULE(tenmi_zygisk)
+#include "jni.h"
+
+// Manual openat flags — cannot include <fcntl.h> (collides with globals.hpp `bool open`).
+#ifndef MELO_AT_FDCWD
+#define MELO_AT_FDCWD (-100)
+#define MELO_O_RDONLY 0
+#define MELO_O_RDWR 2
+#define MELO_O_CREAT 0100
+#define MELO_O_EXCL 0200
+#define MELO_O_TRUNC 01000
+#endif
+
+static int melo_openat(const char *path, int flags, int mode = 0)
+{
+    return (int)syscall(__NR_openat, MELO_AT_FDCWD, path, flags, mode);
+}
+
+static void melo_truncate_log()
+{
+    const char *paths[] = {
+        "/sdcard/Download/melodium.log",
+        "/sdcard/melodium.log",
+        "/storage/emulated/0/Download/melodium.log",
+        "/storage/emulated/0/melodium.log",
+    };
+    for (const char *p : paths)
+    {
+        int fd = melo_openat(p, MELO_O_RDWR | MELO_O_CREAT | MELO_O_TRUNC, 0666);
+        if (fd >= 0)
+        {
+            close(fd);
+            break;
+        }
+    }
+}
+
+static bool egl_already_owned()
+{
+    void *egl = dlopen(oxorany("libEGL.so"), RTLD_NOW);
+    void *sym = egl ? dlsym(egl, oxorany("eglSwapBuffers")) : nullptr;
+    return sym && a64hook::already_patched(sym);
+}
+
+// Durable same-process once: PID file survives injector FD sweeps that kill abstract sockets.
+// Returns: 1 = claimed, 0 = already held (skip), -1 = no usable path.
+static int claim_via_pidfile()
+{
+    static const char *paths[] = {
+        "/data/local/tmp/melodium.once",
+        "/sdcard/Download/melodium.once",
+        "/sdcard/melodium.once",
+        "/storage/emulated/0/Download/melodium.once",
+    };
+
+    const pid_t me = getpid();
+    bool saw_path = false;
+    for (const char *p : paths)
+    {
+        for (int attempt = 0; attempt < 3; ++attempt)
+        {
+            int fd = melo_openat(p, MELO_O_RDWR | MELO_O_CREAT | MELO_O_EXCL, 0666);
+            if (fd >= 0)
+            {
+                char buf[32];
+                int n = snprintf(buf, sizeof(buf), "%d\n", (int)me);
+                if (n > 0)
+                    (void)write(fd, buf, (size_t)n);
+                close(fd);
+                LOGI("claimed process lock (pidfile %s pid=%d)", p, (int)me);
+                return 1;
+            }
+            if (errno != EEXIST)
+                break;
+
+            saw_path = true;
+            fd = melo_openat(p, MELO_O_RDONLY);
+            if (fd < 0)
+                break;
+            char buf[64]{};
+            ssize_t n = read(fd, buf, sizeof(buf) - 1);
+            close(fd);
+            pid_t other = (n > 0) ? (pid_t)atoi(buf) : 0;
+            if (other == me)
+            {
+                LOGI("pidfile %s already ours (pid=%d) — skip start", p, (int)me);
+                return 0;
+            }
+            if (other > 0 && kill(other, 0) == 0)
+            {
+                LOGI("pidfile %s held by live pid=%d — skip start", p, (int)other);
+                return 0;
+            }
+            unlink(p);
+            LOGI("pidfile %s stale (pid=%d) — retry", p, (int)other);
+        }
+    }
+    return saw_path ? 0 : -1;
+}
+
+static bool claim_via_abstract_unix()
+{
+    int s = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (s < 0)
+        return false;
+
+    sockaddr_un addr{};
+    addr.sun_family = AF_UNIX;
+    static const char name[] = "melodium_once_v3";
+    const size_t name_len = sizeof(name) - 1;
+    addr.sun_path[0] = '\0';
+    memcpy(addr.sun_path + 1, name, name_len);
+    socklen_t len = static_cast<socklen_t>(offsetof(sockaddr_un, sun_path) + 1 + name_len);
+
+    if (bind(s, reinterpret_cast<sockaddr *>(&addr), len) == 0)
+    {
+        LOGI("claimed process lock (abstract unix v3)");
+        return true; // leak fd
+    }
+    const int err = errno;
+    close(s);
+    if (err == EADDRINUSE)
+        LOGI("abstract unix v3 busy — skip start");
+    return false;
+}
+
+static bool claim_process_once()
+{
+    if (egl_already_owned())
+    {
+        LOGI("egl already hooked by another copy — skip start");
+        return false;
+    }
+
+    const int pf = claim_via_pidfile();
+    if (pf == 1)
+        return true;
+    if (pf == 0)
+        return false; // held by us or another live process
+
+    if (egl_already_owned())
+    {
+        LOGI("egl already hooked after pidfile miss — skip start");
+        return false;
+    }
+
+    if (claim_via_abstract_unix())
+        return true;
+
+    LOGI("all process locks failed — refuse start to avoid double-hook");
+    return false;
+}
+
+static void start_melodium_once()
+{
+    static std::atomic<bool> local_started{false};
+    bool expected = false;
+    if (!local_started.compare_exchange_strong(expected, true))
+        return;
+    if (!claim_process_once())
+        return;
+    melo_truncate_log();
+    LOGI("start_melodium_once pid=%d", (int)getpid());
+    std::thread(entry).detach();
+}
+
+// AndKitty / memfd inject often only dlopen()'s the .so — no reserved JNI key.
+__attribute__((constructor)) static void melodium_ctor()
+{
+    start_melodium_once();
+}
+
+extern "C" jint JNIEXPORT JNI_OnLoad(JavaVM *vm, void *key)
+{
+    (void)key; // Halalium-compat: do not require magic 1337
+    JNIEnv *env = nullptr;
+    if (vm)
+        vm->GetEnv((void **)&env, JNI_VERSION_1_6);
+
+    start_melodium_once();
+    return JNI_VERSION_1_6;
+}

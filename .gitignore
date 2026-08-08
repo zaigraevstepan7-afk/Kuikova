@@ -1,0 +1,19 @@
+okak/
+*.7z
+**/pidor
+**/.idea/
+**/.vscode/
+**/cmake-build-*/
+**/build/
+
+# Kikaium build trees
+kikaium/project/build/
+internal-main/internal-main/build/
+
+
+__pycache__/
+*.pyc
+
+# Reference RE binaries (local only)
+halalium/bin/*.so
+melodium/bin/*.so

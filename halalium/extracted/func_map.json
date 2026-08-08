@@ -1,0 +1,72 @@
+{
+  "eglSwapBuffers": {
+    "xref": "0x1d84e8",
+    "func": "0x1d84cc",
+    "lines": 74
+  },
+  "Halalium_Hooks": {
+    "xref": "0x1d7bec",
+    "func": "0x1d7a10",
+    "lines": 256
+  },
+  "Halalium_Bypass": {
+    "xref": "0x1d90d0",
+    "func": "0x1d90b8",
+    "lines": 49
+  },
+  "libunity": {
+    "xref": "0x1d6b78",
+    "func": "0x1d6afc",
+    "lines": 107
+  },
+  "version_string": {
+    "xref": "0x1db9dc",
+    "func": "0x1db874",
+    "lines": 256
+  },
+  "Enable_Esp": {
+    "xref": "0x1dbbcc",
+    "func": "0x1db874",
+    "lines": 256
+  },
+  "Silent_Aim": {
+    "xref": "0x1dc59c",
+    "func": "0x1dbd9c",
+    "lines": 256
+  },
+  "No_spread": {
+    "xref": "0x1dc6ec",
+    "func": "0x1dbeec",
+    "lines": 256
+  },
+  "Skin_Changer": {
+    "xref": "0x1dc2c0",
+    "func": "0x1dbac0",
+    "lines": 256
+  },
+  "Through_Walls": {
+    "xref": "0x1dbf78",
+    "func": "0x1db874",
+    "lines": 256
+  },
+  "Auto_Fire": {
+    "xref": "0x1dc678",
+    "func": "0x1dbe78",
+    "lines": 256
+  },
+  "ping_log": {
+    "xref": "0x1d7c00",
+    "func": "0x1d7a10",
+    "lines": 256
+  },
+  "maps1": {
+    "xref": "0x22fb88",
+    "func": "0x22fb40",
+    "lines": 186
+  },
+  "maps2": {
+    "xref": "0x23c664",
+    "func": "0x23c61c",
+    "lines": 42
+  }
+}
