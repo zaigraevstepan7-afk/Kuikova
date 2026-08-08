@@ -1,0 +1,71 @@
+[
+  {
+    "site": "0x1d8508",
+    "via": "DobbySymbolResolver",
+    "lib": "libEGL.so",
+    "sym": "eglSwapBuffers",
+    "cb": "0x1d76f0",
+    "orig": "0x279578"
+  },
+  {
+    "site": "0x1d8534",
+    "via": "DobbySymbolResolver",
+    "lib": "libinput.so",
+    "sym": "InputConsumer::consume",
+    "cb": "0x1d760c",
+    "orig": "0x279580"
+  },
+  {
+    "site": "0x1d8568",
+    "via": "RVA",
+    "rva": "0x8E7C40C",
+    "cb": "0x1d7a0c",
+    "orig": "0x2795a8",
+    "role": "Update"
+  },
+  {
+    "site": "0x1d85ac",
+    "via": "RVA",
+    "rva": "0x8E0085C",
+    "cb": "0x1d81fc",
+    "orig": "0x2795d8",
+    "role": "secondary"
+  },
+  {
+    "site": "0x1d8618",
+    "via": "RVA",
+    "rva": "0x79FE5E0|0x147E970",
+    "cb": "0x1d8404",
+    "orig": "0x279520",
+    "role": "tertiary"
+  },
+  {
+    "site": "0x1d8658",
+    "via": "RVA",
+    "rva": "0x8E7CF50",
+    "cb": "0x1d7ec4",
+    "orig": "0x2795f0",
+    "role": "LateUpdate"
+  },
+  {
+    "site": "0x1d86b0",
+    "via": "RVA",
+    "rva": "0x8D663EC",
+    "cb": "0x1d82a0",
+    "orig": "0x279600",
+    "role": "extraA"
+  },
+  {
+    "site": "0x1d86f4",
+    "via": "RVA",
+    "rva": "0x8D2B2B0",
+    "cb": "0x1d83cc",
+    "orig": "0x279610",
+    "role": "extraB"
+  },
+  {
+    "site": "0x1d9140",
+    "via": "rehook",
+    "role": "Halalium_Bypass reinstall loop"
+  }
+]

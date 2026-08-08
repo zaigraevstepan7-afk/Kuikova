@@ -1,0 +1,40 @@
+1070:	Occlusion,
+1127:	private Axlebolt.Standoff.Occlusion.Dynamic.ObjectOcclusionController _objectOcclusionController; // 0xD0
+1530:	private UnityEngine.Rendering.PostProcessing.IntParameter DownsampleSize; // 0x88
+1730:	private UnityEngine.Color magenta75; // 0x160
+7031:	private UnityEngine.CanvasGroup GFBHFEGBFABFGDD; // 0x88
+7301:	private System.Action <CHDDHBEADHCHABA>k__BackingField; // 0x88
+9744:	private float EAGCACHHDCEHAFC; // 0x88
+10545:	private PhotonPlayer AGAHHCFBACDFCBA; // 0x28
+12316:	private object <FBCCFDDFBHAFFAC>k__BackingField; // 0x88
+13554:	private FMODUnity.EventReference _warmupClockTickFinishRef; // 0x160
+14547:	private Axlebolt.Standoff.Settings.Video.VideoSettings <FADGDHHBEABDGCC>k__BackingField; // 0x88
+15887:	private CDADHGFHHFHFCBG JoysticType; // 0x88
+16441:	private object DCHHCFGHCDAGDAF; // 0x88
+16676:	private object HEHCGEAGCHCBFBF; // 0x88
+17059:	private TMPro.TextMeshProUGUI _titleControl; // 0x88
+17398:	private float _showLifeTime; // 0x88
+17637:	private UnityEngine.Coroutine CGDCEGGBBHCEGGC; // 0x88
+17823:	private UnityEngine.CanvasGroup _canvasGroup; // 0x88
+18779:	private UnityEngine.Vector2 <DEEGEGFEEEGGFCF>k__BackingField; // 0x88
+19029:	private Axlebolt.Standoff.Game.ZoneView CGGGHEABEHBECBB; // 0x88
+19272:	private Axlebolt.Standoff.Settings.Controls.LayoutControlsSettings EAFHBDDFDBCDFBC; // 0x88
+21880:	private UnityEngine.Transform Hip; // 0x88
+21934:	private UnityEngine.Transform LeftHandRing3; // 0x160
+22215:	private PhotonPlayer EHHDDDECBAEHCDF; // 0x40
+22419:	private Axlebolt.Standoff.Player.CharacterPlayer DDAHFFCFDFGHEFF; // 0x88
+22560:	private TSource GGDDEGHGFDAABFB(PhotonPlayer p, UnityEngine.EventSystems.PointerEventData p, PhotonPlayer p) { } // RVA: -1 (no body)
+22664:	private Axlebolt.Standoff.Player.Weaponry.WeaponryController <AECFFADGAGBBHHB>k__BackingField; // 0x88
+22676:	private Axlebolt.Standoff.Player.Occlusion.PlayerOcclusionController <BDGBDHGFBHDDAFA>k__BackingField; // 0xB8
+22696:	private Axlebolt.Standoff.Player.PlayerMainCamera HDDBDFEHGCFFBEA; // 0xE8
+22732:	private PhotonPlayer <EAADHDCCHBDEAAB>k__BackingField; // 0x160
+23058:public class PlayerMainCamera : UnityEngine.MonoBehaviour // TypeDefIndex: 779
+23061:	private Axlebolt.Standoff.Player.PlayerMainCamera ADECGGBCAEEGFDF; // 0x0
+23070:	private Axlebolt.Standoff.Cam.MainCamera FHBCHBDDFHDBGFE; // 0x40
+24017:	private byte HEBGAAFFAHCBHEH; // 0x88
+24360:	private UnityEngine.UI.Text[] BFBAGDAHCBBEGGG; // 0x160
+24441:	private UnityEngine.Camera MainCamera; // 0x30
+24971:	private CDDBBEDDBHAEBFH FBAHFBHDECFDBDH; // 0x88
+25148:	private FMODUnity.EventReference tpsEnemyDeathSoundEventRef; // 0x88
+25475:	private Axlebolt.Standoff.Player.Ragdoll.BakedRagdollOcclusionControl GDDHDECECCBBCAE; // 0x38
+25508:public class BakedRagdollOcclusionControl : Axlebolt.Standoff.Occlusion.Dynamic.ObjectOccludee // TypeDefIndex: 863
