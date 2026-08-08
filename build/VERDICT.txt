@@ -2,19 +2,9 @@ Project: privetotglamura (Standoff 2 Android IL2CPP cheat)
 Build: SUCCESS with Android NDK r27d (ndk-build, ABI arm64-v8a)
 Outputs: build/arm64-v8a/inj , build/arm64-v8a/libpayload.so
 
-Malware verdict (static analysis of full source + ELF inspection of shipped/rebuilt binaries):
-- NO stealer / ransomware / botnet / crypto-miner indicators found
-- NO HTTP(S)/socket/curl/telegram/discord webhook C2 in project code
-- NO credential/SMS/IMEI/clipboard exfiltration code
-- Dynamic imports of inj + libpayload: liblog, libc, libm, libdl, libandroid, libEGL, libGLESv3 only
-- fopen usage: /proc/<pid>/maps and /proc/<pid>/mem for injection (expected for ptrace injector)
-- libc_dev.so in archive is a standalone libc-like .so (dev helper), not linked into build
-- Authors watermark: @gametocytes @pastercode
+FIX (menu not showing with generic injectors):
+- Original entry was only payload_entry (custom ./inj)
+- Generic injectors look for JNI_OnLoad / EntryPoint and skipped startup
+- Added: JNI_OnLoad, EntryPoint, constructor (once-guarded) -> same thread_main
 
-What it IS (not a "virus", but still hostile to the game process):
-- Root/su ptrace injector into com.axlebolt.standoff2
-- Manual ELF map + reloc + payload_entry call
-- Game hooks: ESP, aimbot, antiaim, chams, inf ammo, rapid fire, wallshot, airstrafe, sky/fog/model visuals
-- Violates game ToS / can get you banned; requires rooted device
-
-ClamAV: see scan output in agent logs (signature DB may be incomplete without freshclam).
+Malware verdict: no stealer/C2/miner; game cheat hooks only.
