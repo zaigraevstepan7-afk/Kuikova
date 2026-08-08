@@ -76,7 +76,7 @@ static setting s_sets_model[3];
 static setting s_sets_lang[1];
 static setting s_sets_aa[5];
 static setting s_sets_aim[5];
-static setting s_sets_silent[2];
+static setting s_sets_silent[6];
 static setting s_sets_airstrafe[1];
 
 static void fill_sets() {
@@ -151,8 +151,12 @@ static void fill_sets() {
     s_sets_aim[3] = { g_lang->aim_visible, SET_BOOL, &opt_aim_visible, NULL, NULL, 0, NULL, 0, 0, 0, NULL };
     s_sets_aim[4] = { g_lang->aim_fov_draw, SET_BOOL, &opt_aim_fov_draw, NULL, NULL, 0, NULL, 0, 0, 0, NULL };
 
-    s_sets_silent[0] = { g_lang->aim_fov, SET_SLIDER, NULL, &s_aim_fov, NULL, 0, NULL, 5.f, 180.f, 5.f, NULL };
-    s_sets_silent[1] = { g_lang->aim_bone, SET_TYPE, NULL, NULL, &s_aim_bone, 4, st_bone, 0, 0, 0, NULL };
+    s_sets_silent[0] = { g_lang->autofire, SET_BOOL, &opt_autofire, NULL, NULL, 0, NULL, 0, 0, 0, NULL };
+    s_sets_silent[1] = { g_lang->hitbox_head, SET_BOOL, &opt_hitbox[0], NULL, NULL, 0, NULL, 0, 0, 0, NULL };
+    s_sets_silent[2] = { g_lang->hitbox_body, SET_BOOL, &opt_hitbox[1], NULL, NULL, 0, NULL, 0, 0, 0, NULL };
+    s_sets_silent[3] = { g_lang->hitbox_hip, SET_BOOL, &opt_hitbox[2], NULL, NULL, 0, NULL, 0, 0, 0, NULL };
+    s_sets_silent[4] = { g_lang->hitbox_legs, SET_BOOL, &opt_hitbox[3], NULL, NULL, 0, NULL, 0, 0, 0, NULL };
+    s_sets_silent[5] = { g_lang->aim_visible, SET_BOOL, &opt_aim_visible, NULL, NULL, 0, NULL, 0, 0, 0, NULL };
 
     s_sets_model[0] = { g_lang->model_dist, SET_SLIDER, NULL, &s_model_dist, NULL, 0, NULL, 0.f, 10.f, 0.1f, NULL };
     s_sets_model[1] = { g_lang->model_height, SET_SLIDER, NULL, &s_model_height, NULL, 0, NULL, -2.f, 5.f, 0.1f, NULL };
@@ -181,9 +185,11 @@ static int build_cells(cell* c) {
         c[n++] = { g_lang->third_person, g_lang->third_person_desc, &opt_tps, NULL, 0 };
         c[n++] = { g_lang->model, g_lang->model_desc, &opt_model, s_sets_model, 3 };
     } else if (tab == 1 && sub == 0) {
+        c[n++] = { g_lang->silent, g_lang->silent_desc, &opt_silent, s_sets_silent, 6 };
+        c[n++] = { g_lang->autofire, g_lang->autofire_desc, &opt_autofire, NULL, 0 };
         c[n++] = { g_lang->aimbot, g_lang->aimbot_desc, &opt_aim, s_sets_aim, 5 };
     } else if (tab == 2 && sub == 0) {
-        c[n++] = { g_lang->silent, g_lang->silent_desc, &opt_silent, s_sets_silent, 2 };
+        c[n++] = { g_lang->silent, g_lang->silent_desc, &opt_silent, s_sets_silent, 6 };
         c[n++] = { g_lang->autofire, g_lang->autofire_desc, &opt_autofire, NULL, 0 };
         c[n++] = { g_lang->antiaim, g_lang->antiaim_desc, &opt_aa, s_sets_aa, 5 };
         c[n++] = { g_lang->air_strafe, g_lang->air_strafe_desc, &opt_air_strafe, s_sets_airstrafe, 1 };

@@ -92,13 +92,7 @@ namespace watermark {
         float icon_x = rx + pad_x;
 
         if (logoTex) {
-            dl->AddImage(
-                logoTex,
-                ImVec2(icon_x, icon_y),
-                ImVec2(icon_x + icon_sz, icon_y + icon_sz),
-                ImVec2(0, 0), ImVec2(1, 1),
-                IM_COL32(255, 255, 255, 255)
-            );
+            dl->AddImage(logoTex, ImVec2(icon_x, icon_y), ImVec2(icon_x + icon_sz, icon_y + icon_sz), ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255, 255, 255, 255));
         }
 
         float cur_x = icon_x + icon_sz + gap;

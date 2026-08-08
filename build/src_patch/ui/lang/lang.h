@@ -106,6 +106,10 @@ struct lang {
     const char* silent_desc;
     const char* autofire;
     const char* autofire_desc;
+    const char* hitbox_head;
+    const char* hitbox_body;
+    const char* hitbox_hip;
+    const char* hitbox_legs;
     const char* air_strafe;
     const char* air_strafe_desc;
     const char* air_strafe_strength;

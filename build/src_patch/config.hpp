@@ -49,6 +49,7 @@ inline float s_aa_range = 45.f;
 inline bool opt_aim = false;
 inline bool opt_silent = false;
 inline bool opt_autofire = false;
+inline bool opt_hitbox[4] = { true, false, false, false }; // head, body, hip, legs (internal-main)
 inline bool opt_aim_visible = false;
 inline bool opt_aim_fov_draw = false;
 inline float s_aim_fov = 40.f;
