@@ -1,0 +1,170 @@
+{
+  "so_path": "/workspace/halalium/bin/libhalalium.so",
+  "build_id": "12532fca99debbaa836dbbea6e5cceec95f5bbbb",
+  "version_string": "t.me/lemminghack, 0.39.2",
+  "strings": {
+    "egl_lib": {
+      "present": true,
+      "file_off": 56259,
+      "va": "0xdbc3"
+    },
+    "egl_swap": {
+      "present": true,
+      "file_off": 218971,
+      "va": "0x3575b"
+    },
+    "watermark": {
+      "present": true,
+      "file_off": 217030,
+      "va": "0x34fc6"
+    },
+    "wm_click": {
+      "present": true,
+      "file_off": 193837,
+      "va": "0x2f52d"
+    },
+    "settings_wm": {
+      "present": true,
+      "file_off": 209987,
+      "va": "0x33443"
+    },
+    "brand": {
+      "present": true,
+      "file_off": 188437,
+      "va": "0x2e015"
+    },
+    "insert": {
+      "present": true,
+      "file_off": 188671,
+      "va": "0x2e0ff"
+    },
+    "right_alt": {
+      "present": true,
+      "file_off": 186050,
+      "va": "0x2d6c2"
+    },
+    "dobby_hook": {
+      "present": true,
+      "file_off": 30482,
+      "va": "0x7712"
+    },
+    "hooks_thread": {
+      "present": true,
+      "file_off": 217597,
+      "va": "0x351fd"
+    },
+    "bypass_thread": {
+      "present": true,
+      "file_off": 216344,
+      "va": "0x34d18"
+    },
+    "padla": {
+      "present": true,
+      "file_off": 226163,
+      "va": "0x37373"
+    },
+    "fresnel": {
+      "present": true,
+      "file_off": 205036,
+      "va": "0x320ec"
+    },
+    "shador": {
+      "present": true,
+      "file_off": 226169,
+      "va": "0x37379"
+    }
+  },
+  "features": [
+    "Enable Esp",
+    "Silent Aim",
+    "Rage",
+    "Anti Aim",
+    "Anti Aim Pitch",
+    "No spread",
+    "Auto Fire",
+    "Auto Wall",
+    "Through Walls",
+    "Wallshot",
+    "Skin Changer",
+    "Chams",
+    "Local Chams",
+    "Enemy Chams",
+    "Spin",
+    "Fov Check",
+    "Fov Color",
+    "Health Bar",
+    "Bone",
+    "Box",
+    "Third Person",
+    "Watermark",
+    "scope fov"
+  ],
+  "hooks": {
+    "render": {
+      "strategy": "dlsym(libEGL.so, eglSwapBuffers) + DobbyHook",
+      "melodium_strategy": "dlsym + GOT pointer-swap (same symbol)",
+      "egl_string_va": "0x3575b",
+      "install_xrefs": [
+        "0x1d84e8"
+      ],
+      "install_pc": "0x1d84e8",
+      "note": "At install_pc: load libEGL.so + eglSwapBuffers, dlsym, then DobbyHook(callback, &orig)"
+    },
+    "menu_open": {
+      "method": "InvisibleButton ##wm_click on ##watermark toggles open flag",
+      "wm_click_va": "0x2f52d",
+      "xrefs": [
+        "0x1db464"
+      ]
+    }
+  },
+  "typeinfo": {
+    "PlayerManager": "0xac5e190",
+    "GameController": "0xac58bb0",
+    "PhotonNetwork": "0xac5de18",
+    "BombManager": "0xac4fac0",
+    "InventoryManager": "0xac5c018",
+    "PlayerControls": "0xac5e0e0",
+    "PlayerController": "0xac5e0d8",
+    "WeaponController": "0xac61a18",
+    "WeaponManager": "0xac61a78",
+    "GameManager": "0xac58c00",
+    "TouchController": "0xac60b48",
+    "AntiCheatManager": "0xac4da30",
+    "GunController": "0xac59040",
+    "PlayerMainCamera": "0xac5e188"
+  },
+  "fields": {
+    "Player.photon_player": "0x160",
+    "Player.weaponry_controller": "0x88",
+    "Weaponry.weapon_controller": "0xa0",
+    "Player.occlusion_controller": "0xb8",
+    "Player.main_camera": "0xe8",
+    "Player.team": "0x79",
+    "Player.aim_controller": "0x80",
+    "Player.hit_controller": "0xa8",
+    "Player.movement_controller": "0x98",
+    "Player.character_view": "0x48",
+    "Player.photon_view": "0x150",
+    "PlayerManager.players_list": "0x28",
+    "PlayerManager.local_player": "0x70",
+    "PlayerManager.alt_player": "0x68",
+    "GameController.player_controls": "0x2b0",
+    "GameController.local_player": "0x2c0",
+    "Camera.matrix": "0xf0",
+    "Il2Cpp.klass_static_fields": "0x90"
+  },
+  "methods": {
+    "AntiCheat.OnStart_getrr": "0x8b9579c",
+    "PlayerController.Update": "0x8e7c40c",
+    "PlayerController.LateUpdate": "0x8e7cf50",
+    "Hook.Secondary": "0x8e0085c",
+    "Hook.Tertiary": "0x79fe5e0",
+    "Hook.TertiaryAlt": "0x147e970",
+    "Hook.ExtraA": "0x8d663ec",
+    "Hook.ExtraB": "0x8d2b2b0"
+  },
+  "notes": [
+    "Kikaium contract: eglSwapBuffers draw + ##wm_click open + VMT Update hooks + Offsets from this profile"
+  ]
+}

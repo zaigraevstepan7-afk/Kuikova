@@ -1,0 +1,558 @@
+#include "esp.h"
+#include <imgui.h>
+#include <map>
+#include <src/menu/gui.h>
+
+Matrix esp::matrix()
+{
+    c_player_controller *local{};
+    c_player_main_camera *main_camera{};
+    void *ptr{};
+    void *cashed{};
+    Matrix mat{};
+
+    local = c_player->local;
+    if (local)
+    {
+        main_camera = local->m_pMainCamera;
+        if (main_camera)
+        {
+            ptr = *(void **)((uintptr_t)main_camera + oxorany(0x20));
+            if (ptr)
+            {
+                cashed = *(void **)((uintptr_t)ptr + oxorany(0x10));
+                if (cashed)
+                {
+                    // Camera view matrix: community 0xF0; some builds use 0x100 — prefer 0xF0 on 0.39.2
+                    mat = *(Matrix *)((uintptr_t)cashed + oxorany(0xF0));
+                }
+            }
+        }
+    }
+
+    return mat;
+}
+
+bool esp::update_matrix()
+{
+    c_player_controller *local = c_player->local;
+    if (!local)
+        return false;
+
+    c_player_main_camera *main_camera = local->m_pMainCamera;
+    if (!main_camera)
+        return false;
+
+    void *ptr = *(void **)((uintptr_t)main_camera + oxorany(0x20));
+    if (!ptr)
+        return false;
+
+    void *cashed = *(void **)((uintptr_t)ptr + oxorany(0x10));
+    if (!cashed)
+        return false;
+
+    this->matrix() = *(Matrix *)((uintptr_t)cashed + oxorany(0xF0));
+    return true;
+}
+
+void text(ImFont *font, float FontSize, const ImVec2 &position, const ImColor &textColor, const char *text, bool outline, bool shadow)
+{
+    ImColor outlineColor(0.f, 0.0f, 0.0f, 0.7f);
+    float outlineThickness = 1.0f;
+    auto drawList = ImGui::GetBackgroundDrawList();
+    if (outline)
+    {
+        const float offset[] = {
+            -outlineThickness, -outlineThickness, 0, outlineThickness, outlineThickness};
+
+        for (float xOffset : offset)
+        {
+            for (float yOffset : offset)
+            {
+                drawList->AddText(font, FontSize, ImVec2(position.x + xOffset, position.y + yOffset), outlineColor, text);
+            }
+        }
+    }
+
+    if (shadow)
+    {
+        drawList->AddText(font, FontSize, {position.x + outlineThickness, position.y + outlineThickness}, ImColor(0, 0, 0, 255), text);
+    }
+
+    drawList->AddText(font, FontSize, position, textColor, text);
+}
+
+void DrawLine(const ImVec2 &ot, const ImVec2 &kuda, const ImVec4 &color, bool shadow, bool glow)
+{
+    if (color.w == 0.0f)
+        return;
+
+    auto draw = ImGui::GetBackgroundDrawList();
+    if (shadow)
+        draw->AddLine(ot, kuda, IM_COL32(0, 0, 0, 255), 2);
+    if (glow)
+        for (unsigned char i = 0; i < 0; i++)
+            draw->AddLine(ot, kuda, ImGui::ColorConvertFloat4ToU32(ImVec4(color.x, color.y, color.z, color.w * (1.0f / (float)0) * (((float)(0 - i)) / (float)0))), 1 + i);
+
+    draw->AddLine(ot, kuda, ImGui::ColorConvertFloat4ToU32(color), 1);
+}
+
+void DrawCircle(const ImVec2 &ot, float radius, const ImVec4 &color, bool shadow, bool glow)
+{
+    if (color.w == 0.0f)
+        return;
+
+    auto draw = ImGui::GetBackgroundDrawList();
+    if (shadow)
+        draw->AddCircle(ot, radius, IM_COL32(0, 0, 0, 255), 0, 2);
+    if (glow)
+        for (unsigned char i = 0; i < 0; i++)
+            draw->AddCircle(ot, radius, ImGui::ColorConvertFloat4ToU32(ImVec4(color.x, color.y, color.z, color.w * (1.0f / (float)0) * (((float)(0 - i)) / (float)0))), 0, 1 + i);
+
+    draw->AddCircle(ot, radius, ImGui::ColorConvertFloat4ToU32(color), 0, 1);
+}
+
+void DrawSkeleton(const ImVec4 &color, bool shadow, bool glow, bool DrawHead, Matrix worldToCameraMatrix, c_player_controller *m_pController)
+{
+    if (color.w == 0.0f)
+        return;
+
+    auto m_pCharacterView = m_pController->m_pCharacterView;
+    if (!m_pCharacterView)
+        return;
+
+    auto _bipedMap = m_pCharacterView->c_biped;
+    if (!_bipedMap)
+        return;
+
+    auto headpos = _bipedMap->head->get_position();
+    auto head = c_globals->world2screen(worldToCameraMatrix, headpos);
+    auto spine1 = c_globals->world2screen(worldToCameraMatrix, _bipedMap->spine1->get_position());
+    if (head.z < 0 || spine1.z < 0)
+        return;
+
+    std::array<ImVec2, 22> array{ImVec2(head.x, head.y)};
+    const unsigned short start = 0x28;
+
+    for (unsigned short i = start; i <= 0xC8; i += 0x8)
+    {
+        unsigned short index = (i - start) / 0x8;
+        if (i == 0x30 || i == 0x38)
+        {
+            array[index + 1] = array[index];
+            continue;
+        }
+        auto a = *(c_transform **)((uintptr_t)_bipedMap + i);
+        auto pos = c_globals->world2screen(worldToCameraMatrix, a->get_position());
+        if (pos.z < 0.125f)
+            return;
+
+        ImVec2 current(pos.x, pos.y);
+        ImVec2 prev = array[index];
+        if (i == 0x68 || i == 0x88)
+        {
+            prev = array[4];
+        }
+        if (i == 0xB0)
+        {
+            prev = array[13];
+        }
+
+        float dx = current.x - prev.x;
+        float dy = current.y - prev.y;
+        float length = sqrtf(dx * dx + dy * dy);
+        if (length > 0.0f)
+        {
+            float stepX = dx / length * 1.0f;
+            float stepY = dy / length * 1.0f;
+            float t = 0.0f;
+            while (t < length)
+            {
+                ImVec2 start(prev.x + stepX * t, prev.y + stepY * t);
+                ImVec2 end(prev.x + stepX * (t + 1.0f), prev.y + stepY * (t + 1.0f));
+                DrawLine(start, end, color, shadow, glow);
+                t += 1.0f;
+            }
+        }
+
+        array[index + 1] = current;
+    }
+
+    const float radius = 0.50f * (spine1.y - head.y);
+    if (DrawHead)
+        DrawCircle(ImVec2(head.x, head.y - radius), radius, color, shadow, glow);
+}
+
+void shadow_bar(const ImVec2 &pos1, const ImVec2 &pos2)
+{
+    ImU32 shadowColor = IM_COL32(0, 0, 0, 255);
+    float shadowOffset = 1.0f;
+    ImDrawList *drawList = ImGui::GetBackgroundDrawList();
+    drawList->AddRectFilledMultiColor(ImVec2(pos1.x - shadowOffset, pos1.y - shadowOffset),
+                                      ImVec2(pos2.x + shadowOffset, pos1.y), shadowColor, shadowColor, shadowColor, shadowColor);
+    drawList->AddRectFilledMultiColor(ImVec2(pos1.x - shadowOffset, pos1.y),
+                                      ImVec2(pos1.x, pos2.y + shadowOffset), shadowColor, shadowColor, shadowColor, shadowColor);
+    drawList->AddRectFilledMultiColor(ImVec2(pos2.x, pos1.y),
+                                      ImVec2(pos2.x + shadowOffset, pos2.y + shadowOffset), shadowColor, shadowColor, shadowColor, shadowColor);
+    drawList->AddRectFilledMultiColor(ImVec2(pos1.x, pos2.y),
+                                      ImVec2(pos2.x + shadowOffset, pos2.y + shadowOffset), shadowColor, shadowColor, shadowColor, shadowColor);
+}
+
+ImVec2 CenterText(const char *text, ImFont *font, float tsize, float x, float xw)
+{
+    auto strd = strdup(text);
+    ImVec2 text_size = font->CalcTextSizeA(tsize, FLT_MAX, -1.0f, strd);
+    free(strd);
+    text_size.x = (float)(int)(text_size.x + 0.99999f);
+    return {x + (xw - text_size.x) * 0.5f, text_size.y};
+}
+
+void esp::render()
+{
+    if (g.b_esp)
+    {
+        c_player_controller *player{};
+        c_photon_player *photon{};
+        c_transform *transform{};
+        int health{};
+        monoString *name{};
+        float x, y;
+        auto draw = ImGui::GetBackgroundDrawList();
+
+        static std::map<void*, float> fadeT;
+        static std::map<void*, bool> wasAlive;
+        const float fadeDuration = 1.7f;
+        const float fadeStep = 1.0f / (fadeDuration * 60.0f);
+
+        auto easeInOut = [&](float t)
+        {
+            return 0.5f - 0.5f * cosf(3.1415926535f * t);
+        };
+
+        auto easeOut = [&](float t)
+        {
+            return 0.5f + 0.5f * cosf(3.1415926535f * t);
+        };
+
+        for (int i{}; i < c_player->entity.size(); i++)
+        {
+            player = c_player->entity[i];
+            if (!player)
+                continue;
+            if (!c_globals->is_enemy(c_player->local, player))
+                continue;
+
+            photon = player->m_pPhoton;
+            transform = player->m_pTransform;
+            if (!photon || !transform)
+                continue;
+
+            health = photon->get_health();
+            if (health < 0)
+                continue;
+
+            bool alive = health > 0;
+
+            if (!fadeT.count(player))
+            {
+                fadeT[player] = alive ? 0.0f : 1.0f;
+                wasAlive[player] = alive;
+            }
+
+            float &t = fadeT[player];
+
+            if (alive)
+            {
+                wasAlive[player] = true;
+                if (t < 1.0f)
+                {
+                    t += fadeStep;
+                    if (t > 1.0f) t = 1.0f;
+                }
+            }
+            else
+            {
+                if (t > 0.0f)
+                {
+                    t -= fadeStep;
+                    if (t < 0.0f) t = 0.0f;
+                }
+            }
+
+            if (t <= 0.01f)
+                continue;
+
+            float alpha = alive ? easeInOut(t) : easeOut(t);
+
+            auto ApplyAlpha = [&](ImU32 col)
+            {
+                ImVec4 c = ImGui::ColorConvertU32ToFloat4(col);
+                c.w *= alpha;
+                return ImGui::ColorConvertFloat4ToU32(c);
+            };
+
+            Vector3 foot = transform->get_position();
+            if (foot == Vector3{})
+                continue;
+
+            Vector3 head{foot.x, foot.y + 1.65f, foot.z};
+            Vector3 footpos = c_globals->world2screen(this->matrix(), foot);
+            Vector3 headpos = c_globals->world2screen(this->matrix(), head);
+            float height = fabsf(footpos.y - headpos.y);
+
+            if (footpos.z < 0.01f || headpos.z < 0.01f)
+                continue;
+
+            float width = height / 1.8f;
+            x = headpos.x - width * 0.5f;
+            y = headpos.y;
+
+            if (g.b_skeleton)
+            {
+                DrawSkeleton({g.m_skeleton[0], g.m_skeleton[1], g.m_skeleton[2], g.m_skeleton[3]}, false, false, false, matrix(), player);
+            }
+
+            if (g.b_rect)
+            {
+                ImVec4 color{g.m_rect[0], g.m_rect[1], g.m_rect[2], g.m_rect[3]};
+                ImU32 col_box = ApplyAlpha(ImGui::ColorConvertFloat4ToU32(color));
+                ImU32 col_shadow = ApplyAlpha(IM_COL32(0, 0, 0, 255));
+
+                float x1 = x;
+                float y1 = y;
+                float x2 = x + width;
+                float y2 = y + height;
+
+                draw->AddRectFilledMultiColor({x1 - 1, y1 - 1}, {x2 + 1, y1}, col_shadow, col_shadow, col_shadow, col_shadow);
+                draw->AddRectFilledMultiColor({x1 - 1, y2}, {x2 + 1, y2 + 1}, col_shadow, col_shadow, col_shadow, col_shadow);
+                draw->AddRectFilledMultiColor({x1 - 1, y1}, {x1, y2}, col_shadow, col_shadow, col_shadow, col_shadow);
+                draw->AddRectFilledMultiColor({x2, y1}, {x2 + 1, y2}, col_shadow, col_shadow, col_shadow, col_shadow);
+
+                draw->AddRectFilledMultiColor(ImVec2(x1, y1 + 1), ImVec2(x2, y1 + 2), col_shadow, col_shadow, col_shadow, col_shadow);
+                draw->AddRectFilledMultiColor(ImVec2(x1, y2 - 2), ImVec2(x2, y2 - 1), col_shadow, col_shadow, col_shadow, col_shadow);
+                draw->AddRectFilledMultiColor(ImVec2(x1 + 1, y1), ImVec2(x1 + 2, y2), col_shadow, col_shadow, col_shadow, col_shadow);
+                draw->AddRectFilledMultiColor(ImVec2(x2 - 2, y1), ImVec2(x2 - 1, y2), col_shadow, col_shadow, col_shadow, col_shadow);
+
+                draw->AddRectFilledMultiColor({x1, y1}, {x2, y1 + 1}, col_box, col_box, col_box, col_box);
+                draw->AddRectFilledMultiColor({x1, y2 - 1}, {x2, y2}, col_box, col_box, col_box, col_box);
+                draw->AddRectFilledMultiColor({x1, y1}, {x1 + 1, y2}, col_box, col_box, col_box, col_box);
+                draw->AddRectFilledMultiColor({x2 - 1, y1}, {x2, y2}, col_box, col_box, col_box, col_box);
+            }
+
+            if (g.b_name)
+            {
+                const float fontSize = 15.0f;
+                auto player_name = photon->m_nameField;
+                if (!player_name)
+                    return;
+
+                auto nameStr = player_name->toUTF8();
+                ImVec2 text_size = gui::font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, nameStr.c_str());
+                float textX = x + (width * 0.5f) - (text_size.x * 0.5f);
+                float textY = y - text_size.y - 2.0f;
+
+                text(gui::font, fontSize, ImVec2(textX, textY), ApplyAlpha(ImColor(255, 255, 255, 255)), nameStr.c_str(), false, true);
+            }
+
+            if (g.b_ammo)
+            {
+                const float optimalSize = width * 0.0625f + 8.0f;
+                auto healthWidth = round(optimalSize * 0.2f);
+                auto padding = optimalSize * 0.350f;
+                static std::map<void *, float> lastAmmoMap;
+                ImVec4 color{g.m_ammo[0], g.m_ammo[1], g.m_ammo[2], g.m_ammo[3]};
+                auto weaponry = player->m_pWeaponry;
+                if (!weaponry)
+                    return;
+                auto weapon = (c_gun_controller*)weaponry->m_pCurrentWeapon;
+                if (!weapon)
+                    return;
+                auto params = *(void**)((uintptr_t)weapon + oxorany(0xa8));
+                if (!params)
+                    return;
+                auto m_id = *(uint8_t*)((uintptr_t)params + oxorany(0x18));
+                if (m_id >= 11 && m_id <= 65)
+                {
+                    auto ammo = weapon->m_iAmmoSafe.get();
+                    auto ammunition = *(void**)((uintptr_t)params + oxorany(0x130));
+                    if (!ammunition)
+                        return;
+                    short max_ammo = *(short*)((uintptr_t)ammunition + oxorany(0x10));
+                    if (max_ammo == 0)
+                        return;
+                    float &animatedAmmo = lastAmmoMap[player];
+                    float ammo_progress = std::clamp((float)ammo / max_ammo, 0.0f, 1.0f);
+                    animatedAmmo += (ammo_progress - animatedAmmo) * 0.1f;
+
+                    float barWidth = width;
+                    float barHeight = healthWidth;
+                    float barX = x;
+                    float barY = y + height + padding;
+                    ImVec2 barStart = ImVec2(barX, barY);
+                    ImVec2 barEnd = ImVec2(barX + barWidth, barY + barHeight);
+                    ImVec2 fillStart = ImVec2(barX, barY);
+                    ImVec2 fillEnd = ImVec2(barX + barWidth * animatedAmmo, barY);
+
+                    shadow_bar(barStart, barEnd);
+                    draw->AddRectFilled(barStart, barEnd, ApplyAlpha(ImColor(0, 0, 0, 115)));
+
+                    ImU32 colL = ApplyAlpha(ImGui::ColorConvertFloat4ToU32(color));
+                    draw->AddRectFilledMultiColor(fillStart, fillEnd, colL, colL, colL, colL);
+
+                    if (ammo < max_ammo && ammo > 1)
+                    {
+                        char ammoText[16];
+                        snprintf(ammoText, sizeof(ammoText), "%d", ammo);
+                        ImVec2 textSize = gui::pixel->CalcTextSizeA(10, FLT_MAX, 0, ammoText);
+                        ImVec2 textPos = ImVec2(fillEnd.x - textSize.x + 2.0f, barY + (barHeight - textSize.y) * 0.5f);
+                        text(gui::pixel, 10, textPos, ApplyAlpha(ImColor(255,255,255,255)), ammoText, true, false);
+                    }
+                }
+            }
+
+            if (g.b_eweapon)
+            {
+                auto weaponry = player->m_pWeaponry;
+                if (!weaponry)
+                    return;
+                auto weapon = (c_gun_controller*)weaponry->m_pCurrentWeapon;
+                if (!weapon)
+                    return;
+                auto params = *(void**)((uintptr_t)weapon + oxorany(0xa8));
+                if (!params)
+                    return;
+                auto id = *(uint8_t*)((uintptr_t)params + oxorany(0x18));
+
+                const char *weaponName;
+                switch (id)
+                {
+                case 11: weaponName = "G22"; break;
+                case 12: weaponName = "USP"; break;
+                case 13: weaponName = "P350"; break;
+                case 15: weaponName = "Deagle"; break;
+                case 16: weaponName = "TEC9"; break;
+                case 17: weaponName = "Five-Seven"; break;
+                case 18: weaponName = "Berretas"; break;
+                case 32: weaponName = "UMP45"; break;
+                case 33: weaponName = "Akimbo Uzi"; break;
+                case 34: weaponName = "MP7"; break;
+                case 35: weaponName = "P90"; break;
+                case 36: weaponName = "MP5"; break;
+                case 37: weaponName = "MAC10"; break;
+                case 42: weaponName = "Val"; break;
+                case 43: weaponName = "M4A1"; break;
+                case 44: weaponName = "AKR"; break;
+                case 45: weaponName = "AKR12"; break;
+                case 46: weaponName = "M4"; break;
+                case 47: weaponName = "M16"; break;
+                case 48: weaponName = "Famas"; break;
+                case 49: weaponName = "Fnfal"; break;
+                case 51: weaponName = "AWM"; break;
+                case 52: weaponName = "M40"; break;
+                case 53: weaponName = "M110"; break;
+                case 54: weaponName = "Mallard"; break;
+                case 62: weaponName = "SM1014"; break;
+                case 63: weaponName = "FabM"; break;
+                case 64: weaponName = "M60"; break;
+                case 65: weaponName = "Spas"; break;
+                case 70: weaponName = "Knife"; break;
+                case 71: weaponName = "Bayonet"; break;
+                case 72: weaponName = "karambit"; break;
+                case 73: weaponName = "Jkommando"; break;
+                case 75: weaponName = "Butterfly"; break;
+                case 77: weaponName = "Flip"; break;
+                case 78: weaponName = "Kunai"; break;
+                case 79: weaponName = "Scorpion"; break;
+                case 80: weaponName = "Tanto"; break;
+                case 81: weaponName = "Dagger"; break;
+                case 82: weaponName = "Kukri"; break;
+                case 83: weaponName = "Stilet"; break;
+                case 85: weaponName = "Mantis"; break;
+                case 86: weaponName = "Fang"; break;
+                case 88: weaponName = "Sting"; break;
+                case 89: weaponName = "Hands"; break;
+                case 91: weaponName = "HE"; break;
+                case 93: weaponName = "Flash"; break;
+                case 92: weaponName = "Smoke"; break;
+                case 94: weaponName = "Molotov"; break;
+                case 95: weaponName = "Incendiary"; break;
+                case 100: weaponName = "Bomb"; break;
+                default: weaponName = "Unknown"; break;
+                }
+
+                const float optimalSize = width * 0.0625f + 8.0f;
+                const float font_size = 15.0f;
+                const float fixed_text_height = font_size;
+
+                ImU32 colTxt = ApplyAlpha(ImColor(255, 255, 255, 255));
+
+                if (!g.b_ammo)
+                {
+                    text(gui::font, font_size,
+                        ImVec2(
+                            CenterText(weaponName, gui::font, font_size, x, width).x,
+                            y + height + optimalSize * 1.4f - fixed_text_height),
+                        colTxt, weaponName, false, true);
+                }
+
+                if (g.b_ammo)
+                {
+                    if (id >= 11 && id <= 65)
+                    {
+                        text(gui::font, font_size,
+                            ImVec2(
+                                CenterText(weaponName, gui::font, font_size, x, width).x,
+                                y + height + optimalSize * 2.3f - fixed_text_height),
+                            colTxt, weaponName, false, true);
+                    }
+                    if (id > 65 && id <= 100)
+                    {
+                        text(gui::font, font_size,
+                            ImVec2(
+                                CenterText(weaponName, gui::font, font_size, x, width).x,
+                                y + height + optimalSize * 1.4f - fixed_text_height),
+                            colTxt, weaponName, false, true);
+                    }
+                }
+            }
+
+            if (g.b_health)
+            {
+                ImVec4 color{g.m_health[0], g.m_health[1], g.m_health[2], g.m_health[3]};
+                float healthOffset = 0.350f;
+                const float optimalSize = width * 0.0625f + 8.0f;
+                float healthWidth = roundf(optimalSize * 0.2f);
+                float padding = optimalSize * healthOffset;
+                float healthPos = health / 100.0f;
+                if (healthPos < 0.0f) healthPos = 0.0f;
+                if (healthPos > 1.0f) healthPos = 1.0f;
+
+                ImVec2 pos1(x - healthWidth - padding, y);
+                ImVec2 pos2(x - padding, y + height);
+
+                draw->AddRectFilled(pos1, pos2, ApplyAlpha(IM_COL32(0, 0, 0, 128)));
+
+                float healthHeight = height * healthPos;
+                ImVec2 healthPos1(pos1.x, pos2.y - healthHeight);
+                ImVec2 healthPos2(pos2.x, pos2.y);
+
+                shadow_bar(pos1, pos2);
+
+                draw->AddRectFilled({pos1.x, pos1.y}, {pos2.x, pos2.y}, ApplyAlpha(ImColor(0, 0, 0, 120)));
+                draw->AddRectFilled({x - healthWidth - padding, y + roundf(height * (1.0f - healthPos))},
+                                    {x - padding, y + height}, ApplyAlpha(ImGui::ColorConvertFloat4ToU32(color)));
+
+                if (health < 100)
+                {
+                    char healthText[16];
+                    snprintf(healthText, sizeof(healthText), "%d", health);
+                    ImVec2 textSize = gui::pixel->CalcTextSizeA(10, FLT_MAX, 0, healthText);
+                    float textX = x - healthWidth - padding + (healthWidth - textSize.x) * 0.5f;
+                    float textY = y + height * (1.0f - healthPos) - textSize.y + 2.0f;
+
+                    text(gui::pixel, 10, ImVec2(textX, textY), ApplyAlpha(ImColor(255, 255, 255, 255)), healthText, true, false);
+                }
+            }
+        }
+    }
+}

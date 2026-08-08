@@ -1,0 +1,12 @@
+{
+  "name": "track_hook_helper",
+  "va": "0x1d917c",
+  "size": "0x80",
+  "insn": 32,
+  "fields": {
+    "0x10": 2
+  },
+  "rvas": [],
+  "strings": [],
+  "calls": []
+}

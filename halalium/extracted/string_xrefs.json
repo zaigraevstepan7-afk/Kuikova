@@ -1,0 +1,46 @@
+{
+  "eglSwapBuffers": [
+    "0x1d84e8"
+  ],
+  "Halalium_Hooks": [
+    "0x1d7bec"
+  ],
+  "Halalium_Bypass": [
+    "0x1d90d0",
+    "0x1d9128"
+  ],
+  "/sdcard/Android/data/com.axlebolt.standoff2/files/padla": [],
+  "Enable Esp": [
+    "0x1dbbcc"
+  ],
+  "Silent Aim": [
+    "0x1dc59c"
+  ],
+  "No spread": [
+    "0x1dc6ec"
+  ],
+  "Skin Changer": [
+    "0x1dc2c0"
+  ],
+  "libunity.so": [
+    "0x1d6b78"
+  ],
+  "t.me/lemminghack, 0.39.2": [
+    "0x1db9dc"
+  ],
+  "[ping] photon_raw=%d prop_raw=%d published=%d attempts=%llu": [
+    "0x1d7c00"
+  ],
+  "DobbyHook": [],
+  "/proc/self/maps": [
+    "0x22fb88",
+    "0x22fdcc",
+    "0x23c664"
+  ],
+  "Auto Fire": [
+    "0x1dc678"
+  ],
+  "Through Walls": [
+    "0x1dbf78"
+  ]
+}
