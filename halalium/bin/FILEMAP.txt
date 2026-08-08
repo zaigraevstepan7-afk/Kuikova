@@ -1,0 +1,9 @@
+Uploaded -> canonical
+inj_0a9b.sh              -> inj.sh
+AndKittyInjector_527a.txt -> AndKittyInjector
+libhalalium.txt_7c2f.txt  -> libhalalium.so
+padla_1df4.txt            -> padla
+
+Deploy:
+  padla -> /sdcard/Android/data/com.axlebolt.standoff2/files/padla
+  rest  -> /data/local/tmp/

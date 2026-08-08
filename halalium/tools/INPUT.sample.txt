@@ -1,0 +1,6 @@
+# Example field offsets to remap after a patch
+PlayerController 0x160
+PlayerController 0xE8
+PlayerController 0x88
+PlayerManager 0x70
+PlayerManager 0x28

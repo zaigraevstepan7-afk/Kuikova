@@ -1,0 +1,20 @@
+[
+  {
+    "type": "AssetBundle",
+    "path_id": 1,
+    "name": "padla",
+    "exported": "/workspace/halalium/extracted/padla/AssetBundle_1.json"
+  },
+  {
+    "type": "Shader",
+    "path_id": 3056512510807096294,
+    "name": "",
+    "exported": "/workspace/halalium/extracted/padla/Shader_obj_3056512510807096294_3056512510807096294.json"
+  },
+  {
+    "type": "Shader",
+    "path_id": 4822103166414625150,
+    "name": "",
+    "exported": "/workspace/halalium/extracted/padla/Shader_obj_4822103166414625150_4822103166414625150.json"
+  }
+]
