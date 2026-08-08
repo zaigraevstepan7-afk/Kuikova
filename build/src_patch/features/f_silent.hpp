@@ -177,6 +177,7 @@ static bool hk_raycast(void* scene, ray_t* ray, float max_distance, raycast_hit_
                 uint64_t e = players[i];
                 if (!ok(e) || health_of(e) <= 0) continue;
                 if (rd8(e + OFF_PLAYER_TEAM) == lteam) continue;
+                if (opt_aim_visible && !player_visible(e)) continue;
                 SK s;
                 if (!gsb(e, s) || !s.ok) continue;
 
@@ -247,25 +248,42 @@ static void hk_execute(void* thiz, weapon_controller_cmd commands, float duratio
 static const Il2CppMethod* find_execute_method(Il2CppClass* gun) {
     if (!gun || !il2cpp::class_get_methods || !il2cpp::method_get_param_count || !il2cpp::method_get_param || !il2cpp::type_get_type)
         return nullptr;
+    // ExecuteCommands(cmd, float duration, float time) — name obfuscated on 0.39.2.
+    // Score candidates instead of taking the last (?, float, float) match.
+    const Il2CppMethod* best = nullptr;
+    int best_score = -1;
     void* it = nullptr;
-    const Il2CppMethod* found = nullptr;
     while (const Il2CppMethod* m = il2cpp::class_get_methods(gun, &it)) {
         if (il2cpp::method_get_param_count(m) != 3) continue;
+        if (il2cpp::method_is_generic && il2cpp::method_is_generic(m)) continue;
+        if (il2cpp::method_is_inflated && il2cpp::method_is_inflated(m)) continue;
+        if (il2cpp::method_is_instance && !il2cpp::method_is_instance(m)) continue;
+        const Il2CppType* p0 = il2cpp::method_get_param(m, 0);
         const Il2CppType* p1 = il2cpp::method_get_param(m, 1);
         const Il2CppType* p2 = il2cpp::method_get_param(m, 2);
-        if (!p1 || !p2) continue;
+        if (!p0 || !p1 || !p2) continue;
         // float = IL2CPP_TYPE_R4 (0x0C)
-        if (il2cpp::type_get_type(p1) == 0x0C && il2cpp::type_get_type(p2) == 0x0C) {
-            found = m;
-            // prefer non-generic instance methods; keep last matching (ExecuteCommands is typically late)
+        if (il2cpp::type_get_type(p1) != 0x0C || il2cpp::type_get_type(p2) != 0x0C) continue;
+        int t0 = il2cpp::type_get_type(p0);
+        // valuetype cmd struct (0x11) preferred; class/object (0x12) acceptable
+        if (t0 != 0x11 && t0 != 0x12) continue;
+        int score = (t0 == 0x11) ? 2 : 1;
+        if (il2cpp::method_get_return_type) {
+            const Il2CppType* rt = il2cpp::method_get_return_type(m);
+            // void = IL2CPP_TYPE_VOID (0x01)
+            if (rt && il2cpp::type_get_type(rt) == 0x01) score += 2;
+        }
+        if (score > best_score) {
+            best_score = score;
+            best = m;
         }
     }
-    // also try known obfuscated name from older internal-main builds
-    if (!found && il2cpp::class_get_method_from_name) {
-        found = il2cpp::class_get_method_from_name(gun, "FEEBGAGHGGCGACA", 3);
+    if (best) return best;
+    if (il2cpp::class_get_method_from_name) {
+        best = il2cpp::class_get_method_from_name(gun, "FEEBGAGHGGCGACA", 3);
+        if (best) return best;
     }
-    if (!found) found = find_method(gun, "FEEBGAGHGGCGACA");
-    return found;
+    return find_method(gun, "FEEBGAGHGGCGACA");
 }
 
 static void try_hook_ray() {
@@ -298,6 +316,10 @@ static void try_hook_execute() {
     if (!mi_make_rw((uintptr_t)slot)) return;
     if (!orig_execute) orig_execute = (decltype(orig_execute))*slot;
     *slot = (uintptr_t)hk_execute;
+    // virtual calls use virtualMethodPointer — patch both like internal-main
+    uintptr_t* vslot = (uintptr_t*)((uintptr_t)m + il2cpp::offset::il2cpp_method_virtual_ptr);
+    if (mi_make_rw((uintptr_t)vslot))
+        *vslot = (uintptr_t)hk_execute;
     exec_hooked = true;
 }
 
