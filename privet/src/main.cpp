@@ -725,24 +725,27 @@ static std::atomic<bool> g_body_ok{false};
 // Halalium's third person path. IL2CPP AArch64 ABI: __this in x0, MethodInfo* in
 // the next integer slot, and a Vector3 argument travels in s0/s1/s2.
 using pc_void_fn = void (*)(void* self, void* mi);
-using pc_view_fn = void (*)(void*, int);
+using pc_view_fn = void (*)(void* self, int mode, void* mi);
 using cam_main_fn = void* (*)(void* mi);
 using get_transform_fn = void* (*)(void* self, void* mi);
+using get_gameobject_fn = void* (*)(void* self, void* mi);
 using set_localpos_fn = void (*)(void* self, float x, float y, float z, void* mi);
-using go_set_active_fn = void (*)(void*, bool);
-using rend_set_enabled_fn = void (*)(void*, bool);
+using go_set_active_fn = void (*)(void* self, bool on, void* mi);
+using rend_set_enabled_fn = void (*)(void* self, bool on, void* mi);
 static pc_void_fn fn_set_tps = nullptr;
 static pc_void_fn fn_set_fps = nullptr;
 static pc_void_fn fn_set_visible = nullptr;
 static pc_view_fn fn_set_view_mode = nullptr;
 static cam_main_fn fn_cam_main = nullptr;
 static get_transform_fn fn_get_transform = nullptr;
+static get_gameobject_fn fn_get_gameobject = nullptr;
 static set_localpos_fn fn_set_localpos = nullptr;
 static go_set_active_fn fn_go_set_active = nullptr;
 static rend_set_enabled_fn fn_rend_set_enabled = nullptr;
 static void* mi_set_tps = nullptr;
 static void* mi_set_fps = nullptr;
 static void* mi_set_visible = nullptr;
+static void* mi_set_view_mode = nullptr;
 static void* mi_go_set_active = nullptr;
 static void* mi_rend_set_enabled = nullptr;
 static bool g_unity_helpers_tried = false;
@@ -792,6 +795,8 @@ static void resolve_view_rvas() {
     if (!fn_cam_main) fn_cam_main = (cam_main_fn)bind_game_rva(RVA_CAMERA_GET_MAIN);
     if (!fn_get_transform)
         fn_get_transform = (get_transform_fn)bind_game_rva(RVA_COMPONENT_GET_TRANSFORM);
+    if (!fn_get_gameobject)
+        fn_get_gameobject = (get_gameobject_fn)bind_game_rva(RVA_COMPONENT_GET_GAMEOBJECT);
     if (!fn_set_localpos)
         fn_set_localpos = (set_localpos_fn)bind_game_rva(RVA_TRANSFORM_SET_LOCALPOS);
     g_body_ok.store(fn_set_tps != nullptr && fn_set_localpos != nullptr);
@@ -848,14 +853,20 @@ static void resolve_unity_helpers() {
     }
 }
 
-static void set_go_active(void* go, bool on) {
-    if (!go || !ok((uint64_t)go) || !fn_go_set_active) return;
-    fn_go_set_active(go, on);
+static void set_go_active(void* go_or_component, bool on) {
+    if (!go_or_component || !ok((uint64_t)go_or_component) || !fn_go_set_active) return;
+    void* go = go_or_component;
+    // 0x30 may be Transform* — resolve GameObject when possible.
+    if (fn_get_gameobject && looks_like_a64((void*)fn_get_gameobject)) {
+        void* maybe = fn_get_gameobject(go_or_component, nullptr);
+        if (maybe && ok((uint64_t)maybe)) go = maybe;
+    }
+    fn_go_set_active(go, on, mi_go_set_active);
 }
 
 static void set_renderer_enabled(void* rend, bool on) {
     if (!rend || !ok((uint64_t)rend) || !fn_rend_set_enabled) return;
-    fn_rend_set_enabled(rend, on);
+    fn_rend_set_enabled(rend, on, mi_rend_set_enabled);
 }
 
 static Il2CppClass* player_controller_class() {
@@ -889,8 +900,9 @@ static void resolve_view_fns(Il2CppClass* pc) {
         } else if (strcmp(nm, NAME_PC_SET_VISIBLE) == 0) {
             if (!fn_set_visible) fn_set_visible = (pc_void_fn)p;
             mi_set_visible = (void*)m;
-        } else if (!fn_set_view_mode && strcmp(nm, NAME_PC_SET_VIEW_MODE) == 0) {
-            fn_set_view_mode = (pc_view_fn)p;
+        } else if (strcmp(nm, NAME_PC_SET_VIEW_MODE) == 0) {
+            if (!fn_set_view_mode) fn_set_view_mode = (pc_view_fn)p;
+            mi_set_view_mode = (void*)m;
         }
     }
     g_body_ok.store(fn_set_tps != nullptr && fn_set_localpos != nullptr);
@@ -919,21 +931,53 @@ static void resolve_lu(){
     resolve_view_fns(pc);
 }
 
-// Exactly Halalium LateUpdate @0x1d6ec4 for the local player:
-//   if (tps) { set_tps(p); cam=Camera.main; cam.transform.localPosition=(0,0,-d); }
-//   else     { set_fps(p); }
-// No set_visible / view_mode field writes here — those are ESP paths, not TPS.
+// Halalium LateUpdate API path + Melodium/wintex field path so the body actually
+// draws. set_tps alone often isn't enough if FP arms/holders stay active.
 static void apply_body_view(void* player, bool tps_on) {
     if (!player || !ok((uint64_t)player)) return;
+    resolve_unity_helpers();
+    resolve_view_rvas();
+    uint64_t lp = (uint64_t)player;
+
     if (tps_on) {
-        if (!fn_set_tps || !looks_like_a64((void*)fn_set_tps)) return;
-        // Halalium thunk: x0=player, x1=player (never null). Prefer real MethodInfo.
-        fn_set_tps(player, mi_or_self(mi_set_tps, player));
+        if (readable(lp + OFF_PLAYER_VIEW_MODE, 1)) wr8(lp + OFF_PLAYER_VIEW_MODE, 2);
+        if (readable(lp + OFF_PLAYER_CHAR_VISIBLE, 1)) wr8(lp + OFF_PLAYER_CHAR_VISIBLE, 1);
+        if (fn_set_view_mode && looks_like_a64((void*)fn_set_view_mode))
+            fn_set_view_mode(player, 2, mi_or_self(mi_set_view_mode, player));
+        if (fn_set_tps && looks_like_a64((void*)fn_set_tps))
+            fn_set_tps(player, mi_or_self(mi_set_tps, player));
+        // Halalium Update forces mesh via CharacterVisible + set_visible.
+        if (fn_set_visible && looks_like_a64((void*)fn_set_visible))
+            fn_set_visible(player, mi_or_self(mi_set_visible, player));
+
+        set_go_active((void*)rd64(lp + OFF_PLAYER_FPS_HOLDER), false);
+        set_go_active((void*)rd64(lp + OFF_PLAYER_FPS_DIRECTIVE), false);
+
+        uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
+        if (ok(arms_lod)) {
+            if (readable(arms_lod + OFF_LOD_RENDER_ENABLED, 1))
+                wr8(arms_lod + OFF_LOD_RENDER_ENABLED, 0);
+            set_renderer_enabled((void*)rd64(arms_lod + OFF_ARMS_MESH_RENDERER), false);
+            set_renderer_enabled((void*)rd64(arms_lod + OFF_ARMS_GLOVES_RENDERER), false);
+        }
+
         push_main_camera(-tps_dist);
         g_tps_ok.store(true);
     } else {
+        if (readable(lp + OFF_PLAYER_VIEW_MODE, 1)) wr8(lp + OFF_PLAYER_VIEW_MODE, 1);
+        if (fn_set_view_mode && looks_like_a64((void*)fn_set_view_mode))
+            fn_set_view_mode(player, 1, mi_or_self(mi_set_view_mode, player));
         if (fn_set_fps && looks_like_a64((void*)fn_set_fps))
             fn_set_fps(player, mi_or_self(mi_set_fps, player));
+        set_go_active((void*)rd64(lp + OFF_PLAYER_FPS_HOLDER), true);
+        set_go_active((void*)rd64(lp + OFF_PLAYER_FPS_DIRECTIVE), true);
+        uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
+        if (ok(arms_lod)) {
+            if (readable(arms_lod + OFF_LOD_RENDER_ENABLED, 1))
+                wr8(arms_lod + OFF_LOD_RENDER_ENABLED, 1);
+            set_renderer_enabled((void*)rd64(arms_lod + OFF_ARMS_MESH_RENDERER), true);
+            set_renderer_enabled((void*)rd64(arms_lod + OFF_ARMS_GLOVES_RENDERER), true);
+        }
         push_main_camera(0.f);
         g_tps_ok.store(false);
     }
@@ -951,50 +995,65 @@ static inline float clamp_pitch(float p, float m = 70.f) {
     return p;
 }
 
-// Field backup after set_tps/set_fps. Halalium does not touch LOD fields — set_tps
-// owns the arms/body swap. We only undo old yeets and avoid re-enabling arms under TPS.
+// Keep arms hidden and body LOD/occlusion on every tick after set_tps.
 static void third_person_model() {
     uint64_t pm = player_manager();
     if (!ok(pm)) return;
     uint64_t lp = rd64(pm + OFF_PM_LOCAL_PLAYER);
     if (!ok(lp)) return;
+    const bool tp = opt_tps;
 
+    // Wintex: park FP arms far below so they cannot cover the TPS body.
     uint64_t arms = rd64(lp + OFF_PLAYER_ARMS_CTRL);
     if (ok(arms) && readable(arms + OFF_ARMS_LOCAL_POS, 12)) {
-        if (rdf(arms + OFF_ARMS_LOCAL_POS + 4) < -100.f) {
+        if (tp) {
+            wrf(arms + OFF_ARMS_LOCAL_POS + 0, 0.f);
+            wrf(arms + OFF_ARMS_LOCAL_POS + 4, -1000.f);
+            wrf(arms + OFF_ARMS_LOCAL_POS + 8, 0.f);
+        } else if (rdf(arms + OFF_ARMS_LOCAL_POS + 4) < -100.f) {
             wrf(arms + OFF_ARMS_LOCAL_POS + 0, 0.f);
             wrf(arms + OFF_ARMS_LOCAL_POS + 4, 0.f);
             wrf(arms + OFF_ARMS_LOCAL_POS + 8, 0.f);
         }
     }
 
-    if (opt_tps) {
-        // Keep body drawn; do not force-enable arms LOD (that undoes set_tps).
-        if (readable(lp + OFF_PLAYER_CHAR_VISIBLE, 1))
-            wr8(lp + OFF_PLAYER_CHAR_VISIBLE, 1);
-        uint64_t char_lod = rd64(lp + OFF_PLAYER_CHAR_LOD);
-        if (ok(char_lod) && readable(char_lod + OFF_LOD_RENDER_ENABLED, 1))
-            wr8(char_lod + OFF_LOD_RENDER_ENABLED, 1);
-        uint64_t skin_lod = rd64(lp + OFF_PLAYER_SKIN_LOD);
-        if (ok(skin_lod) && readable(skin_lod + OFF_LOD_RENDER_ENABLED, 1))
-            wr8(skin_lod + OFF_LOD_RENDER_ENABLED, 1);
-    } else {
-        uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
-        if (ok(arms_lod) && readable(arms_lod + OFF_LOD_RENDER_ENABLED, 1))
-            wr8(arms_lod + OFF_LOD_RENDER_ENABLED, 1);
+    uint64_t arms_lod = rd64(lp + OFF_PLAYER_ARMS_LOD);
+    if (ok(arms_lod) && readable(arms_lod + OFF_LOD_RENDER_ENABLED, 1))
+        wr8(arms_lod + OFF_LOD_RENDER_ENABLED, tp ? 0 : 1);
+
+    if (!tp) return;
+
+    if (readable(lp + OFF_PLAYER_VIEW_MODE, 1)) wr8(lp + OFF_PLAYER_VIEW_MODE, 2);
+    if (readable(lp + OFF_PLAYER_CHAR_VISIBLE, 1)) wr8(lp + OFF_PLAYER_CHAR_VISIBLE, 1);
+    uint64_t char_lod = rd64(lp + OFF_PLAYER_CHAR_LOD);
+    if (ok(char_lod) && readable(char_lod + OFF_LOD_RENDER_ENABLED, 1))
+        wr8(char_lod + OFF_LOD_RENDER_ENABLED, 1);
+    uint64_t skin_lod = rd64(lp + OFF_PLAYER_SKIN_LOD);
+    if (ok(skin_lod) && readable(skin_lod + OFF_LOD_RENDER_ENABLED, 1))
+        wr8(skin_lod + OFF_LOD_RENDER_ENABLED, 1);
+
+    static const uint64_t cv_offs[] = {
+        OFF_PLAYER_CHAR_VIEW, OFF_PLAYER_VIEW_2, OFF_PLAYER_CHAR_VIEW_TPS};
+    for (uint64_t off : cv_offs) {
+        uint64_t cv = rd64(lp + off);
+        if (ok(cv) && readable(cv + OFF_CHAR_VIEW_OCCLUSION, 1))
+            wr8(cv + OFF_CHAR_VIEW_OCCLUSION, 1);
     }
 }
 
-// ---- Anti-aim: fake angles only while the game's Update runs ----
-struct Euler { float pitch, yaw, roll; };
+// ---- Anti-aim ----
+// Fake angles are written into AimingData before PlayerController.Update so the
+// game's snapshot/network path sees them; restored after Update so the local
+// camera/LateUpdate still use the real look angles.
+struct Euler { float pitch, yaw; };
 static Euler aa_real{};
 static uint64_t aa_data = 0;
 
 static float aa_fake_yaw(float real_yaw) {
     float yaw = real_yaw;
     switch (opt_aa_yaw) {
-        case 1: yaw = norm_yaw(real_yaw + 165.f); break;
-        case 2: {
+        case 1: yaw = norm_yaw(real_yaw + 165.f); break; // backward
+        case 2: { // spiral
             static float ang = 0.f, rad = 0.f;
             ang += 8.f;
             rad += 0.5f;
@@ -1002,8 +1061,8 @@ static float aa_fake_yaw(float real_yaw) {
             yaw = norm_yaw(ang + sinf(rad) * 180.f);
             break;
         }
-        case 3: yaw = norm_yaw((float)(rand() % 360)); break;
-        default: break;
+        case 3: yaw = norm_yaw((float)(rand() % 360)); break; // chaos mode
+        default: break; // local
     }
     if (opt_aa_spin != 0.f) {
         static float spin = 0.f;
@@ -1023,42 +1082,47 @@ static float aa_fake_yaw(float real_yaw) {
     return yaw;
 }
 
-// Write fake angles right before the game's Update reads them.
 static void aa_begin(void* local) {
     aa_data = 0;
     if (!opt_aa || !local) return;
     uint64_t aim = rd64((uint64_t)local + OFF_PLAYER_AIM);
     if (!ok(aim)) return;
     uint64_t ad = rd64(aim + OFF_AIM_AIMING_DATA);
-    if (!ok(ad)) return;
+    if (!ok(ad) || !readable(ad + OFF_AIMDATA_YAW_TARGET, 4)) return;
 
-    float pitch = rdf(ad + OFF_AIMDATA_CUR_AIM);
-    float yaw = rdf(ad + OFF_AIMDATA_CUR_EULER + 4);
+    float pitch = rdf(ad + OFF_AIMDATA_PITCH);
+    float yaw = rdf(ad + OFF_AIMDATA_YAW);
     if (!std::isfinite(pitch) || !std::isfinite(yaw)) return;
     if (pitch < -720.f || pitch > 720.f || yaw < -720.f || yaw > 720.f) return;
 
-    aa_real = {pitch, yaw, 0.f};
+    aa_real = {pitch, yaw};
     aa_data = ad;
 
     float fake_pitch = pitch;
     switch (opt_aa_pitch) {
-        case 1: fake_pitch = -89.f; break;
-        case 2: fake_pitch = 89.f; break;
+        case 1: fake_pitch = -89.f; break; // up
+        case 2: fake_pitch = 89.f; break;  // down
         default: break;
     }
     if (opt_aa_yaw == 3 || opt_aa_chaos)
         fake_pitch = (float)(rand() % 179 - 89);
 
-    wrf(ad + OFF_AIMDATA_CUR_AIM, clamp_pitch(fake_pitch, 89.f));
-    wrf(ad + OFF_AIMDATA_CUR_EULER + 4, aa_fake_yaw(yaw));
+    fake_pitch = clamp_pitch(fake_pitch, 89.f);
+    float fake_yaw = aa_fake_yaw(yaw);
+
+    // Write both current and target — Update/network may read either.
+    wrf(ad + OFF_AIMDATA_PITCH, fake_pitch);
+    wrf(ad + OFF_AIMDATA_YAW, fake_yaw);
+    wrf(ad + OFF_AIMDATA_PITCH_TARGET, fake_pitch);
+    wrf(ad + OFF_AIMDATA_YAW_TARGET, fake_yaw);
 }
 
-// Put the player's own angles back so the next frame reads real values
-// and the local view is unaffected.
 static void aa_end() {
     if (!aa_data) return;
-    wrf(aa_data + OFF_AIMDATA_CUR_AIM, aa_real.pitch);
-    wrf(aa_data + OFF_AIMDATA_CUR_EULER + 4, aa_real.yaw);
+    wrf(aa_data + OFF_AIMDATA_PITCH, aa_real.pitch);
+    wrf(aa_data + OFF_AIMDATA_YAW, aa_real.yaw);
+    wrf(aa_data + OFF_AIMDATA_PITCH_TARGET, aa_real.pitch);
+    wrf(aa_data + OFF_AIMDATA_YAW_TARGET, aa_real.yaw);
     aa_data = 0;
 }
 
@@ -1070,14 +1134,19 @@ static bool is_local_player(void* p) {
 
 static void hk_up(void* p, void* mi) {
     if (!up_mp || !p) return;
-    bool local = opt_aa && is_local_player(p);
-    if (local) aa_begin(p);
+    const bool local = is_local_player(p);
+    if (local && opt_aa) aa_begin(p);
     ((void(*)(void*, void*))up_mp)(p, mi);
-    if (local) aa_end();
+    if (local) {
+        if (opt_aa) aa_end();
+        // Melodium also drives set_tps from Update so FPS restore cannot stick.
+        if (opt_tps) {
+            apply_body_view(p, true);
+            third_person_model();
+        }
+    }
 }
 
-// Halalium runs the original first, then applies the view for the local player.
-// Must forward MethodInfo — dropping x1 corrupts the original LateUpdate.
 static void hk_lu(void* p, void* mi) {
     if (!lu_mp) return;
     ((void(*)(void*, void*))lu_mp)(p, mi);
@@ -1085,8 +1154,6 @@ static void hk_lu(void* p, void* mi) {
 
     static bool applied = false;
     if (opt_tps) {
-        // Halalium: photon health >= 1, else skip. If we can't parse health yet,
-        // still allow when the player has a main camera (spawned).
         int hp = health_of((uint64_t)p);
         if (hp < 1) {
             uint64_t cam = rd64((uint64_t)p + OFF_PLAYER_MAIN_CAMERA);
@@ -1143,7 +1210,7 @@ static bool in_match() {
            !(pos.x == 0.f && pos.y == 0.f && pos.z == 0.f);
 }
 
-// LateUpdate carries third person, Update only carries anti-aim.
+// LateUpdate carries third person; Update carries anti-aim + Melodium set_tps.
 static void try_hook_lu(){
     if (!g_hooks_armed.load()) return;
     resolve_view_rvas();
@@ -1151,15 +1218,14 @@ static void try_hook_lu(){
     if (!lu_hooked) {
         void* target = bind_unity_rva(RVA_PC_LATEUPDATE);
         void* tramp = nullptr;
-        // If a previous inject already patched the prologue and we lost the
-        // trampoline, do NOT MethodInfo-swap on top — that recurses with no orig.
         if (target && !a64hook::already_patched(target) &&
             a64hook::install(target, (void*)hk_lu, &tramp) && tramp) {
             lu_mp = tramp;
             lu_hooked = true;
         }
     }
-    if (!up_hooked && opt_aa) {
+    // Update is required for AA and also for TPS body (Melodium path).
+    if (!up_hooked && (opt_aa || opt_tps)) {
         void* target = bind_unity_rva(RVA_PC_UPDATE);
         void* tramp = nullptr;
         if (target && !a64hook::already_patched(target) &&
@@ -1169,8 +1235,7 @@ static void try_hook_lu(){
         }
     }
 
-    // MethodInfo swap as a fallback when the prologue was not relocatable.
-    if (!lu_hooked || (!up_hooked && opt_aa)) {
+    if (!lu_hooked || (!up_hooked && (opt_aa || opt_tps))) {
         if (!lu_mi || !up_mi) resolve_lu();
         void* lu_tgt = bind_unity_rva(RVA_PC_LATEUPDATE);
         void* up_tgt = bind_unity_rva(RVA_PC_UPDATE);
@@ -1179,7 +1244,7 @@ static void try_hook_lu(){
         if (!lu_hooked && !lu_a64 && lu_mi &&
             hook_method_ptr(lu_mi, (void*)hk_lu, &lu_mp) && lu_mp)
             lu_hooked = true;
-        if (!up_hooked && opt_aa && !up_a64 && up_mi &&
+        if (!up_hooked && (opt_aa || opt_tps) && !up_a64 && up_mi &&
             hook_method_ptr(up_mi, (void*)hk_up, &up_mp) && up_mp)
             up_hooked = true;
     }
@@ -1541,14 +1606,16 @@ static void draw_menu() {
                 melo_checkbox("skeleton", &opt_skeleton);
                 ImGui::Dummy(ImVec2(0, 8));
                 ImGui::TextDisabled("camera");
-                melo_checkbox("third person", &opt_tps);
+                if (melo_checkbox("third person", &opt_tps) && opt_tps && g_hooks_armed.load())
+                    try_hook_lu();
                 if (opt_tps) {
                     ImGui::SetNextItemWidth(-1);
                     ImGui::SliderFloat("##tpsdist", &tps_dist, 1.5f, 6.f, "distance %.1f");
                 }
             } else if (menu_tab == 1) {
                 ImGui::TextDisabled("anti aim");
-                melo_checkbox("enable", &opt_aa);
+                if (melo_checkbox("enable", &opt_aa) && opt_aa && g_hooks_armed.load())
+                    try_hook_lu();
                 ImGui::SetNextItemWidth(-1);
                 ImGui::Combo("pitch", &opt_aa_pitch, "local\0up\0down\0");
                 ImGui::SetNextItemWidth(-1);
@@ -1901,10 +1968,11 @@ static void* thread_main(void*) {
             fn_set_view_mode = nullptr;
             fn_cam_main = nullptr;
             fn_get_transform = nullptr;
+            fn_get_gameobject = nullptr;
             fn_set_localpos = nullptr;
             fn_go_set_active = nullptr;
             fn_rend_set_enabled = nullptr;
-            mi_set_tps = mi_set_fps = mi_set_visible = nullptr;
+            mi_set_tps = mi_set_fps = mi_set_visible = mi_set_view_mode = nullptr;
             mi_go_set_active = mi_rend_set_enabled = nullptr;
             g_unity_helpers_tried = false;
             g_view_rva_tried = false;

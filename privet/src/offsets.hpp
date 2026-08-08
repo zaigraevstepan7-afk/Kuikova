@@ -113,14 +113,22 @@
 #define OFF_INPUT_GET_TOUCH         0x684EDACULL
 #define OFF_INPUT_GET_TOUCH_COUNT   0x684E370ULL
 
-// PlayerController fields (AcademicDLC 0.39.2 dump)
+// PlayerController fields (AcademicDLC / Melodium 0.39.2 dump)
 #define OFF_PLAYER_AIM              0x80
 #define OFF_PLAYER_VIEW_MODE        0x134
 #define OFF_AIM_AIMING_DATA         0x90
-#define OFF_AIMDATA_CUR_AIM         0x18
-#define OFF_AIMDATA_CUR_EULER       0x24
+// AimingData layout (melod/acad 0.39.2):
+//   +0x18 pitch (current)   +0x1C yaw (current)
+//   +0x24 pitch (target)    +0x28 yaw (target)
+#define OFF_AIMDATA_PITCH           0x18
+#define OFF_AIMDATA_YAW             0x1C
+#define OFF_AIMDATA_PITCH_TARGET    0x24
+#define OFF_AIMDATA_YAW_TARGET      0x28
+// Legacy aliases (old code wrote yaw to CUR_EULER+4 == yaw_target only — incomplete)
+#define OFF_AIMDATA_CUR_AIM         OFF_AIMDATA_PITCH
+#define OFF_AIMDATA_CUR_EULER       OFF_AIMDATA_PITCH_TARGET
 
-// libunity RVAs recovered from libhalalium.so (0.39.2), where third person works.
+#define RVA_COMPONENT_GET_GAMEOBJECT 0x6002608ULL  // Component.get_gameObject (halalium thunk)
 // Halalium LateUpdate cave @0x1d6ec4:
 //   if (third) { set_tps(p); t = Camera.main.transform; t.localPosition = (0,0,-2); }
 //   else       { set_fps(p); }
