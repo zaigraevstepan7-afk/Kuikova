@@ -1,0 +1,11 @@
+okak/
+*.7z
+**/pidor
+**/.idea/
+**/.vscode/
+**/cmake-build-*/
+**/build/
+dumps/
+**/build/
+android-ndk/
+*.zip

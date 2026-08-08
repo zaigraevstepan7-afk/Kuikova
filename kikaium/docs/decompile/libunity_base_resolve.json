@@ -1,0 +1,105 @@
+{
+  "name": "libunity_base_resolve",
+  "va": "0x1d6afc",
+  "size": "0x1c0",
+  "insn": 112,
+  "fields": {
+    "0x8": 1,
+    "0x10": 1,
+    "0x20": 1,
+    "0x28": 5,
+    "0x38": 1,
+    "0x48": 2,
+    "0x58": 2,
+    "0x60": 1,
+    "0x170": 1,
+    "0x1f0": 2,
+    "0x238": 1,
+    "0x258": 1,
+    "0x260": 1,
+    "0x268": 1,
+    "0x318": 1,
+    "0x370": 1
+  },
+  "rvas": [],
+  "strings": [
+    "libunity.so"
+  ],
+  "calls": [
+    {
+      "at": "0x1d6b24",
+      "kind": "bl",
+      "target": "0x26c3c0"
+    },
+    {
+      "at": "0x1d6b34",
+      "kind": "bl",
+      "target": "0x26c3d0"
+    },
+    {
+      "at": "0x1d6b68",
+      "kind": "bl",
+      "target": "0x26c3e0"
+    },
+    {
+      "at": "0x1d6bb4",
+      "kind": "bl",
+      "target": "0x1d6d44"
+    },
+    {
+      "at": "0x1d6bc8",
+      "kind": "bl",
+      "target": "0x234470"
+    },
+    {
+      "at": "0x1d6bd4",
+      "kind": "bl",
+      "target": "0x1d6dd0"
+    },
+    {
+      "at": "0x1d6bdc",
+      "kind": "bl",
+      "target": "0x1d6f40"
+    },
+    {
+      "at": "0x1d6bec",
+      "kind": "bl",
+      "target": "0x26c3a0"
+    },
+    {
+      "at": "0x1d6c18",
+      "kind": "bl",
+      "target": "0x26c3f0"
+    },
+    {
+      "at": "0x1d6c38",
+      "kind": "bl",
+      "target": "0x26c3f0"
+    },
+    {
+      "at": "0x1d6c3c",
+      "kind": "bl",
+      "target": "0x1d92b8"
+    },
+    {
+      "at": "0x1d6c40",
+      "kind": "bl",
+      "target": "0x1d84cc"
+    },
+    {
+      "at": "0x1d6c54",
+      "kind": "bl",
+      "target": "0x26c330"
+    },
+    {
+      "at": "0x1d6c74",
+      "kind": "bl",
+      "target": "0x1d6f40"
+    },
+    {
+      "at": "0x1d6c7c",
+      "kind": "bl",
+      "target": "0x1d6d04"
+    }
+  ]
+}

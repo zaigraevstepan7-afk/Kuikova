@@ -1,0 +1,114 @@
+{
+  "name": "egl_install",
+  "va": "0x1d84cc",
+  "size": "0x200",
+  "insn": 128,
+  "fields": {
+    "0x10": 2
+  },
+  "rvas": [
+    {
+      "reg": "w23",
+      "rva": "0x8e7c40c",
+      "at": "0x1d8550"
+    },
+    {
+      "reg": "w9",
+      "rva": "0x8e0085c",
+      "at": "0x1d8584"
+    },
+    {
+      "reg": "w9",
+      "rva": "0x79fe5e0",
+      "at": "0x1d85c8"
+    },
+    {
+      "reg": "w19",
+      "rva": "0x147e970",
+      "at": "0x1d85d8"
+    },
+    {
+      "reg": "w9",
+      "rva": "0x8d663ec",
+      "at": "0x1d8674"
+    }
+  ],
+  "strings": [
+    "libEGL.so",
+    "eglSwapBuffers",
+    "libinput.so",
+    "_ZN7android13InputConsumer7consumeEPNS_26InputEventFactoryInterfaceEblPjPPNS_10InputEventE"
+  ],
+  "calls": [
+    {
+      "at": "0x1d84f0",
+      "kind": "bl",
+      "target": "0x26c550"
+    },
+    {
+      "at": "0x1d8508",
+      "kind": "bl",
+      "target": "0x26c560"
+    },
+    {
+      "at": "0x1d851c",
+      "kind": "bl",
+      "target": "0x26c550"
+    },
+    {
+      "at": "0x1d8534",
+      "kind": "bl",
+      "target": "0x26c560"
+    },
+    {
+      "at": "0x1d8568",
+      "kind": "bl",
+      "target": "0x26c560"
+    },
+    {
+      "at": "0x1d8578",
+      "kind": "bl",
+      "target": "0x1d917c"
+    },
+    {
+      "at": "0x1d85ac",
+      "kind": "bl",
+      "target": "0x26c560"
+    },
+    {
+      "at": "0x1d85bc",
+      "kind": "bl",
+      "target": "0x1d917c"
+    },
+    {
+      "at": "0x1d8618",
+      "kind": "bl",
+      "target": "0x26c560"
+    },
+    {
+      "at": "0x1d8628",
+      "kind": "bl",
+      "target": "0x1d917c"
+    },
+    {
+      "at": "0x1d8658",
+      "kind": "bl",
+      "target": "0x26c560"
+    },
+    {
+      "at": "0x1d8668",
+      "kind": "bl",
+      "target": "0x1d917c"
+    },
+    {
+      "at": "0x1d86b0",
+      "kind": "bl",
+      "target": "0x26c560"
+    },
+    {
+      "at": "0x1d86c0",
+      "kind": "bl",
+      "target": "0x1d917c"
+    }
+  ]
+}

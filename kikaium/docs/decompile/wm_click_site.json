@@ -1,0 +1,53 @@
+{
+  "name": "wm_click_site",
+  "va": "0x1db464",
+  "size": "0x200",
+  "insn": 128,
+  "fields": {
+    "0x10": 1,
+    "0x14": 2,
+    "0x18": 1,
+    "0x20": 1,
+    "0x28": 2,
+    "0x30": 2,
+    "0x64": 2,
+    "0xce": 1,
+    "0x2c8": 1
+  },
+  "rvas": [],
+  "strings": [
+    "##wm_click"
+  ],
+  "calls": [
+    {
+      "at": "0x1db4c0",
+      "kind": "bl",
+      "target": "0x1f17e0"
+    },
+    {
+      "at": "0x1db4d8",
+      "kind": "bl",
+      "target": "0x21544c"
+    },
+    {
+      "at": "0x1db50c",
+      "kind": "bl",
+      "target": "0x2089a0"
+    },
+    {
+      "at": "0x1db5c0",
+      "kind": "bl",
+      "target": "0x2088d0"
+    },
+    {
+      "at": "0x1db61c",
+      "kind": "bl",
+      "target": "0x209068"
+    },
+    {
+      "at": "0x1db65c",
+      "kind": "bl",
+      "target": "0x209124"
+    }
+  ]
+}
