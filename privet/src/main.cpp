@@ -1195,6 +1195,65 @@ static bool hook_method_ptr(MethodInfo* mi, void* hook, void** orig) {
 static bool lu_hooked;
 static bool up_hooked;
 
+// Native TransformAccess entry — field R/W safe from any thread.
+static uint64_t native_tm_entry_ex(uint64_t transform, uint64_t mat_off, uint64_t idx_off) {
+    if (!ok(transform)) return 0;
+    uint64_t native = rd64(transform + 0x10);
+    if (!ok(native)) return 0;
+    uint64_t matrix = rd64(native + mat_off);
+    if (!ok(matrix)) return 0;
+    int32_t index = rd32(native + idx_off);
+    if (index < 0 || index > 100000) return 0;
+    uint64_t list = rd64(matrix + OFF_MATRIX_LIST);
+    if (!ok(list)) return 0;
+    uint64_t entry = list + (uint64_t)index * (uint64_t)TRANSFORM_MATRIX_SIZE;
+    return readable(entry, TRANSFORM_MATRIX_SIZE) ? entry : 0;
+}
+
+static uint64_t native_tm_entry(uint64_t transform) {
+    uint64_t e = native_tm_entry_ex(transform, OFF_NATIVE_TR_MATRIX, OFF_NATIVE_TR_INDEX);
+    if (e) return e;
+    return native_tm_entry_ex(transform, OFF_NATIVE_TR_MATRIX_ALT, OFF_NATIVE_TR_INDEX_ALT);
+}
+
+static bool write_tm_local_z(uint64_t transform, float z) {
+    uint64_t entry = native_tm_entry(transform);
+    if (!entry) return false;
+    wrf(entry + 8, z);
+    return true;
+}
+
+// Field-only camera pullback (no IL2CPP calls) — works even if LateUpdate hook fails.
+static void field_tps_cam() {
+    if (!opt_tps) return;
+    uint64_t pm = player_manager();
+    if (!ok(pm)) return;
+    uint64_t lp = rd64(pm + OFF_PM_LOCAL_PLAYER);
+    if (!ok(lp)) return;
+
+    uint64_t main_cam = rd64(lp + OFF_PLAYER_MAIN_CAMERA);
+    uint64_t targets[6] = {};
+    int nt = 0;
+    auto push = [&](uint64_t t) {
+        if (ok(t) && nt < 6) targets[nt++] = t;
+    };
+    push(rd64(lp + OFF_PLAYER_CAM_HOLDER));
+    if (ok(main_cam)) {
+        push(rd64(main_cam + OFF_MAINCAM_TRANSFORM));
+        uint64_t mc = rd64(main_cam + OFF_MAINCAM_MAIN);
+        if (ok(mc)) {
+            push(rd64(mc + OFF_CAMMOVE_TRANSFORM));
+            push(rd64(mc + OFF_CAMMOVE_TRANSFORM_ALT));
+        }
+    }
+    for (int i = 0; i < nt; i++)
+        write_tm_local_z(targets[i], -tps_dist);
+}
+
+// Runs every frame from the render path: hide arms + pull camera via fields.
+// set_tps still needs the game-thread hook for the full body mesh.
+static void field_tps_tick();
+
 // True once the local player is spawned in a round (not lobby/menu).
 static bool in_match() {
     uint64_t pm = player_manager();
@@ -1210,42 +1269,39 @@ static bool in_match() {
            !(pos.x == 0.f && pos.y == 0.f && pos.z == 0.f);
 }
 
-// LateUpdate carries third person; Update carries anti-aim + Melodium set_tps.
+static void field_tps_tick() {
+    if (!opt_tps || !g_base) return;
+    if (!in_match()) return;
+    third_person_model();
+    field_tps_cam();
+}
+
+// LateUpdate = third person; Update = anti-aim + Melodium set_tps.
+// Prefer MethodInfo swap first (no prologue constraints), then a64 with ADRP reloc.
 static void try_hook_lu(){
     if (!g_hooks_armed.load()) return;
     resolve_view_rvas();
+    if (!lu_mi || !up_mi) resolve_lu();
+
+    auto try_a64 = [](uint64_t rva, void* hook, void** tramp_out) -> bool {
+        void* target = bind_unity_rva(rva);
+        if (!target || a64hook::already_patched(target)) return false;
+        void* tramp = nullptr;
+        if (!a64hook::install(target, hook, &tramp) || !tramp) return false;
+        *tramp_out = tramp;
+        return true;
+    };
 
     if (!lu_hooked) {
-        void* target = bind_unity_rva(RVA_PC_LATEUPDATE);
-        void* tramp = nullptr;
-        if (target && !a64hook::already_patched(target) &&
-            a64hook::install(target, (void*)hk_lu, &tramp) && tramp) {
-            lu_mp = tramp;
+        if (lu_mi && hook_method_ptr(lu_mi, (void*)hk_lu, &lu_mp) && lu_mp)
             lu_hooked = true;
-        }
+        else if (try_a64(RVA_PC_LATEUPDATE, (void*)hk_lu, &lu_mp))
+            lu_hooked = true;
     }
-    // Update is required for AA and also for TPS body (Melodium path).
     if (!up_hooked && (opt_aa || opt_tps)) {
-        void* target = bind_unity_rva(RVA_PC_UPDATE);
-        void* tramp = nullptr;
-        if (target && !a64hook::already_patched(target) &&
-            a64hook::install(target, (void*)hk_up, &tramp) && tramp) {
-            up_mp = tramp;
+        if (up_mi && hook_method_ptr(up_mi, (void*)hk_up, &up_mp) && up_mp)
             up_hooked = true;
-        }
-    }
-
-    if (!lu_hooked || (!up_hooked && (opt_aa || opt_tps))) {
-        if (!lu_mi || !up_mi) resolve_lu();
-        void* lu_tgt = bind_unity_rva(RVA_PC_LATEUPDATE);
-        void* up_tgt = bind_unity_rva(RVA_PC_UPDATE);
-        const bool lu_a64 = lu_tgt && a64hook::already_patched(lu_tgt);
-        const bool up_a64 = up_tgt && a64hook::already_patched(up_tgt);
-        if (!lu_hooked && !lu_a64 && lu_mi &&
-            hook_method_ptr(lu_mi, (void*)hk_lu, &lu_mp) && lu_mp)
-            lu_hooked = true;
-        if (!up_hooked && (opt_aa || opt_tps) && !up_a64 && up_mi &&
-            hook_method_ptr(up_mi, (void*)hk_up, &up_mp) && up_mp)
+        else if (try_a64(RVA_PC_UPDATE, (void*)hk_up, &up_mp))
             up_hooked = true;
     }
 }
@@ -1253,15 +1309,15 @@ static void try_hook_lu(){
 static void setup_hooks_now() {
     g_hooks_armed.store(true);
     resolve_view_rvas();
-    resolve_lu(); // also resolve MethodInfo for set_tps / set_fps / set_visible
+    resolve_lu();
     try_hook_lu();
 }
 
-// Auto-arm once spawned in a round — never in the lobby (AC detect).
+// Auto-arm in match when TPS/AA is on — do not require the setup tab.
 static void maybe_auto_hooks() {
-    if (lu_hooked) return;
     if (!opt_tps && !opt_aa) return;
     if (!in_match()) return;
+    if (lu_hooked && (up_hooked || (!opt_aa && !opt_tps))) return;
     setup_hooks_now();
 }
 
@@ -1449,12 +1505,16 @@ static int draw_esp() {
 
 static void draw_watermark() {
     const char* brand = "xxxstux";
-    char line[96];
-    snprintf(line, sizeof(line), "0.39.2  tps%c body%c  %c%c",
-             g_tps_ok.load() ? '+' : '-',
-             g_body_ok.load() ? '+' : '-',
-             lu_hooked ? 'L' : '-',
-             up_hooked ? 'U' : '-');
+    char line[128];
+    if (opt_tps && !lu_hooked) {
+        snprintf(line, sizeof(line), "0.39.2  NO HOOK  open setup");
+    } else {
+        snprintf(line, sizeof(line), "0.39.2  tps%c body%c  L%c U%c",
+                 g_tps_ok.load() ? '+' : '-',
+                 g_body_ok.load() ? '+' : '-',
+                 lu_hooked ? '+' : '-',
+                 up_hooked ? '+' : '-');
+    }
 
     ImGui::SetNextWindowPos(ImVec2(14.f, 14.f), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.0f);
@@ -1606,8 +1666,10 @@ static void draw_menu() {
                 melo_checkbox("skeleton", &opt_skeleton);
                 ImGui::Dummy(ImVec2(0, 8));
                 ImGui::TextDisabled("camera");
-                if (melo_checkbox("third person", &opt_tps) && opt_tps && g_hooks_armed.load())
-                    try_hook_lu();
+                if (melo_checkbox("third person", &opt_tps) && opt_tps) {
+                    if (in_match()) setup_hooks_now();
+                    else if (g_hooks_armed.load()) try_hook_lu();
+                }
                 if (opt_tps) {
                     ImGui::SetNextItemWidth(-1);
                     ImGui::SliderFloat("##tpsdist", &tps_dist, 1.5f, 6.f, "distance %.1f");
@@ -1734,8 +1796,8 @@ static void render_frame() {
     ImGui::NewFrame();
     handle_touch();
     maybe_auto_hooks();
+    field_tps_tick();
     draw_menu();
-    // Third person lives entirely in the LateUpdate hook (game thread).
     draw_esp();
     ImGui::EndFrame();
     ImGui::Render();
