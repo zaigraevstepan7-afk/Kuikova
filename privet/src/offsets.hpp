@@ -1,0 +1,151 @@
+#pragma once
+
+#define OFF_PLAYER_MANAGER          180740496ULL
+#define OFF_PM_LOCAL_PLAYER         0x70
+#define OFF_PM_PLAYER_LIST          0x28
+#define OFF_LIST_COUNT              0x20
+#define OFF_LIST_BUFFER             0x18
+#define OFF_LIST_ENTRY_BASE         0x30
+#define OFF_LIST_ENTRY_STRIDE       0x18
+
+#define OFF_PLAYER_HEALTH           0x7C  /* m_fLocalTime on 0.39.2 — NOT HP */
+#define OFF_PLAYER_TEAM             0x79
+#define OFF_PLAYER_MOVEMENT_CTRL    0x98
+#define OFF_PLAYER_PHOTON_PTR       0x160
+#define OFF_PLAYER_MAIN_CAMERA      0xE8
+#define OFF_MAINCAM_TRANSFORM       0x38   // PlayerMainCamera → Transform (dump 0.39.2)
+#define OFF_MAINCAM_UNITY_CAM       0x20   // PlayerMainCamera → UnityEngine.Camera
+#define OFF_MAINCAM_MAIN            0x40   // PlayerMainCamera → MainCamera (CameraMovementController)
+#define OFF_CAMMOVE_TRANSFORM       0xB0   // CameraMovementController → Transform
+#define OFF_CAMMOVE_TRANSFORM_ALT   0x48
+#define OFF_PLAYER_CAM_HOLDER       0x28   // PlayerController._mainCameraHolder
+#define OFF_PLAYER_FPS_HOLDER       0x30   // PlayerController._fpsCameraHolder (GameObject)
+#define OFF_PLAYER_FPS_DIRECTIVE    0x38   // PlayerController._fpsDirective (GameObject)
+#define OFF_CAMERA_TRANSFORM        0x100
+#define OFF_CAM_TRANSFORM_MATRIX    0x10
+#define OFF_CAM_MATRIX_DATA         0xF0
+#define PLAYER_HEIGHT               1.67f
+
+// Native TransformAccess — try ESP layout first, wintex as fallback
+#define OFF_NATIVE_TR_MATRIX        0x28
+#define OFF_NATIVE_TR_INDEX         0x30
+#define OFF_NATIVE_TR_MATRIX_ALT    0x38
+#define OFF_NATIVE_TR_INDEX_ALT     0x40
+
+#define OFF_PHOTON_NAME             0x20
+#define OFF_PHOTON_PROPS_REG        0x38
+#define OFF_PROPS_COUNT             0x20
+#define OFF_PROPS_LIST              0x18
+#define OFF_PROPS_KEY_BASE          0x28
+#define OFF_PROPS_VAL_BASE          0x30
+#define OFF_PROPS_VALUE_DATA        0x10
+
+#define OFF_TD_POSITION             0x44
+#define OFF_TRANSFORM_MATRIX        0x28
+#define OFF_TRANSFORM_INDEX         0x30
+#define OFF_MATRIX_LIST             0x18
+#define OFF_MATRIX_INDICES          0x20
+#define TRANSFORM_MATRIX_SIZE       48
+
+#define OFF_PLAYER_VIEW_1           0x48
+#define OFF_PLAYER_VIEW_2           0x50
+#define OFF_PLAYER_OCCLUSION        0xB8
+#define OFF_OCCLUSION_CURRENT       0x34
+#define OFF_OCCLUSION_NEXT          0x38
+
+#define OFF_PLAYER_CHAR_VIEW        0x48
+#define OFF_CHAR_VIEW_BIPED_MAP     0x48
+#define OFF_VIEW_BIPED_MAP          0x48
+
+#define OFF_PLAYER_WEAPONRY         0x88
+#define OFF_WEAPONRY_CURRENT        0xA0
+#define OFF_WEAPON_LOD              0x88
+#define OFF_LOD_SKINNED_ARRAY       0x38
+#define OFF_LOD_MESH_ARRAY          0x48
+#define OFF_UNITY_ARRAY_LENGTH      0x18
+#define OFF_UNITY_ARRAY_DATA        0x20
+#define OFF_PLAYER_ARMS_CTRL        0xA0   // ArmsAnimationController
+#define OFF_ARMS_LOCAL_POS          0xE8   // Vector3 DAHGDDFCBBCCGBA — wintex yeet
+#define OFF_PLAYER_ARMS_LOD         0xC8   // ArmsLodGroup
+#define OFF_ARMS_MESH_RENDERER      0x28   // ArmsLodGroup._armsMeshRenderer
+#define OFF_ARMS_GLOVES_RENDERER    0x30   // ArmsLodGroup._glovesMeshRenderer
+#define OFF_PLAYER_CHAR_VIEW_TPS    0xD0
+#define OFF_CHAR_VIEW_OCCLUSION     0x30
+#define OFF_PLAYER_CHAR_VISIBLE     0xD8
+#define OFF_PLAYER_SKIN_LOD         0x120
+#define OFF_PLAYER_CHAR_LOD         0x128
+#define OFF_LOD_RENDER_ENABLED      0x20
+#define OFF_CHAR_LOD_MESH_RENDERER  0x30
+
+#define OFF_BIPED_START             0x20
+#define OFF_BIPED_STRIDE            8
+#define BIPED_BONE_COUNT            22
+
+#define BONE_HEAD                   0
+#define BONE_NECK                   1
+#define BONE_SPINE                  2
+#define BONE_SPINE1                 3
+#define BONE_SPINE2                 4
+#define BONE_LEFT_SHOULDER          5
+#define BONE_LEFT_UPPERARM          6
+#define BONE_LEFT_FOREARM           7
+#define BONE_LEFT_HAND              8
+#define BONE_RIGHT_SHOULDER         9
+#define BONE_RIGHT_UPPERARM         10
+#define BONE_RIGHT_FOREARM          11
+#define BONE_RIGHT_HAND             12
+#define BONE_HIP                    13
+#define BONE_LEFT_UPLEG             14
+#define BONE_LEFT_LEG               15
+#define BONE_LEFT_FOOT              16
+#define BONE_LEFT_TOE               17
+#define BONE_RIGHT_UPLEG            18
+#define BONE_RIGHT_LEG              19
+#define BONE_RIGHT_FOOT             20
+#define BONE_RIGHT_TOE              21
+
+#define OFF_MC_TRANSFORM_DATA       0xB0
+
+#define OFF_UNITY_STRING_LENGTH     0x10
+#define OFF_UNITY_STRING_CHARS      0x14
+
+// Melodium 0.39.2 — UnityEngine.Input (libil2cpp RVAs)
+#define OFF_INPUT_GET_TOUCH         0x684EDACULL
+#define OFF_INPUT_GET_TOUCH_COUNT   0x684E370ULL
+
+// PlayerController fields (AcademicDLC / Melodium 0.39.2 dump)
+#define OFF_PLAYER_AIM              0x80
+#define OFF_PLAYER_VIEW_MODE        0x134
+#define OFF_AIM_AIMING_DATA         0x90
+// AimingData layout (melod/acad 0.39.2):
+//   +0x18 pitch (current)   +0x1C yaw (current)
+//   +0x24 pitch (target)    +0x28 yaw (target)
+#define OFF_AIMDATA_PITCH           0x18
+#define OFF_AIMDATA_YAW             0x1C
+#define OFF_AIMDATA_PITCH_TARGET    0x24
+#define OFF_AIMDATA_YAW_TARGET      0x28
+// Legacy aliases (old code wrote yaw to CUR_EULER+4 == yaw_target only — incomplete)
+#define OFF_AIMDATA_CUR_AIM         OFF_AIMDATA_PITCH
+#define OFF_AIMDATA_CUR_EULER       OFF_AIMDATA_PITCH_TARGET
+
+#define RVA_COMPONENT_GET_GAMEOBJECT 0x6002608ULL  // Component.get_gameObject (halalium thunk)
+// Halalium LateUpdate cave @0x1d6ec4:
+//   if (third) { set_tps(p); t = Camera.main.transform; t.localPosition = (0,0,-2); }
+//   else       { set_fps(p); }
+// Melodium's set_tps/set_fps/set_visible RVAs were WRONG on this build and froze
+// the game the moment they were called — these are the verified ones.
+#define RVA_PC_UPDATE               0x8E7C40CULL
+#define RVA_PC_LATEUPDATE           0x8E7CF50ULL   // = Update + 0xB44
+#define RVA_PC_SET_TPS              0x8E7BB18ULL   // halalium 0x1d7ee4 thunk
+#define RVA_PC_SET_FPS              0x8E88A6CULL   // halalium 0x1d7f08 thunk
+#define RVA_PC_SET_VISIBLE          0x8E8AE24ULL   // halalium Update @0x1d6b0c
+#define RVA_CAMERA_GET_MAIN         0x5FACE04ULL   // UnityEngine.Camera.get_main
+#define RVA_COMPONENT_GET_TRANSFORM 0x5FF113CULL   // Component.get_transform
+#define RVA_TRANSFORM_SET_LOCALPOS  0x5FF4910ULL   // Transform.set_localPosition
+
+// Obfuscated names (dump) — fallback if RVA bind fails.
+#define NAME_PC_SET_TPS             "ECAFHEAAGDAAHHH"
+#define NAME_PC_SET_FPS             "FCBDBECBFEABFCD"
+#define NAME_PC_SET_VISIBLE         "AFAEGDBAFECEHDD"
+#define NAME_PC_SET_VIEW_MODE       "ADEAAACFHADDAFG"
+
