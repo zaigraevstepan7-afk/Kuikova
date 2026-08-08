@@ -1,4 +1,4 @@
-//by @gametocytes @pastercode
+//by @sukisuultra
 #include "core.hpp"
 #include "hooking.hpp"
 
